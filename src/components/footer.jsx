@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="bg-black text-white py-8">
+    <footer className="bg-black text-white py-8 -mt-[40vh] relative z-50">
       <div className="max-w-screen-lg mx-auto text-center">
         {/* Title */}
         <h1 className="text-2xl font-bold mb-4">Ball & Beer</h1>
