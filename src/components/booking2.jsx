@@ -15,7 +15,9 @@ export default function Booking2() {
   }, [currentDate, isCalendarOpen]);
   useEffect(() => {
     const today = new Date();
-    const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+    const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}/${today.getFullYear()}`;
     setSelectedDate(formattedDate);
   }, []);
 
@@ -24,25 +26,25 @@ export default function Booking2() {
     const month = currentDate.getMonth();
     const firstDayOfMonth = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-  
+
     const daysContainer = daysContainerRef.current;
     if (!daysContainer) return;
-  
+
     // Clear previous days
     daysContainer.innerHTML = "";
-  
+
     // Add empty divs for days before the first day of the month
     for (let i = 0; i < firstDayOfMonth; i++) {
       const emptyDiv = document.createElement("div");
       daysContainer.appendChild(emptyDiv);
     }
-  
+
     // Add days of the current month
     for (let i = 1; i <= daysInMonth; i++) {
       const dayDiv = document.createElement("div");
       dayDiv.className =
         "flex items-center justify-center cursor-pointer w-[40px] h-[40px] text-dark-3 dark:text-dark-6 rounded-full hover:bg-green-500 hover:text-white";
-  
+
       // Highlight the current day
       if (
         currentDate.getFullYear() === new Date().getFullYear() &&
@@ -51,43 +53,56 @@ export default function Booking2() {
       ) {
         dayDiv.className += " border-2 border-green-500 text-green-500";
       }
-  
+
       // Highlight the selected day
       const [selectedDay, selectedMonth, selectedYear] = selectedDate
         ? selectedDate.split("/").map(Number)
         : [];
-      if (selectedDay === i && selectedMonth === month + 1 && selectedYear === year) {
+      if (
+        selectedDay === i &&
+        selectedMonth === month + 1 &&
+        selectedYear === year
+      ) {
         dayDiv.classList.add("bg-green-500", "text-white");
       }
-  
+
       dayDiv.textContent = i;
       dayDiv.addEventListener("click", () => {
         const formattedDate = `${String(i).padStart(2, "0")}/${String(
           month + 1
         ).padStart(2, "0")}/${year}`;
         setSelectedDate(formattedDate);
-  
+
         // Remove previous selection
         daysContainer
           .querySelectorAll("div")
           .forEach((d) =>
-            d.classList.remove("bg-green-500", "text-white", "hover:bg-green-500", "hover:text-white")
+            d.classList.remove(
+              "bg-green-500",
+              "text-white",
+              "hover:bg-green-500",
+              "hover:text-white"
+            )
           );
-  
+
         // Apply hover styles to the selected day
         dayDiv.classList.add("bg-green-500", "text-white");
       });
-  
+
       daysContainer.appendChild(dayDiv);
     }
   };
 
   const handlePrevMonth = () => {
-    setCurrentDate((prevDate) => new Date(prevDate.setMonth(prevDate.getMonth() - 1)));
+    setCurrentDate(
+      (prevDate) => new Date(prevDate.setMonth(prevDate.getMonth() - 1))
+    );
   };
 
   const handleNextMonth = () => {
-    setCurrentDate((prevDate) => new Date(prevDate.setMonth(prevDate.getMonth() + 1)));
+    setCurrentDate(
+      (prevDate) => new Date(prevDate.setMonth(prevDate.getMonth() + 1))
+    );
   };
 
   const handleApply = () => {
@@ -124,8 +139,8 @@ export default function Booking2() {
   }, []);
 
   return (
-    <section className="py-20 lg:py-[120px] dark:bg-dark">
-      <div className="container mb-[50vh] ml-[160vh] w-2/3 z-20">
+    <section className="">
+      <div className="container ml-[160vh] w-2/3 z-20">
         <div className="-mx-4 flex flex-wrap">
           <div className="w-full px-4 md:w-1/2 lg:w-1/3">
             <div className="mb-12">
@@ -188,14 +203,14 @@ export default function Booking2() {
                   </span>
 
                   <input
-  id="datepicker"
-  type="text"
-  placeholder="Pick a date"
-  className="w-full rounded-lg border border-stroke bg-green-100 py-2.5 pl-[50px] pr-8 text-dark-2 outline-none transition focus:border-primary dark:border-dark-3 dark:text-dark-6 dark:focus:border-primary"
-  value={selectedDate || ""}
-  readOnly
-  onClick={handleToggleCalendar}
-/>
+                    id="datepicker"
+                    type="text"
+                    placeholder="Pick a date"
+                    className="w-full rounded-lg border border-stroke bg-green-100 py-2.5 pl-[50px] pr-8 text-dark-2 outline-none transition focus:border-primary dark:border-dark-3 dark:text-dark-6 dark:focus:border-primary"
+                    value={selectedDate || ""}
+                    readOnly
+                    onClick={handleToggleCalendar}
+                  />
 
                   <span
                     id="toggleDatepicker"
@@ -277,14 +292,31 @@ export default function Booking2() {
                       </button>
                     </div>
 
-                    <div id="days-of-week" className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5">
-                      <div className="text-center text-sm font-medium text-green-500">Sun</div>
-                      <div className="text-center text-sm font-medium text-green-500">Mon</div>
-                      <div className="text-center text-sm font-medium text-green-500">Tue</div>
-                      <div className="text-center text-sm font-medium text-green-500">Wed</div>
-                      <div className="text-center text-sm font-medium text-green-500">Thu</div>
-                      <div className="text-center text-sm font-medium text-green-500">Fri</div>
-                      <div className="text-center text-sm font-medium text-green-500">Sat</div>
+                    <div
+                      id="days-of-week"
+                      className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5"
+                    >
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Sun
+                      </div>
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Mon
+                      </div>
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Tue
+                      </div>
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Wed
+                      </div>
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Thu
+                      </div>
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Fri
+                      </div>
+                      <div className="text-center text-sm font-medium text-green-500">
+                        Sat
+                      </div>
                     </div>
 
                     <div
