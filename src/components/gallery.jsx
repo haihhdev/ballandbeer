@@ -78,7 +78,7 @@ export default function ImageTrack() {
               />
               <a
                 href={buttonLinks[index]}
-                className="relative bottom-16 left-120 bg-transparent border border-white text-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-white hover:text-black group-hover:scale-125 rounded-sm scale-110"
+                className="relative bottom-16 left-110 bg-transparent border border-white text-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-white hover:text-black group-hover:scale-125 rounded-sm scale-110"
               >
                 {buttonTexts[index]}
               </a>
