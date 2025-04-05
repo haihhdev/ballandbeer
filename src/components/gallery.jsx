@@ -56,24 +56,29 @@ export default function ImageTrack() {
       >
         {images.map((src, index) => {
           const buttonTexts = ["Đặt Sân", "Quần Áo", "Giày", "Đặt Món"];
-          const buttonLinks = ["/booking", "/products", "/products", "/products"];
+          const buttonLinks = [
+            "/booking",
+            "/products",
+            "/products",
+            "/products",
+          ];
 
           return (
             <div
               key={index}
-              className="relative w-[80vmin] h-[56vmin] group user-select-none" 
+              className="relative w-[80vmin] h-[56vmin] group user-select-none"
               onContextMenu={(e) => e.preventDefault()}
             >
               <img
                 src={src}
                 alt={`Image ${index + 1}`}
-                className="image w-[80vmin] h-[56vmin] object-cover object-[100%_50%] cursor-pointer transition-transform duration-300 group-hover:scale-110 user-select-none" // Prevent image selection
-                draggable="false" 
-                onDragStart={(e) => e.preventDefault()} 
+                className="image w-[80vmin] h-[56vmin] object-cover object-[100%_50%] cursor-pointer transition-transform duration-300 group-hover:scale-110 user-select-none mt-[10vh]" // Prevent image selection
+                draggable="false"
+                onDragStart={(e) => e.preventDefault()}
               />
               <a
                 href={buttonLinks[index]}
-                className="absolute bottom-4 right-4 bg-transparent border border-white text-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-white hover:text-black group-hover:scale-110 rounded-sm"
+                className="relative bottom-16 left-120 bg-transparent border border-white text-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-white hover:text-black group-hover:scale-125 rounded-sm scale-110"
               >
                 {buttonTexts[index]}
               </a>
