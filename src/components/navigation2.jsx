@@ -6,23 +6,9 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <header className="relative bg-cover bg-center h-screen">
-      {/* Centered Text */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center text-white h-full px-4">
-        <h1 className="text-4xl md:text-6xl font-bold mb-4">
-          TRANG WEB ĐẶT SÂN HÀNG ĐẦU VIỆT NAM
-        </h1>
-        <p className="text-lg md:text-xl mb-6">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua.
-        </p>
-        <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded hover:from-green-500 hover:to-lime-500 hover:shadow-xl hover:scale-105 transition-transform duration-300">
-          Xem thêm
-        </button>
-      </div>
-
+    <header className="">
       {/* Navigation */}
-      <div className="absolute top-0 left-0 w-full z-20">
+      <div className=" top-0 left-0 w-full bg-gradient-to-b from-gray-950 to-blue-900 mb-10">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           {/* Logo */}
           <a
