@@ -5,12 +5,7 @@ export default function Booking() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <div className="grid grid-cols-2 gap-6 h-screen mb-[35vh] relative">
-      {/* Centered Text */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-white text-6xl font-bold">B&B</span>
-      </div>
-
+    <div className="grid grid-cols-2 gap-6 h-screen mb-[35vh] relative mt-[4vh]">
       {/* Left Button */}
       <button
         className="relative w-full h-full bg-cover bg-center hover:opacity-80 hover:scale-105 p-4 transition-transform duration-300"
