@@ -8,7 +8,7 @@ export default function Header() {
   return (
     <header className="">
       {/* Navigation */}
-      <div className=" top-0 left-0 w-full bg-gradient-to-b from-gray-950 to-blue-900 mb-10">
+      <div className=" top-0 left-0 w-full bg-gradient-to-b from-gray-950 to-blue-900">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           {/* Logo */}
           <a
