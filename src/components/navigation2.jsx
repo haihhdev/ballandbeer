@@ -22,12 +22,16 @@ export default function Header() {
             />
           </a>
           <div className="flex items-center md:order-2 space-x-3 rtl:space-x-reverse ">
-            <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
-              Đăng ký
-            </button>
-            <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300">
-              Đăng nhập
-            </button>
+            <Link href="/register">
+              <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
+                Đăng ký
+              </button>
+            </Link>
+            <Link href="/login">
+              <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300">
+                Đăng nhập
+              </button>
+            </Link>
           </div>
 
           {/* Navigation Links */}
