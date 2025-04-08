@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+const colors = [
+  { name: "green", className: "bg-green-500" },
+  { name: "pink", className: "bg-pink-500" },
+  { name: "gray", className: "bg-gray-500" },
+  { name: "blue", className: "bg-blue-500" },
+];
+
 export default function ProductView() {
   const [selectedImage, setSelectedImage] = useState("/images/gal_boots.jpg"); // Default large image
   const [selectedColor, setSelectedColor] = useState("green"); // Default selected color
@@ -84,15 +91,15 @@ export default function ProductView() {
           <div className="mt-6">
             <h3 className="font-semibold">Colour</h3>
             <div className="flex space-x-4 mt-2">
-              {["green", "pink", "gray", "blue"].map((color) => (
+              {colors.map((color) => (
                 <button
-                  key={color}
+                  key={color.name}
                   className={`w-8 h-8 rounded-full border ${
-                    selectedColor === color
+                    selectedColor === color.name
                       ? "border-2 border-green-600 scale-115"
                       : "border-gray-700"
-                  } bg-${color}-500`}
-                  onClick={() => handleColorSelect(color)}
+                  } ${color.className}`}
+                  onClick={() => handleColorSelect(color.name)}
                 ></button>
               ))}
             </div>
@@ -102,7 +109,10 @@ export default function ProductView() {
           <div className="mt-6">
             <h3 className="font-semibold">Description</h3>
             <p className="text-sm text-gray-400 mt-2">
-              Đây là mô tả sản phẩm. Mô tả cung cấp thông tin chi tiết về sản phẩm, bao gồm chất liệu, kích thước, và các tính năng nổi bật. Mô tả này giúp khách hàng hiểu rõ hơn về sản phẩm trước khi quyết định mua hàng.
+              Đây là mô tả sản phẩm. Mô tả cung cấp thông tin chi tiết về sản
+              phẩm, bao gồm chất liệu, kích thước, và các tính năng nổi bật. Mô
+              tả này giúp khách hàng hiểu rõ hơn về sản phẩm trước khi quyết
+              định mua hàng.
             </p>
           </div>
         </div>
