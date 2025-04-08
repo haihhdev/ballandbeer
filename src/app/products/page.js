@@ -1,5 +1,6 @@
 import Product2 from "@/components/product2";
 import ProductView from "@/components/productview";
+import Checkout from "@/components/checkout";
 
 export default function Home() {
   return (
@@ -8,6 +9,9 @@ export default function Home() {
       <Product2 />
       {/* ProductView Section */}
       <ProductView />
+
+      {/* Checkout Section */}
+      <Checkout />
     </div>
   );
 }
