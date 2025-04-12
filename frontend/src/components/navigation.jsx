@@ -65,7 +65,7 @@ export default function Header() {
                     alt="Vietnam Flag"
                     className="h-5 auto"
                   />
-                  <span>Vi</span>
+                  <span>Vi🔻</span>
                 </button>
                 {dropdownOpen && (
                   <ul className="absolute left-0 mt-2 w-40 bg-white border border-gray-100 rounded-lg shadow-lg dark:bg-gray-800 dark:border-gray-700">
