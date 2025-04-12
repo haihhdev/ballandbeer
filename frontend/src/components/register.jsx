@@ -2,110 +2,96 @@
 
 export default function Register() {
   return (
-    <section className="bg-green-50 dark:bg-gray-900 mb-[35vh]">
-      <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-        <a
-          href="#"
-          className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white"
-        >
-          ⚽Ball & Beer🍺
-        </a>
-        <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
-          <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
-              Create an account
-            </h1>
-            <form className="space-y-4 md:space-y-6" action="#">
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Your email
-                </label>
+    <section className="bg-[url(/images/logbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900 mb-[30vh]">
+      <div className="flex items-center justify-center min-h-screen px-6 py-8 mx-auto">
+        <div className="w-full lg:max-w-xl p-8 space-y-8 sm:p-8 bg-white/20 rounded-lg backdrop-blur-[2px] shadow-xl/30">
+          <h1 className="text-4xl font-bold leading-tight tracking-tight text-gray-50/80 md:text-2xl dark:text-white text-center">
+            ⚽Tạo tài khoản🍺
+          </h1>
+          <form className="space-y-4 md:space-y-6" action="#">
+            <div>
+              <input
+                type="email"
+                name="email"
+                id="email"
+                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                placeholder="Email"
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                name="username"
+                id="username"
+                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                placeholder="Tên đăng nhập"
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                name="password"
+                id="password"
+                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                placeholder="Mật khẩu"
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                name="confirm-password"
+                id="confirm-password"
+                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                placeholder="Nhập lại mật khẩu"
+                required
+              />
+            </div>
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
                 <input
-                  type="email"
-                  name="email"
-                  id="email"
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder="Username"
+                  id="terms"
+                  aria-describedby="terms"
+                  type="checkbox"
+                  className="w-4 h-4 bg-transparent border-b-green-200 accent-green-300"
                   required
                 />
               </div>
-              <div>
+              <div className="ml-3 text-sm">
                 <label
-                  htmlFor="password"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  htmlFor="terms"
+                  className="font-light text-gray-500 font-bold text-white/80"
                 >
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  id="password"
-                  placeholder="password"
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="confirm-password"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Confirm password
-                </label>
-                <input
-                  type="password"
-                  name="confirm-password"
-                  id="password"
-                  placeholder="confirm password"
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  required
-                />
-              </div>
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="terms"
-                    aria-describedby="terms"
-                    type="checkbox"
-                    className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
-                    required
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label
-                    htmlFor="terms"
-                    className="font-light text-gray-500 dark:text-gray-300"
+                  Tôi đồng ý{" "}
+                  <a
+                    className="font-medium text-emerald-400 hover:text-lime-500 hover:underline"
+                    href="#"
                   >
-                    I accept the{" "}
-                    <a
-                      className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                      href="#"
-                    >
-                      Terms and Conditions
-                    </a>
-                  </label>
-                </div>
+                    Điều khoản và điều kiện
+                  </a>
+                </label>
               </div>
+            </div>
+            <div className="flex justify-center">
               <button
                 type="submit"
-                className="w-full text-white  bg-green-500 py-2 px-4 rounded-md hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                className="w-full px-[28vh] py-3 text-base font-medium text-center text-white bg-green-500 py-2 px-4 rounded-md hover:bg-green-700 focus:ring-4 focus:ring-blue-300 sm:w-auto"
               >
-                Create an account
+                Tạo tài khoản
               </button>
-              <p className="text-sm font-light text-gray-500 dark:text-gray-400">
-                Already have an account?{" "}
-                <a
-                  href="#"
-                  className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                >
-                  Login here
-                </a>
-              </p>
-            </form>
-          </div>
+            </div>
+            <p className="text-sm font-light text-gray-50 dark:text-white">
+              Đã có tài khoản?{" "}
+              <a
+                href="#"
+                className="text-emerald-400 hover:text-lime-500 hover:underline dark:text-blue-500"
+              >
+                Đăng nhập tại đây
+              </a>
+            </p>
+          </form>
         </div>
       </div>
     </section>
