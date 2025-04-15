@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  auth:
+    build: .
+    container_name: auth_service
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:6
+    container_name: mongo_auth
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
