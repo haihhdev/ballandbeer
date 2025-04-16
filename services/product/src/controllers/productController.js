@@ -5,10 +5,10 @@ exports.getAllProducts = async (req, res) => {
   res.json(products);
 };
 
-exports.getProductById = async (req, res) => {
-  const product = await productService.getById(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Not found' });
-  res.json(product);
+exports.getProductsByCategory = async (req, res) => {
+  const { category } = req.params;
+  const products = await productService.getByCategory(category);
+  res.json(products);
 };
 
 exports.createProduct = async (req, res) => {
@@ -17,9 +17,13 @@ exports.createProduct = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
-  const updated = await productService.update(req.params.id, req.body);
-  if (!updated) return res.status(404).json({ message: 'Not found' });
-  res.json(updated);
+  try {
+    const updated = await productService.update(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: 'Product not found' });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.deleteProduct = async (req, res) => {

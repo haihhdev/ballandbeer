@@ -1,9 +1,13 @@
 const Product = require('../models/productModel');
 
 const getAll = () => Product.find();
-const getById = (id) => Product.findById(id);
+
+const getByCategory = (category) => Product.find({ category });
+
 const create = (data) => Product.create(data);
-const update = (id, data) => Product.findByIdAndUpdate(id, data, { new: true });
+
+const update = (id, data) => Product.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true });
+
 const remove = (id) => Product.findByIdAndDelete(id);
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = { getAll, getByCategory, create, update, remove };
