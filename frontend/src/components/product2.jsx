@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Product2() {
   const categories = [
@@ -10,82 +10,73 @@ export default function Product2() {
     "Phụ kiện",
   ];
 
-  const products = [
-    {
-      id: 1,
-      name: "Áo bóng đá J97",
-      price: "500,000 VND",
-      quantity: 10,
-      category: "Quần áo",
-      image: "/images/quanao.jpg",
-    },
-    {
-      id: 2,
-      name: "Giày thể thao Nike",
-      price: "300,000 VND",
-      quantity: 5,
-      category: "Giày",
-      image: "/images/giay.webp",
-    },
-    {
-      id: 3,
-      name: "Giày thể thao Adidas",
-      price: "700,000 VND",
-      quantity: 8,
-      category: "Giày",
-      image: "/images/giay2.webp",
-    },
-    {
-      id: 4,
-      name: "Nước ngọt Revive",
-      price: "400,000 VND",
-      quantity: 12,
-      category: "Đồ ăn & Thức uống",
-      image: "/images/revive.jpg",
-    },
-    {
-      id: 5,
-      name: "Lays snack",
-      price: "600,000 VND",
-      quantity: 7,
-      category: "Đồ ăn & Thức uống",
-      image: "/images/snack_lays.webp",
-    },
-    {
-      id: 6,
-      name: "Nước ngọt Sting",
-      price: "550,000 VND",
-      quantity: 3,
-      category: "Đồ ăn & Thức uống",
-      image: "/images/sting.jpg",
-    },
-    {
-      id: 7,
-      name: "Tất bóng đá",
-      price: "550,000 VND",
-      quantity: 3,
-      category: "Phụ kiện",
-      image: "/images/tat.webp",
-    },
-    {
-      id: 8,
-      name: "Găng tay thủ môn",
-      price: "550,000 VND",
-      quantity: 3,
-      category: "Phụ kiện",
-      image: "/images/gangtay.jpg",
-    },
-    {
-      id: 9,
-      name: "Ao bóng đá CR7",
-      price: "550,000 VND",
-      quantity: 1,
-      category: "Quần áo",
-      image: "/images/aoanh7.jpg",
-    },
-  ];
-
+  const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [loading, setLoading] = useState(true);
+
+  // Map of product _id to image paths
+  const imageMap = {
+    "67ff9ff35e234d7307549c8f": "/images/products/giay4.jpeg",
+    "67ff9ff35e234d7307549c90": "/images/products/giay1.jpeg",
+    "67ff9ff35e234d7307549c91": "/images/products/giay2.jpeg",
+    "67ff9ff35e234d7307549c92": "/images/products/giay5.webp",
+    "67ff9ff35e234d7307549c93": "/images/products/giay6.jpeg",
+    "67ff9ff35e234d7307549c94": "/images/products/binhnuoc.jpg",
+    "67ff9ff35e234d7307549c95": "/images/products/bocongdong.webp",
+    "67ff9ff35e234d7307549c96": "/images/products/bongda.webp",
+    "67ff9ff35e234d7307549c97": "/images/products/gangtay.jpg",
+    "67ff9ff35e234d7307549c98": "/images/products/tat.webp",
+    "67ff9ff35e234d7307549c99": "/images/products/aoj97.jpg",
+    "67ff9ff35e234d7307549c9a": "/images/products/ao5.jpeg",
+    "67ff9ff35e234d7307549c9b": "/images/products/ao1.webp",
+    "67ff9ff35e234d7307549c9c": "/images/products/ao4.jpg",
+    "67ff9ff35e234d7307549c9d": "/images/products/ao2.webp",
+    "67ff9ff35e234d7307549c9e": "/images/products/sting.jpg",
+    "67ff9ff35e234d7307549c9f": "/images/products/nuoc4.jpg",
+    "67ff9ff35e234d7307549ca0": "/images/products/nuoc1.jpeg",
+    "67ff9ff35e234d7307549ca1": "/images/products/nuoc2.jpg",
+    "67ff9ff35e234d7307549ca2": "/images/products/doan2.webp",
+    "67ff9ff35e234d7307549ca3": "/images/products/doan1.jpg",
+  };
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("http://localhost:6001/api/products");
+        const data = await response.json();
+
+        // Map API response to match the desired structure
+        const formattedProducts = data.map((item, index) => ({
+          id: index + 1, // Generate a unique ID
+          name: item.name,
+          price: `${item.price.toLocaleString()} VND`, // Format price
+          quantity: item.quantity,
+          category: convertCategory(item.category), // Convert category if needed
+          image: imageMap[item._id] || "/images/default.jpg",
+        }));
+
+        setProducts(formattedProducts);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Function to convert category names if needed
+  const convertCategory = (category) => {
+    const categoryMap = {
+      shoes: "Giày",
+      accessory: "Phụ kiện",
+      jersey: "Quần áo",
+      other: "Đồ ăn & Thức uống",
+    };
+    return categoryMap[category] || category;
+  };
 
   const filteredProducts =
     selectedCategory === "Tất cả"
@@ -157,25 +148,29 @@ export default function Product2() {
         </form>
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {filteredProducts.map((product) => (
-          <div key={product.id} className="text-left">
-            <img
-              className="h-120 w-full object-cover rounded-lg"
-              src={product.image}
-              alt={product.name}
-            />
-            <div className="mt-2">
-              <h3 className="text-lg font-bold">{product.name}</h3>
-              <p className="text-gray-700">Giá: {product.price}</p>
-              <p className="text-gray-500">
-                Sản phẩm còn lại: {product.quantity}
-              </p>
+      {/* Loading State */}
+      {loading ? (
+        <p>Loading products...</p>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="text-left">
+              <img
+                className="h-120 w-full object-cover rounded-lg"
+                src={product.image}
+                alt={product.name}
+              />
+              <div className="mt-2">
+                <h3 className="text-lg font-bold">{product.name}</h3>
+                <p className="text-gray-700">Giá: {product.price}</p>
+                <p className="text-gray-500">
+                  Sản phẩm còn lại: {product.quantity}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

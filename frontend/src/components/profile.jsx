@@ -15,7 +15,7 @@ export default function Profile() {
             alt="Profile Avatar"
             className="w-24 h-24 object-cover rounded-full mb-4"
           />
-          <h2 className="text-lg font-semibold">J97</h2>
+          <h2 className="text-lg font-semibold">Tên người dùng</h2>
         </div>
         <ul className="mt-6 space-y-4">
           <li>
