@@ -1,15 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false); // For "Vi" dropdown
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false); // For profile dropdown
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
+  const router = useRouter(); // Initialize router
 
-  // Simulate login function (replace with actual authentication logic)
-  const handleLogin = () => {
-    setIsLoggedIn(true); // Simulate successful login
+  // Check login status on component mount
+  useEffect(() => {
+    const loggedInStatus = localStorage.getItem("isLoggedIn");
+    if (loggedInStatus === "true") {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    setIsLoggedIn(false); // Update state to reflect logout
+    localStorage.removeItem("isLoggedIn"); // Remove login status
+    localStorage.removeItem("token"); // Remove token if stored
+    router.push("/"); // Redirect to the homepage
   };
 
   return (
@@ -18,15 +30,8 @@ export default function Header() {
       <div className="top-0 left-0 w-full bg-gradient-to-b from-gray-950 to-blue-900">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           {/* Logo */}
-          <a
-            href="/"
-            className="flex items-center space-x-3 rtl:space-x-reverse -ml-32"
-          >
-            <img
-              src="/images/B&B.png"
-              className="h-16 md:h-20 lg:h-24"
-              alt="Logo"
-            />
+          <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse -ml-32">
+            <img src="/images/B&B.png" className="h-16 md:h-20 lg:h-24" alt="Logo" />
           </a>
           <div className="flex items-center md:order-2 space-x-3 rtl:space-x-reverse">
             {isLoggedIn ? (
@@ -47,12 +52,8 @@ export default function Header() {
                 {profileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
                     <div className="p-4 border-b border-gray-200">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        Someone Famous
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        j97@gmail.com
-                      </span>
+                      <h3 className="text-sm font-semibold text-gray-900">Someone Famous</h3>
+                      <span className="text-xs text-gray-500">j97@gmail.com</span>
                     </div>
                     <ul className="py-2">
                       <li>
@@ -60,11 +61,7 @@ export default function Header() {
                           href="/profile"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          <img
-                            src="/images/avt.svg"
-                            alt="My Profile"
-                            className="w-4 h-4 mr-2"
-                          />
+                          <img src="/images/avt.svg" alt="My Profile" className="w-4 h-4 mr-2" />
                           Tài khoản của tôi
                         </a>
                       </li>
@@ -73,11 +70,7 @@ export default function Header() {
                           href="#"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          <img
-                            src="/images/setting.svg"
-                            alt="Settings"
-                            className="w-4 h-4 mr-2"
-                          />
+                          <img src="/images/setting.svg" alt="Settings" className="w-4 h-4 mr-2" />
                           Cài đặt
                         </a>
                       </li>
@@ -86,26 +79,18 @@ export default function Header() {
                           href="#"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          <img
-                            src="/images/help.svg"
-                            alt="Help"
-                            className="w-4 h-4 mr-2"
-                          />
+                          <img src="/images/help.svg" alt="Help" className="w-4 h-4 mr-2" />
                           Trợ giúp
                         </a>
                       </li>
                       <li>
-                        <a
-                          href="#"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        <button
+                          onClick={handleLogout} // Call handleLogout on click
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                         >
-                          <img
-                            src="/images/logout.svg"
-                            alt="Logout"
-                            className="w-4 h-4 mr-2"
-                          />
+                          <img src="/images/logout.svg" alt="Logout" className="w-4 h-4 mr-2" />
                           Đăng xuất
-                        </a>
+                        </button>
                       </li>
                     </ul>
                   </div>
@@ -121,7 +106,6 @@ export default function Header() {
                 <Link href="/login">
                   <button
                     className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300"
-                    onClick={handleLogin}
                   >
                     Đăng nhập
                   </button>
@@ -142,11 +126,7 @@ export default function Header() {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-gray-50 hover:bg-gray-50/30"
                 >
-                  <img
-                    src="/images/flagVN.png"
-                    alt="Vietnam Flag"
-                    className="h-5 auto"
-                  />
+                  <img src="/images/flagVN.png" alt="Vietnam Flag" className="h-5 auto" />
                   <span>Vi🔻</span>
                 </button>
                 {dropdownOpen && (
