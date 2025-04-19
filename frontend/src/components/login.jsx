@@ -1,6 +1,46 @@
 "use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:4000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      }
+
+      const data = await response.json();
+      console.log("Login successful:", data);
+
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("token", data.token);
+
+      router.push("/");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="bg-[url(/images/logbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900 mb-[30vh]">
       <div className="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 grid lg:grid-cols-2 gap-8 lg:gap-16">
@@ -10,25 +50,27 @@ export default function Login() {
             Chúng tôi đầu tư vào trải nghiệm thể thao của bạn
           </h1>
           <p className="mb-6 text-lg font-normal text-gray-50 lg:text-xl dark:text-gray-400">
-            Tại Ball & Beer, chúng tôi tập trung vào việc kết nối cộng đồng yêu
-            thể thao, mang đến giải pháp đặt sân nhanh chóng, tiện lợi và cung
-            cấp những sản phẩm chất lượng, giúp nâng tầm trải nghiệm bóng đá của
-            bạn mỗi ngày.
+            Tại Ball & Beer, chúng tôi tập trung vào việc kết nối cộng đồng yêu thể thao, mang đến
+            giải pháp đặt sân nhanh chóng, tiện lợi và cung cấp những sản phẩm chất lượng, giúp nâng
+            tầm trải nghiệm bóng đá của bạn mỗi ngày.
           </p>
         </div>
 
         {/* Right Section */}
         <div>
           <div className="w-full lg:max-w-xl p-8 space-y-8 sm:p-8 bg-white/20 rounded-lg backdrop-blur-[2px] shadow-xl/30">
-            <h2 className="text-3xl font-bold text-white/80  dark:text-white">
+            <h2 className="text-3xl font-bold text-white/80 dark:text-white">
               Đăng nhập tài khoản
             </h2>
-            <form className="mt-8 space-y-6" action="#">
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+              {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
               <div>
                 <input
-                  type="email"
-                  name="email"
-                  id="email"
+                  type="text"
+                  name="username"
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
                   placeholder="Tên đăng nhập"
                   required
@@ -39,6 +81,8 @@ export default function Login() {
                   type="password"
                   name="password"
                   id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
                   placeholder="Mật khẩu"
                   required
@@ -54,9 +98,10 @@ export default function Login() {
               </div>
               <button
                 type="submit"
-                className="w-full px-5 py-3 text-base font-medium text-center text-white  bg-green-500 py-2 px-4 rounded-md hover:bg-green-700 focus:ring-4 focus:ring-blue-300 sm:w-auto"
+                className="w-full px-5 py-3 text-base font-medium text-center text-white bg-green-500 py-2 px-4 rounded-md hover:bg-green-700 focus:ring-4 focus:ring-blue-300 sm:w-auto"
+                disabled={loading}
               >
-                Đăng nhập
+                {loading ? "Đang xử lý..." : "Đăng nhập"}
               </button>
               <div className="text-sm font-medium text-gray-50 dark:text-white">
                 Chưa đăng kí?{" "}
