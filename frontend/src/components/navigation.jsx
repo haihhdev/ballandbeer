@@ -1,15 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
 
-  // Simulate login function (replace with actual authentication logic)
-  const handleLogin = () => {
-    // Simulate successful login
-    setIsLoggedIn(true);
+  // Check login status on component mount
+  useEffect(() => {
+    const loggedInStatus = localStorage.getItem("isLoggedIn");
+    if (loggedInStatus === "true") {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
   };
 
   return (
@@ -44,11 +56,19 @@ export default function Header() {
           </a>
           <div className="flex items-center md:order-2 space-x-3 rtl:space-x-reverse">
             {isLoggedIn ? (
-              <Link href="/profile">
-                <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
-                  Hồ sơ
+              <>
+                <Link href="/profile">
+                  <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
+                    Hồ sơ
+                  </button>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300"
+                >
+                  Đăng xuất
                 </button>
-              </Link>
+              </>
             ) : (
               <>
                 <Link href="/register">
@@ -59,7 +79,6 @@ export default function Header() {
                 <Link href="/login">
                   <button
                     className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300"
-                    onClick={handleLogin} // Call the login handler
                   >
                     Đăng nhập
                   </button>
