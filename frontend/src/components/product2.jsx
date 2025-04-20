@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function Product2() {
+  const router = useRouter(); // Initialize useRouter
   const categories = [
     "Tất cả",
     "Đồ ăn & Thức uống",
@@ -17,8 +19,8 @@ export default function Product2() {
   // Map of product _id to image paths
   const imageMap = {
     "67ff9ff35e234d7307549c8f": "/images/products/giay4.jpeg",
-    "67ff9ff35e234d7307549c90": "/images/products/giay1.jpeg",
-    "67ff9ff35e234d7307549c91": "/images/products/giay2.jpeg",
+    "67ff9ff35e234d7307549c90": "/images/products/giay2.jpeg",
+    "67ff9ff35e234d7307549c91": "/images/products/giay1.jpeg",
     "67ff9ff35e234d7307549c92": "/images/products/giay5.webp",
     "67ff9ff35e234d7307549c93": "/images/products/giay6.jpeg",
     "67ff9ff35e234d7307549c94": "/images/products/binhnuoc.jpg",
@@ -46,13 +48,12 @@ export default function Product2() {
         const response = await fetch("http://localhost:6001/api/products");
         const data = await response.json();
 
-        // Map API response to match the desired structure
-        const formattedProducts = data.map((item, index) => ({
-          id: index + 1, // Generate a unique ID
+        const formattedProducts = data.map((item) => ({
+          id: item._id,
           name: item.name,
-          price: `${item.price.toLocaleString()} VND`, // Format price
+          price: `${item.price.toLocaleString()} VND`,
           quantity: item.quantity,
-          category: convertCategory(item.category), // Convert category if needed
+          category: convertCategory(item.category),
           image: imageMap[item._id] || "/images/default.jpg",
         }));
 
@@ -154,18 +155,24 @@ export default function Product2() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {filteredProducts.map((product) => (
-            <div key={product.id} className="text-left">
-              <img
-                className="h-120 w-full object-cover rounded-lg"
-                src={product.image}
-                alt={product.name}
-              />
-              <div className="mt-2">
-                <h3 className="text-lg font-bold">{product.name}</h3>
-                <p className="text-gray-700">Giá: {product.price}</p>
-                <p className="text-gray-500">
-                  Sản phẩm còn lại: {product.quantity}
-                </p>
+            <div
+              key={product.id}
+              onClick={() => router.push(`/productinfo/${product.id}`)} // Navigate to productinfo page
+              className="text-left cursor-pointer"
+            >
+              <div>
+                <img
+                  className="h-120 w-full object-cover rounded-lg"
+                  src={product.image}
+                  alt={product.name}
+                />
+                <div className="mt-2">
+                  <h3 className="text-lg font-bold">{product.name}</h3>
+                  <p className="text-gray-700">Giá: {product.price}</p>
+                  <p className="text-gray-500">
+                    Sản phẩm còn lại: {product.quantity}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
