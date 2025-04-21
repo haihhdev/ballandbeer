@@ -75,6 +75,33 @@ export default function ProductInfo() {
       `/checkout?name=${product.name}&price=${product.price}&image=${product.image}&quantity=${quantity}&totalPrice=${totalPrice}`
     );
   };
+  const handleAddToCart = () => {
+    const quantity = document.getElementById("quantityInput").value; // Lấy số lượng từ input
+    const cartItem = {
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      quantity: parseInt(quantity, 10),
+      image: product.image,
+    };
+
+    // Lấy giỏ hàng hiện tại từ localStorage
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+    // Kiểm tra nếu sản phẩm đã tồn tại trong giỏ hàng
+    const existingItemIndex = cart.findIndex((item) => item.id === cartItem.id);
+    if (existingItemIndex !== -1) {
+      cart[existingItemIndex].quantity += cartItem.quantity; // Cộng dồn số lượng
+    } else {
+      cart.push(cartItem); // Thêm sản phẩm mới
+    }
+
+    // Lưu lại giỏ hàng vào localStorage
+    localStorage.setItem("cart", JSON.stringify(cart));
+
+    // Chuyển hướng đến trang shoppingcart
+    router.push("/shoppingcart");
+  };
   return (
     <div className="bg-green-50 text-black p-6 mb-[32vh]">
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20">
@@ -100,6 +127,7 @@ export default function ProductInfo() {
           <div className="flex space-x-4 mt-6">
             <button
               id="cartBtn"
+              onClick={handleAddToCart}
               className="rounded-lg px-5 py-2.5 border-2 border-green-600 text-black font-medium hover:bg-green-500 hover:text-white hover:scale-105 transition-transform"
             >
               🛒 Thêm vào giỏ hàng
