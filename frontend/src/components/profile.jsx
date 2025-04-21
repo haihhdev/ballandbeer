@@ -1,10 +1,22 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Thêm useEffect vào đây
 import Link from "next/link";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("accountDetails");
+  const [orderHistory, setOrderHistory] = useState([]); // State để lưu lịch sử đơn hàng
 
+  useEffect(() => {
+    // Lấy lịch sử đơn hàng từ localStorage
+    const orders = JSON.parse(localStorage.getItem("orderHistory")) || [];
+    setOrderHistory(orders);
+  }, []);
+
+  const handleClearHistory = () => {
+    // Xóa lịch sử đơn hàng khỏi localStorage
+    localStorage.removeItem("orderHistory");
+    setOrderHistory([]); // Cập nhật state để làm mới giao diện
+  };
   return (
     <div className="flex flex-col md:flex-row bg-gray-100 min-h-screen p-6 mb-[30vh]">
       {/* Sidebar */}
@@ -143,8 +155,42 @@ export default function Profile() {
         )}
         {activeTab === "history" && (
           <div>
-            <h2 className="text-xl font-semibold">Lịch sử đơn hàng</h2>
-            <p>Welcome to your dashboard!</p>
+            <h2 className="text-xl font-semibold mb-4">Lịch sử đơn hàng</h2>
+            {orderHistory.length === 0 ? (
+              <p>Chưa có đơn hàng nào.</p>
+            ) : (
+              <div>
+                <ul className="space-y-4">
+                  {orderHistory.map((order, index) => (
+                    <li key={index} className="border-b pb-4">
+                      <div className="flex items-center">
+                        <img
+                          src={order.image}
+                          alt={order.name}
+                          className="w-16 h-16 object-cover rounded mr-4"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold">{order.name}</p>
+                          <p className="text-sm">Số lượng: {order.quantity}</p>
+                          <p className="text-sm">
+                            Tổng tiền: {order.totalPrice} VND
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Ngày đặt: {order.date}
+                          </p>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={handleClearHistory} // Gọi hàm xóa lịch sử
+                  className="mt-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-700"
+                >
+                  Xóa lịch sử mua hàng
+                </button>
+              </div>
+            )}
           </div>
         )}
         {activeTab === "changePassword" && (

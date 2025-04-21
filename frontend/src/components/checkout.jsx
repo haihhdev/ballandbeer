@@ -9,6 +9,32 @@ export default function Checkout() {
   const quantity = searchParams.get("quantity"); // Lấy số lượng
   const totalPrice = searchParams.get("totalPrice"); // Lấy tổng tiền
 
+  const handlePlaceOrder = () => {
+    // Lấy danh sách đơn hàng hiện tại từ localStorage
+    const existingOrders =
+      JSON.parse(localStorage.getItem("orderHistory")) || [];
+
+    // Tạo đơn hàng mới
+    const newOrder = {
+      name,
+      price,
+      image,
+      quantity,
+      totalPrice,
+      date: new Date().toLocaleString(), // Lưu thời gian đặt hàng
+    };
+
+    // Cập nhật danh sách đơn hàng
+    const updatedOrders = [...existingOrders, newOrder];
+    localStorage.setItem("orderHistory", JSON.stringify(updatedOrders));
+
+    // Hiển thị thông báo
+    alert("Đơn hàng đã được đặt");
+
+    // Chuyển hướng về trang profile
+    router.push("/profile");
+  };
+
   return (
     <div className="p-4 bg-gray-100 mb-[35vh]">
       {/* Address Section */}
@@ -46,7 +72,7 @@ export default function Checkout() {
             </div>
             <div className="text-right">
               <p className="text-sm font-semibold">Đơn giá</p>
-              <p className="text-sm">{price} VND</p>
+              <p className="text-sm">{price} ₫</p>
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold">Số lượng</p>
@@ -54,7 +80,7 @@ export default function Checkout() {
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold">Thành tiền</p>
-              <p className="text-sm">{totalPrice} VND</p>
+              <p className="text-sm">{totalPrice} ₫</p>
             </div>
           </div>
         </div>
@@ -64,9 +90,12 @@ export default function Checkout() {
       <div className="bg-white p-4 rounded shadow">
         <div className="flex justify-between items-center">
           <p className="text-lg font-bold">Tổng số tiền:</p>
-          <p className="text-lg font-bold text-red-500">{totalPrice} VND</p>
+          <p className="text-lg font-bold text-red-500">{totalPrice} ₫</p>
         </div>
-        <button className="w-full bg-red-500 text-white py-2 mt-4 rounded font-semibold hover:bg-red-700">
+        <button
+          onClick={handlePlaceOrder} // Gọi hàm handlePlaceOrder khi nhấn
+          className="w-full bg-red-500 text-white py-2 mt-4 rounded font-semibold hover:bg-red-700"
+        >
           Đặt Hàng
         </button>
       </div>
