@@ -15,3 +15,11 @@ exports.getMyOrders = async (req, res) => {
   const result = await orderService.getOrdersByUser(userId);
   res.status(result.status).json(result);
 };
+
+exports.updateOrder = async (req, res) => {
+  const { orderId } = req.params;
+  const { products, status } = req.body;
+
+  const result = await orderService.updateOrder(orderId, products, status);
+  res.status(result.status).json(result);
+};

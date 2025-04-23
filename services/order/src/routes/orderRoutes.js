@@ -5,5 +5,5 @@ const verifyToken = require('../middlewares/authMiddleware');
 
 router.post('/', verifyToken, orderController.createOrder);
 router.get('/my-orders', verifyToken, orderController.getMyOrders);
-
+router.put('/:orderId', verifyToken, orderController.updateOrder);
 module.exports = router;
