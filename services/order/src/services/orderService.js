@@ -43,3 +43,48 @@ exports.getOrdersByUser = async (userId) => {
     return { status: 500, message: err.message };
   }
 };
+
+exports.updateOrder = async (orderId, products, status) => {
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return { status: 404, message: 'Order not found' };
+    }
+
+    if (products) {
+      const itemsWithPrice = [];
+      let totalAmount = 0;
+
+      for (const item of products) {
+        const product = await Product.findById(item.productId);
+        if (!product) {
+          return { status: 404, message: `Product ${item.productId} not found` };
+        }
+
+        const itemTotal = product.price * item.quantity;
+        totalAmount += itemTotal;
+
+        itemsWithPrice.push({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: product.price,
+        });
+      }
+
+      order.products = itemsWithPrice;
+      order.totalAmount = totalAmount;
+    }
+
+    if (status) {
+      if (status !== 'pending' && status !== 'completed') {
+        return { status: 400, message: 'Invalid status value' };
+      }
+      order.status = status;
+    }
+
+    await order.save();
+    return { status: 200, data: order };
+  } catch (err) {
+    return { status: 500, message: err.message };
+  }
+};
