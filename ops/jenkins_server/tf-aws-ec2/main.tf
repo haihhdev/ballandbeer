@@ -93,7 +93,7 @@ module "ec2_instance" {
 
   instance_type               = var.instance_type
   ami                         = "ami-0e8a34246278c21e4"
-  key_name                    = "ballandbeerkp"
+  key_name                    = "user_1706kp"
   monitoring                  = true
   vpc_security_group_ids      = [module.sg.security_group_id]
   subnet_id                   = module.vpc.public_subnets[0]
@@ -102,7 +102,7 @@ module "ec2_instance" {
   availability_zone           = data.aws_availability_zones.azs.names[0]
 
   tags = {
-    Name        = "Jenkins-Server"
+    Name        = "Jenkins-Server-1706"
     Terraform   = "true"
     Environment = "dev"
   }
