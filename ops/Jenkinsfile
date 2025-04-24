@@ -9,14 +9,14 @@ pipeline{
         stage('Checkout SCM') {
             steps {
                 script {
-                    checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
+                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
                 }
             }
         }
         stage('Initializing Terraform'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                    dir('ops/tf-aws-eks'){
                         sh 'terraform init'
                     }
                 }
@@ -25,7 +25,7 @@ pipeline{
         stage('Validating Terraform'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                    dir('ops/tf-aws-eks'){
                         sh 'terraform validate'
                     }
                 }
@@ -34,8 +34,17 @@ pipeline{
         stage('Terraform Plan'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                    dir('ops/tf-aws-eks'){
                         sh 'terraform plan -var-file=variables/dev.tfvars'
+                    }
+                }
+            }
+        }
+        stage('Creating/Destroying EKS Cluster'){
+            steps {
+                script {
+                    dir('ops/tf-aws-eks'){
+                        sh 'terraform $action -var-file=variables/dev.tfvars -auto-approve' 
                     }
                 }
             }
