@@ -4,7 +4,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name    = "my-eks-cluster"
+  cluster_name    = "EKS-Cluster-ballandbeer"
   cluster_version = "1.29"
 
   cluster_endpoint_public_access  = true
@@ -19,7 +19,7 @@ module "eks" {
       max_size     = 3
       desired_size = 2
 
-      instance_types = ["t2.small"]
+      instance_types = ["t3.small"]
       capacity_type  = "SPOT"
     }
   }
