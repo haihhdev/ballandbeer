@@ -2,8 +2,8 @@ pipeline {
   agent any
 
   environment {
-    DOCKERHUB_USER = credentials('dockerhub-username') // Jenkins credential
-    DOCKERHUB_PASS = credentials('dockerhub-password')
+    DOCKERHUB_USER = credentials('DOCKERHUB_USER')
+    DOCKERHUB_PASS = credentials('DOCKERHUB_PASS')
     REPO = "hao1706/ballandbeer"
   }
 
