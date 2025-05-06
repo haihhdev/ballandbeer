@@ -20,7 +20,7 @@ pipeline {
           changedServices = sh(script: '''
             git diff --name-only HEAD~1 HEAD |
             grep -E '^services/|^frontend/' |
-            awk -F/ '{print $2}' |
+            cut -d/ -f2 |
             sort -u
           ''', returnStdout: true).trim().split('\n')
 
