@@ -1,10 +1,12 @@
+'use client';
+
+import React, { Suspense } from "react";
 import Checkout from "@/components/checkout";
 
 export default function Home() {
   return (
-    <div>
+    <Suspense fallback={<div>Loading checkout...</div>}>
       <Checkout />
-      {/* Add other components here if needed */}
-    </div>
+    </Suspense>
   );
 }

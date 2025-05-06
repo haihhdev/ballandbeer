@@ -1,53 +1,52 @@
-pipeline{
-    agent any
-    environment {
-        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-        AWS_DEFAULT_REGION = "us-east-1"
+pipeline {
+  agent any
+
+  environment {
+    DOCKERHUB_USER = credentials('dockerhub-username') // Jenkins credential
+    DOCKERHUB_PASS = credentials('dockerhub-password')
+    REPO = "hao1706/ballandbeer"
+  }
+
+  stages {
+    stage('Clone source') {
+      steps {
+        checkout scm
+      }
     }
-    stages {
-        stage('Checkout SCM') {
-            steps {
-                script {
-                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
-                }
-            }
+
+    stage('Detect changed services') {
+      steps {
+        script {
+          changedServices = sh(script: '''
+            git diff --name-only HEAD~1 HEAD |
+            grep -E '^services/|^frontend/' |
+            awk -F/ '{print $2}' |
+            sort -u
+          ''', returnStdout: true).trim().split('\n')
+
+          echo "Changed services: ${changedServices}"
         }
-        stage('Initializing Terraform'){
-            steps {
-                script {
-                    dir('ops/tf-aws-eks'){
-                        sh 'terraform init'
-                    }
-                }
-            }
-        }
-        stage('Validating Terraform'){
-            steps {
-                script {
-                    dir('ops/tf-aws-eks'){
-                        sh 'terraform validate'
-                    }
-                }
-            }
-        }
-        stage('Terraform Plan'){
-            steps {
-                script {
-                    dir('ops/tf-aws-eks'){
-                        sh 'terraform plan -var-file=variables/dev.tfvars'
-                    }
-                }
-            }
-        }
-        stage('Creating/Destroying EKS Cluster'){
-            steps {
-                script {
-                    dir('ops/tf-aws-eks'){
-                        sh 'terraform $action -var-file=variables/dev.tfvars -auto-approve' 
-                    }
-                }
-            }
-        }
+      }
     }
+
+    stage('Build & Push') {
+      steps {
+        script {
+          for (svc in changedServices) {
+            def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
+            def image = "${REPO}:${svc}"
+
+            echo "Building ${svc} from ${path}"
+            sh "docker build -t ${image} ${path}"
+
+            echo "Pushing ${image} to Docker Hub"
+            sh """
+              echo "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
+              docker push ${image}
+            """
+          }
+        }
+      }
+    }
+  }
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import Link from 'next/link';
 
 export default function NotFound() {
   const jackRef = useRef(null);
@@ -36,12 +37,12 @@ export default function NotFound() {
       <p className="text-lg mt-2 text-gray-400">
         Cho đến ngày nó phát hiện mình không có bố lẫn không có tình yêu.
       </p>
-      <a
+      <Link
         href="/"
         className="mt-6 px-6 py-3 border-2 border-white bg-transparent text-white rounded-lg hover:bg-gray-50 hover:text-gray-900 hover:scale-110 transition"
       >
         Về trang chủ nè 🐧
-      </a>
+      </Link>
     </div>
   );
 }
