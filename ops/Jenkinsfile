@@ -42,7 +42,16 @@ pipeline {
             def image = "${REPO}:${svc}"
 
             echo "Building ${svc} from ${path}..."
+
+            if (svc == 'frontend') {
+              sh "cp ${path}/.env.local ${path}/.env.local.build || echo 'No .env.local file found for frontend'"
+            }
+
             sh "docker build -t ${image} ${path}"
+
+            if (svc == 'frontend') {
+              sh "rm -f ${path}/.env.local.build"
+            }
 
             echo "Pushing ${image} to Docker Hub..."
             sh '''
