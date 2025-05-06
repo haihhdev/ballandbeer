@@ -37,27 +37,46 @@ pipeline {
     stage('Build & Push') {
       steps {
         script {
-          for (svc in changedServices) {
-            def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
-            def image = "${REPO}:${svc}"
+          def servicePorts = [
+            authen : 4000,
+            booking: 4001,
+            order  : 4002,
+            product: 4003,
+            profile: 4004
+          ]
 
-            echo "Building ${svc} from ${path}..."
+          withCredentials([file(credentialsId: 'ENV_TEMPLATE', variable: 'ENV_TEMPLATE')]) {
+            for (svc in changedServices) {
+              def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
+              def image = "${REPO}:${svc}"
 
-            if (svc == 'frontend') {
-              sh "cp ${path}/.env.local ${path}/.env.local.build || echo 'No .env.local file found for frontend'"
+              echo "Building ${svc} from ${path}..."
+
+              if (svc == 'frontend') {
+                sh "cp \$ENV_TEMPLATE ${path}/.env.local.build"
+              } 
+              else if (servicePorts.containsKey(svc)) {
+                def port = servicePorts[svc]
+                sh """
+                  cp \$ENV_TEMPLATE ${path}/.env
+                  sed -i 's/_PORT_/${port}/' ${path}/.env
+                """
+              }
+
+              sh "docker build -t ${image} ${path}"
+
+              if (svc == 'frontend') {
+                sh "rm -f ${path}/.env.local.build"
+              } else {
+                sh "rm -f ${path}/.env"
+              }
+
+              echo "Pushing ${image} to Docker Hub..."
+              sh '''
+                echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+              '''
+              sh "docker push ${image}"
             }
-
-            sh "docker build -t ${image} ${path}"
-
-            if (svc == 'frontend') {
-              sh "rm -f ${path}/.env.local.build"
-            }
-
-            echo "Pushing ${image} to Docker Hub..."
-            sh '''
-              echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
-            '''
-            sh "docker push ${image}"
           }
         }
       }
