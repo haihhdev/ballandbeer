@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <service>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: <service>
+  template:
+    metadata:
+      labels:
+        app: <service>
+    spec:
+      containers:
+      - name: <service>
+        image: hao1706/ballandbeer:<service>
+        ports:
+        - containerPort: <port>
