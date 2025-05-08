@@ -56,7 +56,7 @@ pipeline {
               if (svc == 'frontend') {
                 sh """
                   chmod u+w ${path}
-                  cp \$ENV_TEMPLATE ${path}/.env.local.build
+                  cat \$ENV_TEMPLATE > ${path}/.env.local.build
                 """
               } 
               else if (servicePorts.containsKey(svc)) {
