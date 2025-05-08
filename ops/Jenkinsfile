@@ -54,7 +54,10 @@ pipeline {
               echo "Building ${svc} from ${path}..."
 
               if (svc == 'frontend') {
-                sh "cp \$ENV_TEMPLATE ${path}/.env.local.build"
+                sh """
+                  chmod u+w ${path}
+                  cp \$ENV_TEMPLATE ${path}/.env.local.build
+                """
               } 
               else if (servicePorts.containsKey(svc)) {
                 def port = servicePorts[svc]
