@@ -55,10 +55,10 @@ pipeline {
 
               if (svc == 'frontend') {
                 sh """
-                  chmod u+w ${path}
-                  cat \$ENV_TEMPLATE > ${path}/.env.local.build
+                  chmod u+w ${path} || true
+                  cat \$ENV_TEMPLATE | tee ${path}/.env.local.build > /dev/null
                 """
-              } 
+              }
               else if (servicePorts.containsKey(svc)) {
                 def port = servicePorts[svc]
                 sh """
