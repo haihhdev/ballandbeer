@@ -49,15 +49,16 @@ pipeline{
                 }
             }
         }
-        stage('Deploying Nginx Application') {
-            steps{
-                script{
-                    dir('ops/manifest') {
-                        sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
-                        sh 'kubectl create namespace eks-nginx-app-test'
-                        sh 'kubectl apply -f deployment.yaml'
-                        sh 'kubectl apply -f service.yaml'
+        stage('Deploying BallandBeer to EKS') {
+            steps {
+                script {
+                    sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
+                    sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
+                    def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+                    for (svc in services) {
+                        sh "kubectl apply -f k8s/${svc}/"
                     }
+                    sh 'kubectl apply -f k8s/ingress.yaml'
                 }
             }
         }
