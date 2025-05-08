@@ -19,7 +19,7 @@ pipeline {
         script {
           changedServices = sh(script: '''
             git diff --name-only HEAD~1 HEAD |
-            grep -E '^services/|^frontend/' |
+            grep -E '^(services/[^/]+/|frontend/)' |
             cut -d/ -f2 |
             sort -u
           ''', returnStdout: true).trim().split('\n')
@@ -38,11 +38,11 @@ pipeline {
       steps {
         script {
           def servicePorts = [
-            authen : 4000,
-            booking: 4001,
-            order  : 4002,
-            product: 4003,
-            profile: 4004
+            authen  : 4000,
+            booking : 4001,
+            order   : 4002,
+            product : 4003,
+            profile : 4004
           ]
 
           withCredentials([file(credentialsId: 'ENV_TEMPLATE', variable: 'ENV_TEMPLATE')]) {
@@ -54,8 +54,7 @@ pipeline {
 
               if (svc == 'frontend') {
                 sh "cp \$ENV_TEMPLATE ${path}/.env.local.build"
-              } 
-              else if (servicePorts.containsKey(svc)) {
+              } else if (servicePorts.containsKey(svc)) {
                 def port = servicePorts[svc]
                 sh """
                   cp \$ENV_TEMPLATE ${path}/.env

@@ -12,7 +12,6 @@ if (!process.env.MONGO_URI) {
 }
 
 if (process.env.NODE_ENV === 'development') {
-  // Avoid creating new client on every hot reload
   if (!global._mongoClientPromise) {
     client = new MongoClient(uri, options)
     global._mongoClientPromise = client.connect()
