@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 
-export default function Booking2() {
+export default function Booking2(onDateSelected) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -20,6 +20,34 @@ export default function Booking2() {
     ).padStart(2, "0")}/${today.getFullYear()}`;
     setSelectedDate(formattedDate);
   }, []);
+  const initBookingDate = async (date) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/bookings/init", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fieldId: "field1",
+          date,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error initializing booking date:", errorData.error);
+      }
+    } catch (error) {
+      console.error("Failed to initialize booking date:", error);
+    }
+  };
+
+  const handleDateSelection = (formattedDate) => {
+    setSelectedDate(formattedDate);
+    const date = formattedDate.split("/").reverse().join("-"); // Convert to YYYY-MM-DD
+    initBookingDate(date);
+    onDateSelected(date); // Notify parent component
+  };
 
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
@@ -71,22 +99,7 @@ export default function Booking2() {
         const formattedDate = `${String(i).padStart(2, "0")}/${String(
           month + 1
         ).padStart(2, "0")}/${year}`;
-        setSelectedDate(formattedDate);
-
-        // Remove previous selection
-        daysContainer
-          .querySelectorAll("div")
-          .forEach((d) =>
-            d.classList.remove(
-              "bg-green-500",
-              "text-white",
-              "hover:bg-green-500",
-              "hover:text-white"
-            )
-          );
-
-        // Apply hover styles to the selected day
-        dayDiv.classList.add("bg-green-500", "text-white");
+        handleDateSelection(formattedDate);
       });
 
       daysContainer.appendChild(dayDiv);
