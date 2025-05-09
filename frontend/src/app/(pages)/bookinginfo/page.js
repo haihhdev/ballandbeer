@@ -7,7 +7,7 @@ export default function BookingPage() {
   return (
     <div>
       {/* Booking Section */}
-      <Booking />
+      <Booking4 />
     </div>
   );
 }

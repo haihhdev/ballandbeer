@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Login() {
@@ -8,6 +8,14 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Kiểm tra nếu người dùng đã đăng nhập
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.push("/"); // Chuyển hướng đến trang chính nếu đã đăng nhập
+    }
+  }, [router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,15 +32,20 @@ export default function Login() {
       });
 
       if (!response.ok) {
-        throw new Error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Đăng nhập thất bại. Vui lòng thử lại."
+        );
       }
 
       const data = await response.json();
       console.log("Login successful:", data);
 
-      localStorage.setItem("isLoggedIn", "true");
+      // Lưu token và trạng thái đăng nhập vào localStorage
       localStorage.setItem("token", data.token);
+      localStorage.setItem("isLoggedIn", "true");
 
+      // Chuyển hướng đến trang chính
       router.push("/");
     } catch (err) {
       setError(err.message);
@@ -50,9 +63,10 @@ export default function Login() {
             Chúng tôi đầu tư vào trải nghiệm thể thao của bạn
           </h1>
           <p className="mb-6 text-lg font-normal text-gray-50 lg:text-xl dark:text-gray-400">
-            Tại Ball & Beer, chúng tôi tập trung vào việc kết nối cộng đồng yêu thể thao, mang đến
-            giải pháp đặt sân nhanh chóng, tiện lợi và cung cấp những sản phẩm chất lượng, giúp nâng
-            tầm trải nghiệm bóng đá của bạn mỗi ngày.
+            Tại Ball & Beer, chúng tôi tập trung vào việc kết nối cộng đồng yêu
+            thể thao, mang đến giải pháp đặt sân nhanh chóng, tiện lợi và cung
+            cấp những sản phẩm chất lượng, giúp nâng tầm trải nghiệm bóng đá của
+            bạn mỗi ngày.
           </p>
         </div>
 
@@ -63,7 +77,9 @@ export default function Login() {
               Đăng nhập tài khoản
             </h2>
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-              {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
+              {error && (
+                <div className="text-red-500 text-sm font-medium">{error}</div>
+              )}
               <div>
                 <input
                   type="text"
