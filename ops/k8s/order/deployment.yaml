@@ -15,5 +15,6 @@ spec:
       containers:
       - name: order
         image: hao1706/ballandbeer:order
+        imagePullPolicy: Always
         ports:
         - containerPort: 4002
