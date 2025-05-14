@@ -10,42 +10,42 @@ spec:
   - host: ballandbeer.local
     http:
       paths:
-      - path: /?(.*)
+      - path: /
         pathType: Prefix
         backend:
           service:
             name: frontend
             port:
               number: 80
-      - path: /authen/?(.*)
+      - path: /authen
         pathType: Prefix
         backend:
           service:
             name: authen
             port:
               number: 4000
-      - path: /booking/?(.*)
+      - path: /booking
         pathType: Prefix
         backend:
           service:
             name: booking
             port:
               number: 4001
-      - path: /order/?(.*)
+      - path: /order
         pathType: Prefix
         backend:
           service:
             name: order
             port:
               number: 4002
-      - path: /product/?(.*)
+      - path: /product
         pathType: Prefix
         backend:
           service:
             name: product
             port:
               number: 4003
-      - path: /profile/?(.*)
+      - path: /profile
         pathType: Prefix
         backend:
           service:

@@ -18,18 +18,18 @@ module "vpc" {
   single_nat_gateway = true
 
   tags = {
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+    "kubernetes.io/cluster/EKS-Cluster-ballandbeer" = "shared"
     Terraform   = "true"
     Environment = "dev"
   }
 
   public_subnet_tags = {
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+    "kubernetes.io/cluster/EKS-Cluster-ballandbeer" = "shared"
     "kubernetes.io/role/elb" = 1
   }
 
   private_subnet_tags = {
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+    "kubernetes.io/cluster/EKS-Cluster-ballandbeer" = "shared"
     "kubernetes.io/role/internal-elb" = 1
   }
 }
