@@ -15,5 +15,6 @@ spec:
       containers:
       - name: authen
         image: hao1706/ballandbeer:authen
+        imagePullPolicy: Always
         ports:
         - containerPort: 4000
