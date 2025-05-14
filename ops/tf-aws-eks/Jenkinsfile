@@ -56,9 +56,9 @@ pipeline{
                     sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
                     def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
                     for (svc in services) {
-                        sh "kubectl apply -f k8s/${svc}/"
+                        sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
                     }
-                    sh 'kubectl apply -f k8s/ingress.yaml'
+                    sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
                 }
             }
         }
