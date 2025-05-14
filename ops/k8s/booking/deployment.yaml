@@ -15,5 +15,6 @@ spec:
       containers:
       - name: booking
         image: hao1706/ballandbeer:booking
+        imagePullPolicy: Always
         ports:
         - containerPort: 4001

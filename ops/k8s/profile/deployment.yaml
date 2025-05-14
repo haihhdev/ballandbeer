@@ -15,5 +15,6 @@ spec:
       containers:
       - name: profile
         image: hao1706/ballandbeer:profile
+        imagePullPolicy: Always
         ports:
         - containerPort: 4004
