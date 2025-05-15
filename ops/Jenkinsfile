@@ -20,7 +20,7 @@ pipeline {
           changedServices = sh(script: '''
             git diff --name-only HEAD~1 HEAD |
             grep -E '^services/|^frontend/' |
-            cut -d/ -f2 |
+            awk -F/ '/^frontend\\// { print "frontend" } /^services\\// { print $2 }' |
             sort -u
           ''', returnStdout: true).trim().split('\n')
 
@@ -28,6 +28,9 @@ pipeline {
             echo "No changed service detected. Assuming first build. Building all services."
             changedServices = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
           }
+
+          def validServices = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+          changedServices = changedServices.findAll { svc -> validServices.contains(svc) }
 
           echo "Changed services: ${changedServices}"
         }
@@ -53,11 +56,16 @@ pipeline {
               echo "Building ${svc} from ${path}..."
 
               if (svc == 'frontend') {
-                sh "cp $ENV_TEMPLATE ${path}/.env.local.build"
-              } else if (servicePorts.containsKey(svc)) {
+                sh """
+                  rm -f ${path}/.env.local.build
+                  install -m 644 \$ENV_TEMPLATE ${path}/.env.local.build
+                """
+              }
+              else if (servicePorts.containsKey(svc)) {
                 def port = servicePorts[svc]
                 sh """
-                  cp $ENV_TEMPLATE ${path}/.env
+                  rm -f ${path}/.env
+                  install -m 644 \$ENV_TEMPLATE ${path}/.env
                   sed -i 's/_PORT_/${port}/' ${path}/.env
                 """
               }
@@ -77,19 +85,6 @@ pipeline {
               sh "docker push ${image}"
             }
           }
-        }
-      }
-    }
-    stage('Deploying BallandBeer to EKS') {
-      steps {
-        script {
-            sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
-            sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
-            def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
-            for (svc in services) {
-                sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
-            }
-            sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
         }
       }
     }

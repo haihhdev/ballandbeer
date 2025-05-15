@@ -9,7 +9,7 @@ pipeline{
         stage('Checkout SCM') {
             steps {
                 script {
-                    checkout scmGit(branches: [[name: '*/test_lab']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
+                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
                 }
             }
         }
