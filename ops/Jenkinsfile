@@ -5,6 +5,9 @@ pipeline {
     DOCKERHUB_USER = credentials('DOCKERHUB_USER')
     DOCKERHUB_PASS = credentials('DOCKERHUB_PASS')
     REPO = "hao1706/ballandbeer"
+    AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+    AWS_DEFAULT_REGION = "us-east-1"
   }
 
   stages {
