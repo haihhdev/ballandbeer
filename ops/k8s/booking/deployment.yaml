@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking
+  template:
+    metadata:
+      labels:
+        app: booking
+    spec:
+      containers:
+      - name: booking
+        image: hao1706/ballandbeer:booking
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4001

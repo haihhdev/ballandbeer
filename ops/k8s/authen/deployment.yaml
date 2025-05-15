@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authen
+  template:
+    metadata:
+      labels:
+        app: authen
+    spec:
+      containers:
+      - name: authen
+        image: hao1706/ballandbeer:authen
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4000

@@ -9,7 +9,7 @@ pipeline{
         stage('Checkout SCM') {
             steps {
                 script {
-                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
+                    checkout scmGit(branches: [[name: '*/test_lab']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
                 }
             }
         }
@@ -45,18 +45,6 @@ pipeline{
                 script {
                     dir('ops/tf-aws-eks'){
                         sh 'terraform $action -var-file=variables/dev.tfvars -auto-approve' 
-                    }
-                }
-            }
-        }
-        stage('Deploying Nginx Application') {
-            steps{
-                script{
-                    dir('ops/manifest') {
-                        sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
-                        sh 'kubectl create namespace eks-nginx-app-test'
-                        sh 'kubectl apply -f deployment.yaml'
-                        sh 'kubectl apply -f service.yaml'
                     }
                 }
             }

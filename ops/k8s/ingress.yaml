@@ -1,0 +1,60 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ballandbeer-ingress
+  namespace: ballandbeer
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+
+          - path: /authen(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: authen
+                port:
+                  number: 4000
+
+          - path: /booking(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: booking
+                port:
+                  number: 4001
+
+          - path: /order(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order
+                port:
+                  number: 4002
+
+          - path: /product(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: product
+                port:
+                  number: 4003
+
+          - path: /profile(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: profile
+                port:
+                  number: 4004
