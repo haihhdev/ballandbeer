@@ -88,5 +88,18 @@ pipeline {
         }
       }
     }
+    stage('Deploying BallandBeer to EKS') {
+      steps {
+        script {
+            sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
+            sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
+            def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+            for (svc in services) {
+                sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
+            }
+            sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
+        }
+      }
+    }
   }
 }
