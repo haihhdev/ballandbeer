@@ -77,9 +77,7 @@ export default function Header() {
                   </button>
                 </Link>
                 <Link href="/login">
-                  <button
-                    className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300"
-                  >
+                  <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300">
                     Đăng nhập
                   </button>
                 </Link>
@@ -100,7 +98,7 @@ export default function Header() {
                   className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-gray-50 hover:bg-gray-50/30"
                 >
                   <img
-                    src="/images/flagVN.png"
+                    src="/images/FlagVN.png"
                     alt="Vietnam Flag"
                     className="h-5 auto"
                   />
