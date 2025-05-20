@@ -158,7 +158,7 @@ export default function Product2() {
             <div
               key={product.id}
               onClick={() => router.push(`/productinfo/${product.id}`)} // Navigate to productinfo page
-              className="text-left cursor-pointer"
+              className="text-left cursor-pointer border border-gray-200 rounded-lg p-3 hover:border-green-500 transition-colors duration-200"
             >
               <div>
                 <img
