@@ -93,13 +93,20 @@ module "ec2_instance" {
 
   instance_type               = var.instance_type
   ami                         = "ami-0e8a34246278c21e4"
-  key_name                    = "haihhkp2"
+  key_name                    = "ballandbeerkp"
   monitoring                  = true
   vpc_security_group_ids      = [module.sg.security_group_id]
   subnet_id                   = module.vpc.public_subnets[0]
   associate_public_ip_address = true
   user_data                   = file("../scripts/install_build_tools.sh")
   availability_zone           = data.aws_availability_zones.azs.names[0]
+
+  root_block_device = [
+    {
+      volume_size = 20
+      volume_type = "gp2"
+    }
+  ]
 
   tags = {
     Name        = "Jenkins-Server-ballandbeer"

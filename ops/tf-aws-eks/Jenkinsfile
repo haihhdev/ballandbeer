@@ -49,5 +49,54 @@ pipeline{
                 }
             }
         }
+        stage('Add EKS IAM Access Entry') {
+            steps {
+                script {
+                    sh '''
+                        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                        ROLE_NAME=$(terraform -chdir=ops/tf-aws-eks output -raw node_group_role_name)
+                        CLUSTER_NAME=$(terraform -chdir=ops/tf-aws-eks output -raw cluster_name)
+
+                        PRINCIPAL_ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME"
+
+                        echo "Creating access entry for $PRINCIPAL_ARN on EKS cluster $CLUSTER_NAME"
+
+                        aws eks create-access-entry \
+                            --cluster-name $CLUSTER_NAME \
+                            --principal-arn $PRINCIPAL_ARN \
+                            --type EC2_LINUX \
+                            --username "system:node:{{EC2PrivateDNSName}}" \
+                            --groups "system:nodes"
+
+                        aws eks associate-access-policy \
+                            --cluster-name $CLUSTER_NAME \
+                            --principal-arn $PRINCIPAL_ARN \
+                            --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+                            --access-scope type=cluster
+                    '''
+                }
+            }
+        }
+        stage('Install Prometheus & Grafana') {
+            steps {
+                script {
+                    sh '''
+                        aws eks update-kubeconfig --name EKS-Cluster-ballandbeer
+                        kubectl create namespace monitoring || true
+                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+                        helm repo add grafana https://grafana.github.io/helm-charts
+                        helm repo update
+                        helm install prometheus prometheus-community/prometheus \
+                            --namespace monitoring \
+                            --set server.persistentVolume.enabled=false
+                        helm install grafana grafana/grafana \
+                            --namespace monitoring \
+                            --set adminPassword='admin' \
+                            --set service.type=LoadBalancer \
+                            --set persistence.enabled=false
+                    '''
+                }
+            }
+        }
     }
 }
