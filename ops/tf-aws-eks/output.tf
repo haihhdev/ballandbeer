@@ -1,7 +1,9 @@
 output "node_group_role_name" {
-  value = aws_iam_role.eks_node_role.name
+  description = "Name of the EKS node group IAM role"
+  value       = module.eks.eks_managed_node_groups["nodes"].iam_role_name
 }
 
 output "cluster_name" {
-  value = aws_eks_cluster.main.name
+  description = "Name of the EKS cluster"
+  value       = module.eks.cluster_name
 }
