@@ -41,19 +41,12 @@ pipeline{
                 }
             }
         }
-        stage('Validating Terraform'){
+        
+        stage('Terraform Validate & Plan'){
             steps {
                 script {
                     dir("${TERRAFORM_DIR}"){
                         sh 'terraform validate'
-                    }
-                }
-            }
-        }
-        stage('Terraform Plan'){
-            steps {
-                script {
-                    dir("${TERRAFORM_DIR}"){
                         sh "terraform plan -var-file=${TF_VARS_FILE}"
                     }
                 }
@@ -104,6 +97,8 @@ pipeline{
             steps {
                 script {
                     sh """
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
+                        kubectl create namespace ${MONITORING_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         if kubectl get configmap grafana-dashboards -n ${MONITORING_NAMESPACE} > /dev/null 2>&1; then
                         echo "Grafana dashboards ConfigMap already exists, skipping..."
                         else
