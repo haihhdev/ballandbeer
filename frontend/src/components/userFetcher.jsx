@@ -6,7 +6,7 @@ export default function UserFetcher() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch('/api/users')
+        const res = await fetch('/api/profile')
         const data = await res.json()
         console.log('Users from MongoDB:', data)
       } catch (err) {

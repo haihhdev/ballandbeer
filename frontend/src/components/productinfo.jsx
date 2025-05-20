@@ -39,7 +39,7 @@ export default function ProductInfo() {
     const fetchProduct = async () => {
       try {
         const response = await fetch(
-          `/product/api/products/${id}`
+          `/api/products/${id}`
         );
         const data = await response.json();
         setProduct({

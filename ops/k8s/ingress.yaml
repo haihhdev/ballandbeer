@@ -11,15 +11,7 @@ spec:
   rules:
     - http:
         paths:
-          - path: /()(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
-
-          - path: /authen(/|$)(.*)
+          - path: /api/authen(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -27,7 +19,7 @@ spec:
                 port:
                   number: 4000
 
-          - path: /booking(/|$)(.*)
+          - path: /api/bookings(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -35,7 +27,7 @@ spec:
                 port:
                   number: 4001
 
-          - path: /order(/|$)(.*)
+          - path: /api/order(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -43,7 +35,7 @@ spec:
                 port:
                   number: 4002
 
-          - path: /product(/|$)(.*)
+          - path: /api/product(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -51,10 +43,18 @@ spec:
                 port:
                   number: 4003
 
-          - path: /profile(/|$)(.*)
+          - path: /api/profile(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
                 name: profile
                 port:
                   number: 4004
+
+          - path: /()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
