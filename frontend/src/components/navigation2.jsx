@@ -166,8 +166,8 @@ export default function Header() {
                   className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-gray-50 hover:bg-gray-50/30"
                 >
                   <img
-                    src="/images/flagVN.png"
-                    alt="Vietnam Flag Missing"
+                    src="/images/FlagVN.png"
+                    alt="Vietnam Flag"
                     className="h-5 auto"
                   />
                   <span>Vi🔻</span>
