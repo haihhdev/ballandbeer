@@ -49,13 +49,15 @@ pipeline {
             if (svc != 'frontend') {
               def path = "services/${svc}"
               withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                sh """
-                  sonar-scanner \
-                    -Dsonar.projectKey=ballandbeer-${svc} \
-                    -Dsonar.sources=${path} \
-                    -Dsonar.host.url=$SONAR_HOST_URL \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN
-                """
+                withEnv(["PATH+SCANNER=/opt/sonar-scanner/bin"]) {
+                  sh """
+                    sonar-scanner \
+                      -Dsonar.projectKey=ballandbeer-${svc} \
+                      -Dsonar.sources=${path} \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.login=$SONAR_AUTH_TOKEN
+                  """
+                }
               }
             }
           }
