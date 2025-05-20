@@ -21,8 +21,8 @@ if (!mongoUri) {
 mongoose.connect(mongoUri)
   .then(() => {
     console.log('Connected to MongoDB Atlas');
-    app.listen(process.env.PORT || 4001, () => {
-      console.log(`Auth service running on port ${process.env.PORT || 4001}`);
+    app.listen(process.env.PORT, () => {
+      console.log(`Auth service running on port ${process.env.PORT}`);
     });
   })
   .catch((err) => {

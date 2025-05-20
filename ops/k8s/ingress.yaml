@@ -35,7 +35,7 @@ spec:
                 port:
                   number: 4002
 
-          - path: /api/product(/|$)(.*)
+          - path: /api/products(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
