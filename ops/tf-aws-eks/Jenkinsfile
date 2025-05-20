@@ -1,22 +1,41 @@
 pipeline{
     agent any
     environment {
+        // AWS Credentials
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION = "us-east-1"
+        
+        // EKS Configuration
+        CLUSTER_NAME = "EKS-Cluster-ballandbeer"
+        IAM_USER_NAME = "hhh_user"
+        
+        // Repository Configuration
+        REPO_URL = "https://github.com/haihhdev/ballandbeer.git"
+        BRANCH_NAME = "master"
+        
+        // Terraform Configuration
+        TERRAFORM_DIR = "ops/tf-aws-eks"
+        TF_VARS_FILE = "variables/dev.tfvars"
+        
+        // Monitoring Configuration
+        MONITORING_NAMESPACE = "monitoring"
+        PROMETHEUS_PORT = "9090"
+        GRAFANA_DASHBOARDS_DIR = "ops/monitoring/grafana/dashboards"
+        GRAFANA_VALUES_FILE = "ops/monitoring/grafana/values.yaml"
     }
     stages {
         stage('Checkout SCM') {
             steps {
                 script {
-                    checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/haihhdev/ballandbeer.git']])
+                    checkout scmGit(branches: [[name: "*/${BRANCH_NAME}"]], extensions: [], userRemoteConfigs: [[url: "${REPO_URL}"]])
                 }
             }
         }
         stage('Initializing Terraform'){
             steps {
                 script {
-                    dir('ops/tf-aws-eks'){
+                    dir("${TERRAFORM_DIR}"){
                         sh 'terraform init'
                     }
                 }
@@ -25,7 +44,7 @@ pipeline{
         stage('Validating Terraform'){
             steps {
                 script {
-                    dir('ops/tf-aws-eks'){
+                    dir("${TERRAFORM_DIR}"){
                         sh 'terraform validate'
                     }
                 }
@@ -34,8 +53,8 @@ pipeline{
         stage('Terraform Plan'){
             steps {
                 script {
-                    dir('ops/tf-aws-eks'){
-                        sh 'terraform plan -var-file=variables/dev.tfvars'
+                    dir("${TERRAFORM_DIR}"){
+                        sh "terraform plan -var-file=${TF_VARS_FILE}"
                     }
                 }
             }
@@ -43,8 +62,8 @@ pipeline{
         stage('Creating/Destroying EKS Cluster'){
             steps {
                 script {
-                    dir('ops/tf-aws-eks'){
-                        sh 'terraform $action -var-file=variables/dev.tfvars -auto-approve' 
+                    dir("${TERRAFORM_DIR}"){
+                        sh "terraform $action -var-file=${TF_VARS_FILE} -auto-approve" 
                     }
                 }
             }
@@ -52,49 +71,95 @@ pipeline{
         stage('Add EKS IAM Access Entry') {
             steps {
                 script {
-                    sh '''
-                        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                        ROLE_NAME=$(terraform -chdir=ops/tf-aws-eks output -raw node_group_role_name)
-                        CLUSTER_NAME=$(terraform -chdir=ops/tf-aws-eks output -raw cluster_name)
-
-                        PRINCIPAL_ARN="arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME"
-
-                        echo "Creating access entry for $PRINCIPAL_ARN on EKS cluster $CLUSTER_NAME"
-
-                        aws eks create-access-entry \
-                            --cluster-name $CLUSTER_NAME \
-                            --principal-arn $PRINCIPAL_ARN \
-                            --type EC2_LINUX \
-                            --username "system:node:{{EC2PrivateDNSName}}" \
-                            --groups "system:nodes"
-
-                        aws eks associate-access-policy \
-                            --cluster-name $CLUSTER_NAME \
-                            --principal-arn $PRINCIPAL_ARN \
-                            --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
-                            --access-scope type=cluster
-                    '''
+                    sh """
+                        ACCOUNT_ID=\$(aws sts get-caller-identity --query Account --output text)
+                        PRINCIPAL_ARN="arn:aws:iam::\${ACCOUNT_ID}:user/${IAM_USER_NAME}"
+                        CLUSTER_NAME=\$(terraform -chdir=${TERRAFORM_DIR} output -raw cluster_name)
+                        
+                        echo "Checking if access entry for \$PRINCIPAL_ARN exists..."
+                        
+                        EXISTS=\$(aws eks list-access-entries --cluster-name "\$CLUSTER_NAME" --output text | grep "\$PRINCIPAL_ARN" || true)
+                        
+                        if [ -n "\$EXISTS" ]; then
+                            echo "Access entry for \$PRINCIPAL_ARN already exists. Skipping creation."
+                        else
+                            echo "Creating access entry for \$PRINCIPAL_ARN on \$CLUSTER_NAME..."
+                        
+                            aws eks create-access-entry \
+                              --cluster-name "\$CLUSTER_NAME" \
+                              --principal-arn "\$PRINCIPAL_ARN" \
+                              --type STANDARD
+                        
+                            aws eks associate-access-policy \
+                              --cluster-name "\$CLUSTER_NAME" \
+                              --principal-arn "\$PRINCIPAL_ARN" \
+                              --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+                              --access-scope type=cluster
+                        fi
+                    """
                 }
             }
         }
+        stage('Create Grafana Dashboards ConfigMap') {
+            steps {
+                script {
+                    sh """
+                        if kubectl get configmap grafana-dashboards -n ${MONITORING_NAMESPACE} > /dev/null 2>&1; then
+                        echo "Grafana dashboards ConfigMap already exists, skipping..."
+                        else
+                        kubectl create configmap grafana-dashboards \
+                            --from-file=${GRAFANA_DASHBOARDS_DIR} \
+                            -n ${MONITORING_NAMESPACE}
+                        fi
+                    """
+                }
+            }
+        }
+
         stage('Install Prometheus & Grafana') {
             steps {
                 script {
-                    sh '''
-                        aws eks update-kubeconfig --name EKS-Cluster-ballandbeer
-                        kubectl create namespace monitoring || true
-                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-                        helm repo add grafana https://grafana.github.io/helm-charts
+                    sh """
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
+                        kubectl create namespace ${MONITORING_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                        
+                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+                        helm repo add grafana https://grafana.github.io/helm-charts || true
                         helm repo update
-                        helm install prometheus prometheus-community/prometheus \
-                            --namespace monitoring \
-                            --set server.persistentVolume.enabled=false
-                        helm install grafana grafana/grafana \
-                            --namespace monitoring \
-                            --set adminPassword='admin' \
-                            --set service.type=LoadBalancer \
-                            --set persistence.enabled=false
-                    '''
+
+                        if helm list -n ${MONITORING_NAMESPACE} | grep -q prometheus; then
+                        echo "Prometheus already installed. Upgrading..."
+                        else
+                        echo "Installing Prometheus..."
+                        fi
+                        helm upgrade --install prometheus prometheus-community/prometheus \
+                        --namespace ${MONITORING_NAMESPACE} \
+                        --set server.persistentVolume.enabled=false
+
+                        if helm list -n ${MONITORING_NAMESPACE} | grep -q grafana; then
+                        echo "Grafana already installed. Upgrading..."
+                        else
+                        echo "Installing Grafana..."
+                        fi
+                        helm upgrade --install grafana grafana/grafana \
+                        --namespace ${MONITORING_NAMESPACE} \
+                        -f ${GRAFANA_VALUES_FILE}
+                    """
+                }
+            }
+        }
+
+        stage('Port Forward Prometheus') {
+            steps {
+                script {
+                    sh """
+                        if lsof -i :${PROMETHEUS_PORT} | grep -q kubectl; then
+                        echo "Port-forward to Prometheus is already running"
+                        else
+                        echo "Starting port-forward to Prometheus..."
+                        nohup kubectl port-forward -n ${MONITORING_NAMESPACE} svc/prometheus-server ${PROMETHEUS_PORT}:80 > /dev/null 2>&1 &
+                        fi
+                    """
                 }
             }
         }
