@@ -167,7 +167,7 @@ export default function Header() {
                 >
                   <img
                     src="/images/flagVN.png"
-                    alt="Vietnam Flag"
+                    alt="Vietnam Flag Missing"
                     className="h-5 auto"
                   />
                   <span>Vi🔻</span>
