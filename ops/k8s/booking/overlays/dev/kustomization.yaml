@@ -1,0 +1,8 @@
+resources:
+  - ../../base
+
+patches:
+  - path: patch-image.yaml
+    target:
+      kind: Deployment
+      name: booking 

@@ -68,6 +68,7 @@ pipeline {
     stage('Build & Push Images') {
       steps {
         script {
+          def timestamp = sh(script: "date +%Y%m%d%H%M", returnStdout: true).trim()
           def servicePorts = [
             authen : 4000,
             booking: 4001,
@@ -79,7 +80,8 @@ pipeline {
           withCredentials([file(credentialsId: 'ENV_TEMPLATE', variable: 'ENV_TEMPLATE')]) {
             for (svc in changedServices) {
               def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
-              def image = "${REPO}:${svc}"
+              def imageTag = "${svc}-${timestamp}"
+              def image = "${REPO}:${imageTag}"
 
               echo "Building ${svc} from ${path}..."
 
@@ -110,7 +112,43 @@ pipeline {
                 echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
               '''
               sh "docker push ${image}"
+
+              sh "echo ${imageTag} > ${svc}_tag.txt"
             }
+          }
+        }
+      }
+    }
+
+    stage('Update Kustomize patch') {
+      steps {
+        script {
+          withCredentials([
+            usernamePassword(credentialsId: 'GIT_PUSH_CREDENTIALS', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PAT')
+          ]) {
+            sh '''
+              git config --global user.email "jenkins@ci"
+              git config --global user.name "Jenkins CI"
+            '''
+
+            for (svc in changedServices) {
+              def imageTag = readFile("${svc}_tag.txt").trim()
+              def patchFile = "ops/k8s/${svc}/overlays/dev/patch-image.yaml"
+              def fullImage = "${REPO}:${imageTag}"
+
+              echo "Updating ${patchFile} with image: ${fullImage}"
+
+              sh """
+                sed -i 's|image: .*|image: ${fullImage}|' ${patchFile}
+              """
+            }
+
+            sh '''
+              git remote set-url origin https://${GIT_USER}:${GIT_PAT}@github.com/haihhdev/ballandbeer.git
+              git add ops/k8s/*/overlays/dev/patch-image.yaml
+              git commit -m "Update image tag to ${BUILD_NUMBER}"
+              git push origin HEAD:master
+            '''
           }
         }
       }
@@ -128,20 +166,20 @@ pipeline {
       }
     }
 
-    stage('Deploying BallandBeer to EKS') {
-      steps {
-        script {
-          sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
-          sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
-          def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
-          for (svc in services) {
-            sh "kubectl delete -f ops/k8s/${svc}/ -n ballandbeer || true"
-            sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
-          }
-          sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
-          sh 'kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml'
-        }
-      }
-    }
+    // stage('Deploying BallandBeer to EKS') {
+    //   steps {
+    //     script {
+    //       sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
+    //       sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
+    //       def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+    //       for (svc in services) {
+    //         sh "kubectl delete -f ops/k8s/${svc}/ -n ballandbeer || true"
+    //         sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
+    //       }
+    //       sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
+    //       sh 'kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml'
+    //     }
+    //   }
+    // }
   }
 }

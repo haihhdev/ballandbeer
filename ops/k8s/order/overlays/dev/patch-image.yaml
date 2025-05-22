@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order
+spec:
+  template:
+    spec:
+      containers:
+        - name: order
+          image: hao1706/ballandbeer:order

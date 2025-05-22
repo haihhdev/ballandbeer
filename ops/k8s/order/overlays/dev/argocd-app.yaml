@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: order
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/haihhdev/ballandbeer
+    targetRevision: main
+    path: ops/k8s/order/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: order
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true 

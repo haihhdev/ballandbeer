@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking
+spec:
+  template:
+    spec:
+      containers:
+        - name: booking
+          image: hao1706/ballandbeer:booking

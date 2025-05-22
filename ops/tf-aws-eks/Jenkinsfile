@@ -158,5 +158,25 @@ pipeline{
                 }
             }
         }
+
+        stage('Install ArgoCD') {
+            steps {
+                script {
+                    sh '''
+                        kubectl create namespace argocd || true
+                        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+                        kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}' || true
+                        for i in {1..30}; do
+                        kubectl get secret argocd-initial-admin-secret -n argocd >/dev/null 2>&1 && break
+                        echo "Waiting for admin secret... ($i)"
+                        sleep 5
+                        done
+                        kubectl -n argocd patch secret argocd-secret \
+                          -p '{"stringData": {"admin.password": "$2a$10$7EqJtq98hPqEX7fNZaFWoO5.CrQoqeluvqH7rS2WLsYl6Jx04J86e", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
+                        kubectl -n argocd delete pod -l app.kubernetes.io/name=argocd-server
+                    '''
+                }
+            }
+        }
     }
 }
