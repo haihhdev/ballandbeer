@@ -8,14 +8,29 @@ pipeline {
     AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     AWS_DEFAULT_REGION = "us-east-1"
-    SONARQUBE_SERVER = 'SonarQubeServer' // Tên đã cấu hình trong Jenkins
+    SONARQUBE_SERVER = 'SonarQubeServer'
   }
 
   stages {
 
-    stage('Clone source') {
+    stage('Checkout & Validate Paths') {
       steps {
         checkout scm
+        script {
+          def changedPaths = sh(script: '''
+            git diff --name-only HEAD~1 HEAD
+          ''', returnStdout: true).trim()
+
+          def runPipeline = changedPaths.split('\n').any { path ->
+            return path.startsWith("services/") || path.startsWith("frontend/")
+          }
+
+          if (!runPipeline) {
+            echo "No changes in services/ or frontend/. Skipping pipeline..."
+            currentBuild.result = 'NOT_BUILT'
+            error("Stopped early: no relevant changes.")
+          }
+        }
       }
     }
 
@@ -158,7 +173,8 @@ pipeline {
       steps {
         script {
           for (svc in changedServices) {
-            def image = "${REPO}:${svc}"
+            def imageTag = readFile("${svc}_tag.txt").trim()
+            def image = "${REPO}:${imageTag}"
             echo "Scanning image ${image} with Trivy..."
             sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${image} || true"
           }
@@ -166,20 +182,20 @@ pipeline {
       }
     }
 
-    // stage('Deploying BallandBeer to EKS') {
-    //   steps {
-    //     script {
-    //       sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
-    //       sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
-    //       def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
-    //       for (svc in services) {
-    //         sh "kubectl delete -f ops/k8s/${svc}/ -n ballandbeer || true"
-    //         sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
-    //       }
-    //       sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
-    //       sh 'kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml'
-    //     }
-    //   }
-    // }
+    stage('Deploying BallandBeer to EKS') {
+      steps {
+        script {
+          sh 'aws eks update-kubeconfig --name EKS-Cluster-ballandbeer'
+          sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
+          def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+          for (svc in services) {
+            sh "kubectl delete -f ops/k8s/${svc}/ -n ballandbeer || true"
+            sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
+          }
+          sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
+          sh 'kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml'
+        }
+      }
+    }
   }
 }

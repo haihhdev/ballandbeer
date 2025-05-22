@@ -7,11 +7,11 @@ spec:
   project: default
   source:
     repoURL: https://github.com/haihhdev/ballandbeer
-    targetRevision: main
+    targetRevision: master
     path: ops/k8s/order/overlays/dev
   destination:
     server: https://kubernetes.default.svc
-    namespace: order
+    namespace: ballandbeer
   syncPolicy:
     automated:
       prune: true

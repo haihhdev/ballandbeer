@@ -1,5 +1,5 @@
 aws_region = "us-east-1"
-aws_account_id = "730335291844"
+aws_account_id = "730335510642"
 backend_jenkins_bucket = "terraform-eks-cicd-ballandbeer5"
 backend_jenkins_bucket_key = "jenkins/terraform.tfstate"
 vpc_name       = "jenkins-vpc"

@@ -178,5 +178,26 @@ pipeline{
                 }
             }
         }
+
+        stage('Deploy ArgoCD Applications') {
+            steps {
+                script {
+                    def apps = [
+                        'authen',
+                        'booking',
+                        'order',
+                        'product',
+                        'profile',
+                        'frontend'
+                    ]
+
+                    for (svc in apps) {
+                        def appFile = "ops/k8s/${svc}/overlays/dev/argocd-app.yaml"
+                        echo "Applying ArgoCD app for: ${svc}"
+                        sh "kubectl apply -f ${appFile} -n argocd"
+                    }
+                }
+            }
+        }
     }
 }
