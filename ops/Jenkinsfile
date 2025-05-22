@@ -189,8 +189,8 @@ pipeline {
           sh 'kubectl get namespace ballandbeer || kubectl create namespace ballandbeer'
           def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
           for (svc in services) {
-            sh "kubectl delete -f ops/k8s/${svc}/ -n ballandbeer || true"
-            sh "kubectl apply -f ops/k8s/${svc}/ -n ballandbeer"
+            sh "kubectl delete -f ops/k8s/${svc}/base -n ballandbeer || true"
+            sh "kubectl apply -f ops/k8s/${svc}/base -n ballandbeer"
           }
           sh 'kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer'
           sh 'kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml'
