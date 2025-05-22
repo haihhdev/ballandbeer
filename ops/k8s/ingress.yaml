@@ -5,13 +5,12 @@ metadata:
   namespace: ballandbeer
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /api/authen()(.*)
+          - path: /api/auth()(.*)
             pathType: ImplementationSpecific
             backend:
               service:
