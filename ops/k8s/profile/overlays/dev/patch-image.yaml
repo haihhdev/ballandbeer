@@ -7,4 +7,4 @@ spec:
     spec:
       containers:
         - name: profile
-          image: hao1706/ballandbeer:profile-202505221221
+          image: hao1706/ballandbeer:profile-202505221222
