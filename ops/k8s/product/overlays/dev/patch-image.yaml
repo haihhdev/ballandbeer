@@ -7,4 +7,4 @@ spec:
     spec:
       containers:
         - name: product
-          image: hao1706/ballandbeer:product-202505221219
+          image: hao1706/ballandbeer:product-202505221221
