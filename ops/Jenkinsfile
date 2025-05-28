@@ -107,6 +107,7 @@ pipeline {
                 sh """
                   cd ${path}
                   snyk test || true
+                  snyk monitor || true
                 """
               }
             }
@@ -229,6 +230,7 @@ pipeline {
                 echo "Running Snyk container scan on ${image}..."
                 sh """
                   snyk container test ${image} || true
+                  snyk monitor || true
                 """
               }
             }
