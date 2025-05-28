@@ -28,13 +28,8 @@ pipeline {
             path.startsWith("ops/k8s/") || path.trim() == ''
           }
 
-          if (onlyKustomize) {
-            currentBuild.result = 'SUCCESS'
-            return
-          }
-
-          if (!hasRelevantChanges) {
-            currentBuild.result = 'SUCCESS'
+          if (onlyKustomize || !hasRelevantChanges) {
+            currentBuild.result = 'NOT_BUILT'
             return
           }
         }
