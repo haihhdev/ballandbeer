@@ -29,7 +29,6 @@ pipeline {
           }
 
           if (onlyKustomize || !hasRelevantChanges) {
-            currentBuild.result = 'NOT_BUILT'
             return
           }
         }
