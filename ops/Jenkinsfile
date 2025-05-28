@@ -14,21 +14,21 @@ pipeline {
 
   stages {
 
-    stage('Check for relevant changes') {
+    stage('Checkout & Validate Paths') {
       steps {
         checkout scm
         script {
-          def changedPaths = sh(script: 'git diff --name-only HEAD~1 HEAD', returnStdout: true).trim().split('\n')
+          def changedPaths = sh(script: '''
+            git diff --name-only HEAD~1 HEAD
+          ''', returnStdout: true).trim()
 
-          def hasRelevantChanges = changedPaths.any { path ->
-            path.startsWith("services/") || path.startsWith("frontend/")
+          def runPipeline = changedPaths.split('\n').any { path ->
+            return path.startsWith("services/") || path.startsWith("frontend/")
           }
 
-          def onlyKustomize = changedPaths.every { path ->
-            path.startsWith("ops/k8s/") || path.trim() == ''
-          }
-
-          if (onlyKustomize || !hasRelevantChanges) {
+          if (!runPipeline) {
+            currentBuild.result = 'NOT_BUILT'
+            error("Stopped early: no relevant changes.")
             return
           }
         }

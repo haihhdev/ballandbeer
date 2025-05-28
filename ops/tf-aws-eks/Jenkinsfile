@@ -204,7 +204,7 @@ pipeline{
         stage('Add GitHub Webhook') {
             steps {
                 script {
-                    def webhookUrl = "http://your-jenkins-url/github-webhook/"
+                    def webhookUrl = "http://your-jenkins-url/generic-webhook-trigger/invoke?token=ci-trigger"
                     sh """
                         curl -X POST \
                         -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -213,7 +213,7 @@ pipeline{
                         -d '{
                         "name": "web",
                         "active": true,
-                        "events": ["push", "pull_request"],
+                        "events": ["push"],
                         "config": {
                             "url": "${webhookUrl}",
                             "content_type": "json",
