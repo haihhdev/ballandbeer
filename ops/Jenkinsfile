@@ -9,6 +9,7 @@ pipeline {
     AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     AWS_DEFAULT_REGION = "us-east-1"
     SONARQUBE_SERVER = 'SonarQubeServer'
+    SNYK_TOKEN = credentials('SNYK_TOKEN')
   }
 
   stages {
@@ -57,22 +58,56 @@ pipeline {
       }
     }
 
-    stage('SonarQube Analysis') {
-      steps {
-        script {
-          for (svc in changedServices) {
-            if (svc != 'frontend') {
-              def path = "services/${svc}"
-              withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                withEnv(["PATH+SCANNER=/opt/sonar-scanner/bin"]) {
-                  sh """
-                    sonar-scanner \
-                      -Dsonar.projectKey=ballandbeer-${svc} \
-                      -Dsonar.sources=${path} \
-                      -Dsonar.host.url=$SONAR_HOST_URL \
-                      -Dsonar.login=$SONAR_AUTH_TOKEN
-                  """
+    stage('Static Analysis') {
+      parallel {
+        stage('SonarQube Analysis') {
+          steps {
+            script {
+              for (svc in changedServices) {
+                if (svc != 'frontend') {
+                  def path = "services/${svc}"
+                  withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                    withEnv(["PATH+SCANNER=/opt/sonar-scanner/bin"]) {
+                      sh """
+                        sonar-scanner \
+                          -Dsonar.projectKey=ballandbeer-${svc} \
+                          -Dsonar.sources=${path} \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.login=$SONAR_AUTH_TOKEN
+                      """
+                    }
+                  }
                 }
+              }
+            }
+          }
+        }
+
+        stage('Pre-build Trivy Scan') {
+          steps {
+            script {
+              for (svc in changedServices) {
+                def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
+                echo "Scanning source in ${path} with Trivy..."
+                sh """
+                  trivy fs --exit-code 0 --severity HIGH,CRITICAL ${path} || true
+                """
+              }
+            }
+          }
+        }
+
+        stage('Snyk Code Scan') {
+          steps {
+            script {
+              sh "snyk auth $SNYK_TOKEN"
+              for (svc in changedServices) {
+                def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
+                echo "Running Snyk code scan on ${path}..."
+                sh """
+                  cd ${path}
+                  snyk test || true
+                """
               }
             }
           }
@@ -169,17 +204,38 @@ pipeline {
       }
     }
 
-    stage('Trivy Scan') {
-      steps {
-        script {
-          for (svc in changedServices) {
-            def imageTag = readFile("${svc}_tag.txt").trim()
-            def image = "${REPO}:${imageTag}"
-            echo "Scanning image ${image} with Trivy..."
-            sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${image} || true"
+    stage('Post-build Security Scans') {
+      parallel {
+        stage('Trivy Image Scan') {
+          steps {
+            script {
+              for (svc in changedServices) {
+                def imageTag = readFile("${svc}_tag.txt").trim()
+                def image = "${REPO}:${imageTag}"
+                echo "Scanning image ${image} with Trivy..."
+                sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${image} || true"
+              }
+            }
+          }
+        }
+
+        stage('Snyk Image Scan') {
+          steps {
+            script {
+              sh "snyk auth $SNYK_TOKEN"
+              for (svc in changedServices) {
+                def imageTag = readFile("${svc}_tag.txt").trim()
+                def image = "${REPO}:${imageTag}"
+                echo "Running Snyk container scan on ${image}..."
+                sh """
+                  snyk container test ${image} || true
+                """
+              }
+            }
           }
         }
       }
     }
+
   }
 }

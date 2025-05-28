@@ -71,6 +71,13 @@ unzip sonar-scanner-cli-${SONAR_VERSION}-linux.zip
 sudo mv sonar-scanner-${SONAR_VERSION}-linux /opt/sonar-scanner
 sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
 
+echo "=== Installing Snyk CLI (binary) ==="
+sudo yum install -y jq curl
+SNYK_VERSION=$(curl -s https://api.github.com/repos/snyk/cli/releases/latest | jq -r '.tag_name')
+curl -Lo snyk-linux https://github.com/snyk/cli/releases/download/${SNYK_VERSION}/snyk-linux
+chmod +x snyk-linux
+sudo mv snyk-linux /usr/local/bin/snyk
+
 echo "=== Verifying Installation ==="
 java -version
 git --version
@@ -81,5 +88,6 @@ kubectl version --client
 trivy --version
 helm version
 sonar-scanner --version
+snyk --version
 
 echo "=== Setup Completed Successfully ==="
