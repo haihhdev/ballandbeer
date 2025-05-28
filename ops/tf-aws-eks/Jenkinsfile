@@ -13,6 +13,7 @@ pipeline{
         // Repository Configuration
         REPO_URL = "https://github.com/haihhdev/ballandbeer.git"
         BRANCH_NAME = "master"
+        GITHUB_TOKEN = credentials('GITHUB_TOKEN')
         
         // Terraform Configuration
         TERRAFORM_DIR = "ops/tf-aws-eks"
@@ -196,6 +197,30 @@ pipeline{
                         echo "Applying ArgoCD app for: ${svc}"
                         sh "kubectl apply -f ${appFile} -n argocd"
                     }
+                }
+            }
+        }
+
+        stage('Add GitHub Webhook') {
+            steps {
+                script {
+                    def webhookUrl = "http://your-jenkins-url/github-webhook/"
+                    sh """
+                        curl -X POST \
+                        -H "Authorization: token ${GITHUB_TOKEN}" \
+                        -H "Accept: application/vnd.github.v3+json" \
+                        https://api.github.com/repos/haihhdev/ballandbeer/hooks \
+                        -d '{
+                        "name": "web",
+                        "active": true,
+                        "events": ["push", "pull_request"],
+                        "config": {
+                            "url": "${webhookUrl}",
+                            "content_type": "json",
+                            "insecure_ssl": "0"
+                        }
+                        }'
+                    """
                 }
             }
         }

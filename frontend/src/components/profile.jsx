@@ -123,7 +123,7 @@ export default function Profile() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Facebook
+                  Facebook cá nhân
                 </label>
                 <input
                   type="url"
