@@ -45,7 +45,8 @@ export default function Product2() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("/api/products");
+        //const response = await fetch("/api/products");
+        const response = await fetch("http://localhost:4003/api/products");
         const data = await response.json();
 
         const formattedProducts = data.map((item) => ({

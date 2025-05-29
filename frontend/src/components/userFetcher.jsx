@@ -1,21 +1,21 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
+import { useEffect } from "react";
 
 export default function UserFetcher() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch('/api/profile')
-        const data = await res.json()
-        console.log('Users from MongoDB:', data)
+        const res = await fetch("http://localhost:4004/api/profile");
+        const data = await res.json();
+        console.log("Users from MongoDB:", data);
       } catch (err) {
-        console.error('Error fetching users:', err)
+        console.error("Error fetching users:", err);
       }
-    }
+    };
 
-    fetchUsers()
-  }, [])
+    fetchUsers();
+  }, []);
 
-  return null // Không render gì lên UI, chỉ log ra console
+  return null; // Không render gì lên UI, chỉ log ra console
 }
