@@ -160,6 +160,61 @@ pipeline{
             }
         }
 
+        stage('Install ELK Stack') {
+            steps {
+                script {
+                    sh """
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
+
+                        echo "[+] Ensuring logging namespace exists..."
+                        kubectl get ns logging >/dev/null 2>&1 || kubectl create namespace logging
+
+                        echo "[+] Adding required Helm repos..."
+                        helm repo add elastic https://helm.elastic.co || true
+                        helm repo add fluent https://fluent.github.io/helm-charts || true
+                        helm repo update
+
+                        echo "[+] Installing or upgrading Elasticsearch..."
+                        if helm list -n logging | grep -q elasticsearch; then
+                            echo "Elasticsearch already installed. Skipping install."
+                        else
+                            helm upgrade --install elasticsearch elastic/elasticsearch \\
+                                --namespace logging \\
+                                --set replicas=1 \\
+                                --set minimumMasterNodes=1 \\
+                                --set volumeClaimTemplate.resources.requests.storage=10Gi
+                        fi
+
+                        echo "[+] Waiting for Elasticsearch to become ready..."
+                        kubectl rollout status statefulset/elasticsearch-master -n logging --timeout=180s || {
+                            echo "Elasticsearch not ready in time. Exiting..."; exit 1;
+                        }
+
+                        echo "[+] Installing or upgrading Kibana..."
+                        if helm list -n logging | grep -q kibana; then
+                            echo "Kibana already installed. Skipping install."
+                        else
+                            helm upgrade --install kibana elastic/kibana \\
+                                --namespace logging \\
+                                --set service.type=LoadBalancer \\
+                                --set env.ELASTICSEARCH_HOSTS=http://elasticsearch-master:9200
+                        fi
+
+                        echo "[+] Installing or upgrading Fluent Bit..."
+                        if helm list -n logging | grep -q fluent-bit; then
+                            echo "Fluent Bit already installed. Skipping install."
+                        else
+                            helm upgrade --install fluent-bit fluent/fluent-bit \\
+                                --namespace logging \\
+                                --set backend.type=es \\
+                                --set backend.es.host=elasticsearch-master.logging.svc.cluster.local \\
+                                --set backend.es.port=9200
+                        fi
+                    """
+                }
+            }
+        }
+
         stage('Install ArgoCD') {
             steps {
                 script {
@@ -204,7 +259,7 @@ pipeline{
         stage('Add GitHub Webhook') {
             steps {
                 script {
-                    def webhookUrl = "http://your-jenkins-url/generic-webhook-trigger/invoke?token=ci-trigger"
+                    def webhookUrl = "http://your-jenkins-url/github-webhook/"
                     sh """
                         curl -X POST \
                         -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -213,7 +268,7 @@ pipeline{
                         -d '{
                         "name": "web",
                         "active": true,
-                        "events": ["push"],
+                        "events": ["push", "pull_request"],
                         "config": {
                             "url": "${webhookUrl}",
                             "content_type": "json",
