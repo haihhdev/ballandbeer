@@ -7,7 +7,7 @@ services=("order" "authen" "profile" "product" "booking")
 start_service() {
     local service=$1
     echo "Starting $service service..."
-    cd "$service" && npm start &
+    cd "$service" && npm install && npm start &
 }
 
 # Start all services
