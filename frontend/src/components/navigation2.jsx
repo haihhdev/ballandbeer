@@ -7,10 +7,19 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false); // For "Vi" dropdown
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false); // For profile dropdown
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
+  const [userProfile, setUserProfile] = useState({
+    avatar: "",
+    email: "",
+    fullname: "",
+  });
   const router = useRouter(); // Initialize router
 
   // Check login status on component mount
   useEffect(() => {
+    const profile = localStorage.getItem("userProfile");
+    if (profile) {
+      setUserProfile(JSON.parse(profile));
+    }
     const loggedInStatus = localStorage.getItem("isLoggedIn");
     if (loggedInStatus === "true") {
       setIsLoggedIn(true);
@@ -63,7 +72,7 @@ export default function Header() {
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 >
                   <img
-                    src="/images/avt.png"
+                    src={userProfile.avatar || "/images/avt.png"}
                     alt="Profile Avatar"
                     className="w-full h-full object-cover"
                   />
@@ -74,10 +83,10 @@ export default function Header() {
                   <div className="absolute top-12 right-2 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
                     <div className="p-4 border-b border-gray-200">
                       <h3 className="text-sm font-semibold text-gray-900">
-                        Someone Famous
+                        {userProfile.fullname || "Họ và Tên"}
                       </h3>
                       <span className="text-xs text-gray-500">
-                        j97@gmail.com
+                        {userProfile.email || "j97@gmail.com"}
                       </span>
                     </div>
                     <ul className="py-2">
