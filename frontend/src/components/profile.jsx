@@ -1,61 +1,15 @@
 "use client";
-import { useState, useEffect, useRef } from "react"; // Thêm useEffect và useRef
+import { useState, useEffect } from "react"; // Thêm useEffect vào đây
 import Link from "next/link";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("accountDetails");
   const [orderHistory, setOrderHistory] = useState([]); // State để lưu lịch sử đơn hàng
-  const [user, setUser] = useState({
-    email: "",
-    username: "",
-    fullname: "",
-    phone: "",
-    facebook: "",
-    address: "",
-    avatar: "",
-  });
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     // Lấy lịch sử đơn hàng từ localStorage
     const orders = JSON.parse(localStorage.getItem("orderHistory")) || [];
     setOrderHistory(orders);
-
-    // Lấy userId từ localStorage (giả định đã lưu sau khi login)
-    const userId = localStorage.getItem("userId");
-    console.log("userId from localStorage:", userId);
-    if (userId) {
-      fetch(`http://localhost:4004/api/profile/id/${userId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.data) {
-            setUser({
-              email: data.data.email || "",
-              username: data.data.username || "",
-              fullname: data.data.fullname || "",
-              phone: data.data.phone || "",
-              facebook: data.data.facebook || "",
-              address: data.data.address || "",
-              avatar: data.data.avatar || "",
-            });
-            // Lưu vào localStorage để navigation dùng
-            localStorage.setItem(
-              "userProfile",
-              JSON.stringify({
-                avatar: data.data.avatar || "",
-                email: data.data.email || "",
-                fullname: data.data.fullname || "",
-              })
-            );
-          }
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
   }, []);
 
   const handleClearHistory = () => {
@@ -63,87 +17,17 @@ export default function Profile() {
     localStorage.removeItem("orderHistory");
     setOrderHistory([]); // Cập nhật state để làm mới giao diện
   };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setUser((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setMessage("");
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      setMessage("Không tìm thấy userId!");
-      return;
-    }
-    try {
-      const res = await fetch(
-        `http://localhost:4004/api/profile/id/${userId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(user),
-        }
-      );
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Cập nhật thành công!");
-        // Cập nhật lại localStorage
-        localStorage.setItem(
-          "userProfile",
-          JSON.stringify({
-            ...user,
-            fullname: user.fullname || "",
-          })
-        );
-      } else {
-        setMessage(data.message || "Cập nhật thất bại!");
-      }
-    } catch (err) {
-      setMessage("Có lỗi xảy ra!");
-    }
-  };
-
-  // Xử lý upload avatar
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUser((prev) => ({ ...prev, avatar: reader.result })); // base64
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAvatarClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   return (
     <div className="flex flex-col md:flex-row bg-gray-100 min-h-screen p-6 mb-[30vh]">
       {/* Sidebar */}
       <div className="w-full md:w-1/4 bg-white rounded-lg shadow-md p-4">
         <div className="flex flex-col items-center">
           <img
-            src={user.avatar || "/images/j97.jpg"}
+            src="/images/j97.jpg"
             alt="Profile Avatar"
-            className="w-24 h-24 object-cover rounded-full mb-4 cursor-pointer"
-            onClick={handleAvatarClick}
+            className="w-24 h-24 object-cover rounded-full mb-4"
           />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            ref={fileInputRef}
-            style={{ display: "none" }}
-          />
-          <h2 className="text-lg font-semibold">
-            {user.fullname || "Họ và Tên"}
-          </h2>
+          <h2 className="text-lg font-semibold">Tên người dùng</h2>
         </div>
         <ul className="mt-6 space-y-4">
           <li>
@@ -204,94 +88,69 @@ export default function Profile() {
         {activeTab === "accountDetails" && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Tài khoản của tôi</h2>
-            {loading ? (
-              <p>Đang tải thông tin...</p>
-            ) : (
-              <form className="space-y-4" onSubmit={handleSave}>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    value={user.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Tên đăng nhập
-                  </label>
-                  <input
-                    type="text"
-                    name="username"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
-                    value={user.username}
-                    disabled
-                  />
-                </div>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue="support@profilepress.net"
+                />
+              </div>
+              <div className=" gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Họ Và Tên
                   </label>
                   <input
                     type="text"
-                    name="fullname"
                     className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    value={user.fullname}
-                    onChange={handleChange}
+                    defaultValue="John"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Số điện thoại
-                  </label>
-                  <input
-                    type="phone"
-                    name="phone"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    value={user.phone}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Facebook
-                  </label>
-                  <input
-                    type="url"
-                    name="facebook"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    value={user.facebook}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Địa chỉ
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    value={user.address}
-                    onChange={handleChange}
-                  />
-                </div>
-                {/* Save Info Button */}
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="bg-green-500 py-2 px-8 rounded-md hover:bg-green-700 text-white font-medium  shadow-md"
-                  >
-                    Lưu
-                  </button>
-                </div>
-                {message && <p className="text-green-600 mt-2">{message}</p>}
-              </form>
-            )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Số điện thoại
+                </label>
+                <input
+                  type="phone"
+                  className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue="0123 456 789"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Facebook
+                </label>
+                <input
+                  type="url"
+                  className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue="https://www.facebook.com/profilepress"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Địa chỉ
+                </label>
+                <input
+                  type="address"
+                  className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue="123 Main St, City, Country"
+                />
+              </div>
+              {/* Save Info Button */}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-green-500 py-2 px-8 rounded-md hover:bg-green-700 text-white font-medium  shadow-md"
+                >
+                  Lưu
+                </button>
+              </div>
+            </form>
           </div>
         )}
         {activeTab === "history" && (

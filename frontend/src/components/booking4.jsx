@@ -55,8 +55,7 @@ export default function Booking() {
   const fetchBookedSlots = async (date, fieldId) => {
     try {
       const response = await fetch(
-        //`/api/bookings/${fieldId}/${date}`,
-        `http://localhost:4001/api/bookings/${fieldId}/${date}`,
+        `/api/bookings/${fieldId}/${date}`,
         {
           method: "GET",
         }
@@ -79,7 +78,7 @@ export default function Booking() {
   const initBookingFields = async (date) => {
     try {
       const requests = courts.map((court) =>
-        fetch("http://localhost:4001/api/bookings/init", {
+        fetch("/api/bookings/init", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -144,7 +143,7 @@ export default function Booking() {
 
           console.log("Booking slot:", { fieldId, date, hours: [hour] });
 
-          return fetch("http://localhost:4001/api/bookings/book", {
+          return fetch("/api/bookings/book", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
