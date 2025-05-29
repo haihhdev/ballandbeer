@@ -23,7 +23,7 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:4000/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -39,22 +39,7 @@ export default function Login() {
       }
 
       const data = await response.json();
-      console.log("Login API response:", data);
-      if (data.data && data.data._id) {
-        localStorage.setItem("userId", data.data._id);
-        console.log("userId saved to localStorage:", data.data._id);
-        // Lưu thông tin user cho navigation
-        localStorage.setItem(
-          "userProfile",
-          JSON.stringify({
-            avatar: data.data.avatar || "",
-            email: data.data.email || "",
-            username: data.data.username || "",
-          })
-        );
-      } else {
-        console.log("userId not found in API response");
-      }
+      console.log("Login successful:", data);
 
       // Lưu token và trạng thái đăng nhập vào localStorage
       localStorage.setItem("token", data.token);
