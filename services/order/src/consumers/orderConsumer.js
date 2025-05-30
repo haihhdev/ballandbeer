@@ -1,8 +1,8 @@
 const createKafkaClient = require('../config/kafka');
-const kafka = createKafkaClient();                    
+const kafka = createKafkaClient();
+const orderService = require('../services/orderService'); 
 
 const consumer = kafka.consumer({ groupId: 'order-service-group' });
-
 
 const runOrderConsumer = async () => {
   await consumer.connect();

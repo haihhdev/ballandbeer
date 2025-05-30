@@ -7,20 +7,96 @@ export default function ShoppingCart() {
   const router = useRouter(); // Khởi tạo router
 
   useEffect(() => {
-    // Lấy giỏ hàng từ localStorage
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    setCartItems(cart);
+    const fetchCart = async () => {
+      const userToken = localStorage.getItem("token");
+      if (!userToken) return;
+
+      // Lấy tất cả order của user
+      const ordersRes = await fetch("http://localhost:4002/api/orders/my-orders", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const ordersData = await ordersRes.json();
+      const pendingOrder = ordersData.data.find(order => order.status === "pending");
+
+      if (!pendingOrder) {
+        setCartItems([]);
+        return;
+      }
+
+      // Lấy toàn bộ sản phẩm để map productId sang thông tin chi tiết
+      const productsRes = await fetch("http://localhost:4003/api/products");
+      const productsData = await productsRes.json();
+
+      // Map productId sang thông tin sản phẩm
+      const cartWithDetails = pendingOrder.products.map(item => {
+        const product = productsData.find(p => p._id === item.productId);
+        return {
+          id: item.productId,
+          name: product?.name || "Không tìm thấy",
+          price: product?.price || 0,
+          image: product?.image || "/images/default.jpg",
+          quantity: item.quantity,
+        };
+      });
+
+      setCartItems(cartWithDetails);
+    };
+
+    fetchCart();
   }, []);
 
-  const handleRemoveItem = (id) => {
-    const updatedCart = cartItems.filter((item) => item.id !== id);
-    setCartItems(updatedCart);
-    localStorage.setItem("cart", JSON.stringify(updatedCart)); // Cập nhật localStorage
+  // Lưu orderId pending để dùng khi xóa sản phẩm
+  const [pendingOrderId, setPendingOrderId] = useState(null);
+  useEffect(() => {
+    const userToken = localStorage.getItem("token");
+    if (!userToken) return;
+    fetch("http://localhost:4002/api/orders/my-orders", {
+      headers: { Authorization: `Bearer ${userToken}` },
+    })
+      .then(res => res.json())
+      .then(ordersData => {
+        const pendingOrder = ordersData.data.find(order => order.status === "pending");
+        if (pendingOrder) setPendingOrderId(pendingOrder._id);
+      });
+  }, []);
+
+  const handleRemoveItem = async (id) => {
+    // Xóa sản phẩm khỏi order pending trên server
+    const userToken = localStorage.getItem("token");
+    if (!userToken || !pendingOrderId) return;
+    // Lấy lại order pending
+    const ordersRes = await fetch("http://localhost:4002/api/orders/my-orders", {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    const ordersData = await ordersRes.json();
+    const pendingOrder = ordersData.data.find(order => order.status === "pending");
+    if (!pendingOrder) return;
+    const updatedProducts = pendingOrder.products.filter(item => item.productId !== id);
+    await fetch(`http://localhost:4002/api/orders/${pendingOrderId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userToken}`,
+      },
+      body: JSON.stringify({ products: updatedProducts, status: "pending" })
+    });
+    // Cập nhật lại cartItems
+    const productsRes = await fetch("http://localhost:4003/api/products");
+    const productsData = await productsRes.json();
+    const cartWithDetails = updatedProducts.map(item => {
+      const product = productsData.find(p => p._id === item.productId);
+      return {
+        id: item.productId,
+        name: product?.name || "Không tìm thấy",
+        price: product?.price || 0,
+        image: product?.image || "/images/default.jpg",
+        quantity: item.quantity,
+      };
+    });
+    setCartItems(cartWithDetails);
   };
 
   const handleCheckout = () => {
-    // Lưu thông tin giỏ hàng vào localStorage (hoặc có thể dùng context/api)
-    localStorage.setItem("checkoutCart", JSON.stringify(cartItems));
     // Điều hướng tới trang Checkout
     router.push("/checkout");
   };
