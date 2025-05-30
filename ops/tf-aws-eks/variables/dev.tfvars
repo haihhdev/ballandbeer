@@ -1,5 +1,5 @@
 aws_region = "us-east-1"
-aws_account_id = "211125526652"
+aws_account_id = "058264328640"
 vpc_name       = "eks-vpc"
 vpc_cidr       = "192.168.0.0/16"
 public_subnets = ["192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"]

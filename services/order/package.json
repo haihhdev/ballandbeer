@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
   "test": "echo \"Error: no test specified\" && exit 1",
-  "start": "concurrently \"node src/index.js\" \"node src/readServer.js\"",
-  "dev": "concurrently \"nodemon src/index.js\" \"nodemon src/readServer.js\""
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js"
   },
   "keywords": [],
   "author": "",

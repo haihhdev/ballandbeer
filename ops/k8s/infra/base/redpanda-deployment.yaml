@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda
+  template:
+    metadata:
+      labels:
+        app: redpanda
+    spec:
+      containers:
+      - name: redpanda
+        image: redpandadata/redpanda:latest
+        command:
+        - redpanda
+        args:
+        - start
+        - --overprovisioned
+        - --smp
+        - "1"
+        - --memory
+        - 1G
+        - --reserve-memory
+        - 0M
+        - --node-id
+        - "0"
+        - --check=false
+        - --kafka-addr
+        - PLAINTEXT://0.0.0.0:9092
+        - --advertise-kafka-addr
+        - PLAINTEXT://redpanda.default.svc.cluster.local:9092
+        ports:
+        - containerPort: 9092
+        - containerPort: 9644

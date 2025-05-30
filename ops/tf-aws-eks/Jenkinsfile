@@ -279,5 +279,23 @@ pipeline{
                 }
             }
         }
+
+        stage('Seed Vault Secrets') {
+            steps {
+                script {
+                sh '''
+                    kubectl exec vault -- sh -c '
+                    export VAULT_ADDR=http://127.0.0.1:8200 &&
+                    export VAULT_TOKEN=root &&
+                    vault kv put secret/order-service \
+                        KAFKA_BROKER= \
+                        MONGO_URI="" \
+                        PORT= \
+                        JWT_SECRET=
+                    '
+                '''
+                }
+            }
+            }
     }
 }
