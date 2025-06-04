@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter, usePathname } from "next/navigation"; // Import useRouter and usePathname
 
 export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false); // For "Vi" dropdown
@@ -13,6 +13,7 @@ export default function Header() {
     fullname: "",
   });
   const router = useRouter(); // Initialize router
+  const pathname = usePathname();
 
   // Check login status on component mount
   useEffect(() => {
@@ -36,16 +37,16 @@ export default function Header() {
   return (
     <header className="">
       {/* Navigation */}
-      <div className="top-0 left-0 w-full bg-gradient-to-b from-gray-950 to-blue-900">
-        <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <div className="top-0 left-0 w-full bg-[#f8f7f4]">
+        <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2">
           {/* Logo */}
           <a
             href="/"
-            className="flex items-center space-x-3 rtl:space-x-reverse -ml-32"
+            className="flex items-center space-x-3 rtl:space-x-reverse -ml-16"
           >
             <img
               src="/images/B&B.png"
-              className="h-16 md:h-20 lg:h-24"
+              className="h-12 md:h-16 lg:h-20"
               alt="Logo"
             />
           </a>
@@ -61,14 +62,14 @@ export default function Header() {
                       className="w-8 h-6\8 object-cover"
                     />
                     {/* Optional: Badge for cart item count */}
-                    <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-[#5c3613] text-xs font-bold rounded-full flex items-center justify-center">
                       5
                     </span>
                   </button>
                 </Link>
                 {/* Profile Avatar */}
                 <div
-                  className=" w-12 h-12 rounded-full overflow-hidden cursor-pointer border-2 border-gray-300"
+                  className="w-12 h-12 rounded-full overflow-hidden cursor-pointer border-2 border-gray-300"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 >
                   <img
@@ -132,7 +133,7 @@ export default function Header() {
                       <li>
                         <button
                           onClick={handleLogout} // Call handleLogout on click
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          className="flex items-center px-4 py-2 text-sm text-red-800 hover:bg-gray-100 w-full text-left"
                         >
                           <img
                             src="/images/logout.svg"
@@ -149,12 +150,14 @@ export default function Header() {
             ) : (
               <>
                 <Link href="/register">
-                  <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
+                  <button
+                    className={`border-2 ${"border-transparent text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613]"} font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300`}
+                  >
                     Đăng ký
                   </button>
                 </Link>
                 <Link href="/login">
-                  <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300">
+                  <button className="bg-[#a45d08] text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f09627] hover:text-[#5c3613] hover:scale-105 hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300">
                     Đăng nhập
                   </button>
                 </Link>
@@ -172,7 +175,7 @@ export default function Header() {
               <li className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-gray-50 hover:bg-gray-50/30"
+                  className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-[#5c3613] hover:bg-gray-50/30"
                 >
                   <img
                     src="/images/FlagVN.png"
@@ -207,7 +210,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative text-[#5c3613] hover:text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 ${
+                    pathname === "/"
+                      ? "after:w-full after:left-0 text-[#f09627] font-semibold"
+                      : "after:w-0 after:left-1/2 hover:after:w-full hover:after:left-0"
+                  }`}
                 >
                   Trang chủ
                 </Link>
@@ -215,7 +222,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/booking"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative text-[#5c3613] hover:text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 ${
+                    pathname === "/booking"
+                      ? "after:w-full after:left-0 text-[#f09627] font-semibold"
+                      : "after:w-0 after:left-1/2 hover:after:w-full hover:after:left-0"
+                  }`}
                 >
                   Đặt sân
                 </Link>
@@ -223,7 +234,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/products"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative text-[#5c3613] hover:text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 ${
+                    pathname === "/products"
+                      ? "after:w-full after:left-0 text-[#f09627] font-semibold"
+                      : "after:w-0 after:left-1/2 hover:after:w-full hover:after:left-0"
+                  }`}
                 >
                   Sản phẩm
                 </Link>
@@ -231,7 +246,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/contact"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative text-[#5c3613] hover:text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 ${
+                    pathname === "/contact"
+                      ? "after:w-full after:left-0 text-[#f09627] font-semibold"
+                      : "after:w-0 after:left-1/2 hover:after:w-full hover:after:left-0"
+                  }`}
                 >
                   Liên hệ
                 </Link>

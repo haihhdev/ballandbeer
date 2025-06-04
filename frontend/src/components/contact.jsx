@@ -2,134 +2,109 @@
 import { useState } from "react";
 
 export default function Contact() {
+  const [selected, setSelected] = useState("UX/ UI design");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    comment: "",
-    agree: false,
+    message: "",
   });
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-  };
+  const tags = [
+    "UX/ UI design",
+    "Web design",
+    "Design system",
+    "Graphic design",
+    "Other",
+  ];
 
   return (
-    <div className="flex flex-wrap md:flex-row gap-8 p-8 justify-evenly mb-[30vh]">
-      {/* Left Section */}
-      <div>
-        <h2 className="text-4xl font-bold mb-4 ">Liên hệ với chúng tôi</h2>
-        <div className="mb-4 flex items-center">
-          <img
-            src="/images/address.png"
-            alt="Phone Icon"
-            className="w-auto h-6 mr-2"
-          />
-          <div>
-            <p className="font-semibold">Địa chỉ</p>
-            <p>403, Port Washington Road, Canada.</p>
+    <div className="min-h-screen bg-[#c9730a] flex items-center justify-center py-8 px-2">
+      <div className="w-full max-w-6xl flex flex-col md:flex-row gap-8">
+        {/* Left */}
+        <div className="flex-1 flex flex-col justify-center text-white px-4">
+          <h1 className="text-4xl md:text-5xl font-bold mb-8 leading-tight">
+            Đặt sân – Mua sắm – Trải nghiệm
+            <span className="text-[#f1c43e]"> tuyệt vời</span>
+            <br />
+            cùng chúng tôi.
+          </h1>
+          <div className="flex items-center mb-4 text-[#f1c43e]">
+            <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded mr-3"></span>
+            <span className="text-white text-lg">andreaDesign@gmail.com</span>
           </div>
-        </div>
-
-        <div className="mb-4 flex items-center">
-          <img
-            src="/images/phone.jpg"
-            alt="Phone Icon"
-            className="w-auto h-6 mr-2"
-          />
-          <div>
-            <p className="font-semibold">Chi tiết liên hệ</p>
-            <p>+1 800-525-54-589</p>
+          <div className="flex items-center mb-4 text-[#f1c43e]">
+            <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded mr-3"></span>
+            <span className="text-white text-lg">+34 123 456 789</span>
           </div>
-        </div>
-        <div className="mb-4 flex items-center">
-          <img
-            src="/images/mail.jpg"
-            alt="Phone Icon"
-            className="w-auto h-6 mr-2"
-          />
-          <div>
-            <p className="font-semibold">Email</p>
-            <p>info@wdesignkit.com</p>
+          <div className="flex items-center mb-8 text-[#f1c43e]">
+            <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded mr-3"></span>
+            <span className="text-white text-lg">123 Street 487 House</span>
           </div>
-        </div>
-        <div>
-          <div className="flex gap-4 mt-2">
-            <p className="font-semibold">Theo dõi chúng tôi:</p>
-            <a href="#" aria-label="Facebook">
-              <img src="/images/fb.svg" alt="Facebook" className="w-6 h-6" />
+          <div className="flex space-x-6 mt-4 text-[#f1c43e] text-2xl">
+            <a href="#">
+              <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded"></span>
             </a>
-            <a href="#" aria-label="Instagram">
-              <img src="/images/ig.svg" alt="Instagram" className="w-6 h-6" />
+            <a href="#">
+              <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded"></span>
             </a>
-            <a href="#" aria-label="Linkedin">
-              <img src="/images/in.png" alt="Linkedin" className="w-6 h-6" />
+            <a href="#">
+              <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded"></span>
             </a>
           </div>
         </div>
-      </div>
-
-      {/* Right Section */}
-      <div className="flex-1 bg-gray-100 p-6 rounded-lg shadow-md max-w-1/3">
-        <h3 className="text-xl font-semibold mb-4 ">
-          Để lại thông tin của bạn.
-        </h3>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="text"
-            name="name"
-            placeholder="Tên của bạn"
-            value={formData.name}
-            onChange={handleChange}
-            className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Địa chỉ email"
-            value={formData.email}
-            onChange={handleChange}
-            className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <textarea
-            name="comment"
-            placeholder="Bình luận"
-            value={formData.comment}
-            onChange={handleChange}
-            rows="4"
-            className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="agree"
-              checked={formData.agree}
-              onChange={handleChange}
-              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-            />
-            <label className="text-sm">
-              Bạn đồng ý với{" "}
-              <a href="#" className="text-indigo-600 underline">
-                chính sách bảo mật
-              </a>{" "}
-              của chúng tôi.
-            </label>
+        {/* Right */}
+        <div className="flex-1 bg-white rounded-2xl shadow-lg p-8 max-w-xl mx-auto">
+          <div className="mb-4 font-semibold text-[#5c3613]">
+            I'm interested in:
           </div>
-          <button
-            type="submit"
-            className="bg-gradient-to-r from-green-400 to-lime-400 py-3 px-6 rounded-md hover:from-green-500 hover:to-lime-500 transition"
-          >
-            Gửi tin nhắn →
-          </button>
-        </form>
+          <div className="flex flex-wrap gap-3 mb-6">
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setSelected(tag)}
+                className={`px-4 py-2 rounded-full border transition-all ${
+                  selected === tag
+                    ? "bg-[#f1c43e] text-white border-[#f1c43e]"
+                    : "border-[#5c3613] text-[#5c3613] bg-white hover:bg-[#f1c43e]/30"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+          <form className="space-y-6">
+            <div>
+              <label className="block text-[#5c3613] font-semibold mb-1">
+                Your name
+              </label>
+              <input
+                type="text"
+                className="w-full border-0 border-b-2 border-[#f1c43e] focus:ring-0 focus:border-[#f1c43e] text-[#0d3d4b] placeholder-gray-400 py-2"
+                placeholder="Enter your name..."
+              />
+            </div>
+            <div>
+              <input
+                type="email"
+                className="w-full border-0 border-b border-gray-300 focus:ring-0 focus:border-[#2ec4b6] text-[#0d3d4b] placeholder-gray-400 py-2"
+                placeholder="email@gmail.com"
+              />
+            </div>
+            <div>
+              <textarea
+                className="w-full border border-gray-300 rounded-lg focus:ring-0 focus:border-[#2ec4b6] text-[#0d3d4b] placeholder-gray-400 py-2 px-3 min-h-[90px]"
+                placeholder="Your message"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-[#5c3613] text-white rounded-full py-3 text-lg font-semibold mt-2 hover:bg-[#f1c43e] transition"
+            >
+              Send message
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

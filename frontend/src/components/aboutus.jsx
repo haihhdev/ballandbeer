@@ -2,7 +2,7 @@
 
 export default function AboutUs() {
   return (
-    <section className="bg-white py-12 px-6 text-black">
+    <section className="bg-[#f8f7f4] py-12 px-6 text-[#5c3613]">
       <div className="max-w-screen-lg mx-auto flex flex-col items-center">
         {/* Title Section */}
         <h1 className="text-3xl md:text-6xl font-bold mb-4 text-center">

@@ -4,7 +4,8 @@ import Link from "next/link";
 
 export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Check login status on component mount
   useEffect(() => {
@@ -14,8 +15,15 @@ export default function Header() {
     }
   }, []);
 
+  // Add scroll event listener
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setIsScrolled(scrollPosition > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleLogout = () => {
@@ -25,32 +33,60 @@ export default function Header() {
   };
 
   return (
-    <header className="relative bg-cover bg-center h-screen">
+    <header className="relative h-screen overflow-hidden">
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute top-0 left-0 w-full h-full object-cover"
+      >
+        <source src="/Football.mp4" type="video/mp4" />
+      </video>
+
       {/* Centered Text */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center text-white h-full px-4">
-        <h1 className="text-4xl md:text-6xl font-bold mb-4">
-          TRANG WEB ĐẶT SÂN HÀNG ĐẦU VIỆT NAM
+      <div className="relative z-20 flex flex-col items-center justify-center text-center text-[#f8f7f4] h-full px-4">
+        <h1 className="text-5xl  font-bold mb-4">
+          Nền tảng đặt sân & mua sắm thể thao hàng đầu Việt Nam.
         </h1>
         <p className="text-lg md:text-xl mb-6">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua.
+          Đặt sân nhanh, mua đồ chất, đốt cháy đam mê bóng đá ngay hôm nay!
         </p>
-        <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded hover:from-green-500 hover:to-lime-500 hover:shadow-xl hover:scale-105 transition-transform duration-300">
+        <button
+          onClick={() => {
+            const navHeight = 72; // chiều cao navigation sticky (px)
+            const gallery = document.getElementById("gallery");
+            if (gallery) {
+              const y =
+                gallery.getBoundingClientRect().top +
+                window.pageYOffset -
+                navHeight -
+                24; // cách ra 24px
+              window.scrollTo({ top: y, behavior: "smooth" });
+            }
+          }}
+          className="bg-[#a45d08] text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f09627] hover:text-[#5c3613] hover:scale-105 hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300"
+        >
           Xem thêm
         </button>
       </div>
 
       {/* Navigation */}
-      <div className="absolute top-0 left-0 w-full z-20">
-        <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <div
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+          isScrolled ? "bg-[#f8f7f4] shadow-md" : "bg-transparent"
+        }`}
+      >
+        <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2">
           {/* Logo */}
           <a
             href="/"
-            className="flex items-center space-x-3 rtl:space-x-reverse -ml-32"
+            className="flex items-center space-x-3 rtl:space-x-reverse -ml-16"
           >
             <img
               src="/images/B&B.png"
-              className="h-16 md:h-20 lg:h-24"
+              className="h-12 md:h-16 lg:h-20"
               alt="Logo"
             />
           </a>
@@ -58,13 +94,23 @@ export default function Header() {
             {isLoggedIn ? (
               <>
                 <Link href="/profile">
-                  <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
+                  <button
+                    className={`border-2 ${
+                      isScrolled
+                        ? "border-[#5c3613] text-[#5c3613]"
+                        : "border-transparent text-[#f8f7f4] bg-[#f09627]"
+                    } font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#a45d08] hover:scale-105 hover:text-[#f8f7f4] hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300`}
+                  >
                     Hồ sơ
                   </button>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300"
+                  className={`border-2 ${
+                    isScrolled
+                      ? "border-[#5c3613] text-[#5c3613]"
+                      : "border-transparent text-[#f8f7f4] bg-[#f09627]"
+                  } font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#a45d08] hover:scale-105 hover:text-[#f8f7f4] hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300`}
                 >
                   Đăng xuất
                 </button>
@@ -72,12 +118,18 @@ export default function Header() {
             ) : (
               <>
                 <Link href="/register">
-                  <button className="border-2 bg-transparent text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-gray-50/30 hover:scale-105 transition-transform duration-300">
+                  <button
+                    className={`border-2 ${
+                      isScrolled
+                        ? "border-[#5c3613] text-[#5c3613] hover:text-[#f8f7f4]"
+                        : "border-transparent text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613]"
+                    } font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300`}
+                  >
                     Đăng ký
                   </button>
                 </Link>
                 <Link href="/login">
-                  <button className="bg-gradient-to-r from-green-400 to-lime-400 text-white font-medium py-2 px-4 rounded-full shadow-lg hover:from-green-500 hover:to-lime-500 hover:scale-105 transition-transform duration-300">
+                  <button className="bg-[#a45d08] text-white font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f09627] hover:text-[#5c3613] hover:scale-105 hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300">
                     Đăng nhập
                   </button>
                 </Link>
@@ -95,7 +147,9 @@ export default function Header() {
               <li className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-gray-50 hover:bg-gray-50/30"
+                  className={`flex items-center space-x-2 p-4 rounded-sm bg-transparent ${
+                    isScrolled ? "text-[#5c3613]" : "text-[#f8f7f4]"
+                  } hover:bg-gray-50/30  transition-all duration-300`}
                 >
                   <img
                     src="/images/FlagVN.png"
@@ -130,7 +184,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative ${
+                    isScrolled
+                      ? "text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:w-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 after:w-full after:left-0"
+                      : "text-[#f8f7f4] hover:bg-gray-50/30 transition-all duration-200"
+                  }`}
                 >
                   Trang chủ
                 </Link>
@@ -138,7 +196,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/booking"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative ${
+                    isScrolled
+                      ? "text-[#5c3613] after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:w-0 after:h-0.5 after:bg-[#5c3613] after:transition-all after:duration-300 hover:after:w-full hover:after:left-0"
+                      : "text-[#f8f7f4] hover:bg-gray-50/30 transition-all duration-200"
+                  }`}
                 >
                   Đặt sân
                 </Link>
@@ -146,7 +208,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/products"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative ${
+                    isScrolled
+                      ? "text-[#5c3613] after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:w-0 after:h-0.5 after:bg-[#5c3613] after:transition-all after:duration-300 hover:after:w-full hover:after:left-0"
+                      : "text-[#f8f7f4] hover:bg-gray-50/30 transition-all duration-200"
+                  }`}
                 >
                   Sản phẩm
                 </Link>
@@ -154,7 +220,11 @@ export default function Header() {
               <li>
                 <Link
                   href="/contact"
-                  className="block p-4 rounded-sm bg-transparent md:text-gray-50 md: hover:bg-gray-50/30 "
+                  className={`block p-4 bg-transparent relative ${
+                    isScrolled
+                      ? "text-[#5c3613] after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:w-0 after:h-0.5 after:bg-[#5c3613] after:transition-all after:duration-300 hover:after:w-full hover:after:left-0"
+                      : "text-[#f8f7f4] hover:bg-gray-50/30 transition-all duration-200"
+                  }`}
                 >
                   Liên hệ
                 </Link>

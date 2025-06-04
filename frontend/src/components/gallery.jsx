@@ -35,7 +35,7 @@ export default function ImageTrack() {
   };
 
   const images = [
-    "/images/gal_yard.jpg",
+    "/images/homebg.jpg",
     "/images/gal_clothes.jpg",
     "/images/gal_boots.jpg",
     "/images/gal_food.jpg",
@@ -43,7 +43,8 @@ export default function ImageTrack() {
 
   return (
     <div
-      className="h-screen w-screen bg-black overflow-hidden relative mt-8 p-4 box-border"
+      id="gallery"
+      className="h-screen w-screen bg-black overflow-hidden relative mt-8 p-4 box-border pt-32 md:pt-40"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
