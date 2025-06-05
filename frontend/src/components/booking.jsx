@@ -11,7 +11,7 @@ export default function Booking() {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-6 h-screen mb-[35vh] relative mt-[4vh]">
+    <div className="grid grid-cols-2 gap-6 h-screen  relative mt-[4vh] bg-[#f8f7f4]">
       {/* Left Button */}
       <button
         className="relative w-full h-full bg-cover bg-center hover:opacity-80 hover:scale-105 p-4 transition-transform duration-300"

@@ -261,7 +261,7 @@ export default function Booking() {
   }, [currentDate, isCalendarOpen]);
 
   return (
-    <div className="p-4 bg-green-700 text-green mb-[35vh]">
+    <div className="p-4 bg-[#f8f7f4] text-green ">
       <h1 className="text-lg text-3xl font-bold mb-4">Đặt lịch sân</h1>
 
       {/* Date Picker */}

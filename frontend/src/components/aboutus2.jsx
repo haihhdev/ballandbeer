@@ -25,7 +25,11 @@ export default function AboutUs() {
           <div className="md:w-1/2 w-full flex flex-col space-y-6">
             {/* 1 */}
             <div className="flex items-start space-x-3">
-              <span className="text-[#f1c43e] text-sm mt-1">⭐</span>
+              <img
+                src="/icons/medal.svg"
+                alt="medal"
+                className="w-7 h-7 mt-1"
+              />
               <div>
                 <div className="font-bold text-[#5c3613] text-xl">
                   Sân Chuẩn Chất Lượng
@@ -39,7 +43,11 @@ export default function AboutUs() {
             </div>
             {/* 2 */}
             <div className="flex items-start space-x-3">
-              <span className="text-[#f1c43e] text-sm mt-1">●</span>
+              <img
+                src="/icons/shield.svg"
+                alt="shield"
+                className="w-7 h-7 mt-1"
+              />
               <div>
                 <div className="font-bold text-[#5c3613] text-xl">
                   An Toàn Là Trên Hết
@@ -53,7 +61,11 @@ export default function AboutUs() {
             </div>
             {/* 3 */}
             <div className="flex items-start space-x-3">
-              <span className="text-[#f1c43e] text-sm mt-1">📱</span>
+              <img
+                src="/icons/clock.svg"
+                alt="clock"
+                className="w-7 h-7 mt-1"
+              />
               <div>
                 <div className="font-bold text-[#5c3613] text-xl">
                   Đặt Sân Nhanh Chóng
@@ -67,7 +79,11 @@ export default function AboutUs() {
             </div>
             {/* 4 */}
             <div className="flex items-start space-x-3">
-              <span className="text-[#f1c43e] text-sm mt-1">⏰</span>
+              <img
+                src="/icons/headphone.svg"
+                alt="clock"
+                className="w-7 h-7 mt-1"
+              />
               <div>
                 <div className="font-bold text-[#5c3613] text-xl">
                   Hỗ Trợ 24/7

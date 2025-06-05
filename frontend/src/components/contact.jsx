@@ -18,10 +18,10 @@ export default function Contact() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#c9730a] flex items-center justify-center py-8 px-2">
+    <div className="min-h-screen bg-[url('/images/contactbg.png')] bg-cover bg-center flex items-center justify-center py-8 px-2">
       <div className="w-full max-w-6xl flex flex-col md:flex-row gap-8">
         {/* Left */}
-        <div className="flex-1 flex flex-col justify-center text-white px-4">
+        <div className="flex-1 flex flex-col justify-center text-[#5c3613] px-4">
           <h1 className="text-4xl md:text-5xl font-bold mb-8 leading-tight">
             Đặt sân – Mua sắm – Trải nghiệm
             <span className="text-[#f1c43e]"> tuyệt vời</span>
@@ -29,26 +29,38 @@ export default function Contact() {
             cùng chúng tôi.
           </h1>
           <div className="flex items-center mb-4 text-[#f1c43e]">
-            <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded mr-3"></span>
-            <span className="text-white text-lg">andreaDesign@gmail.com</span>
+            <img src="/icons/mail.svg" alt="email" className="w-6 h-6 mr-3" />
+            <span className="text-[#5c3613] text-lg">
+              ballandbeer@gmail.com
+            </span>
           </div>
           <div className="flex items-center mb-4 text-[#f1c43e]">
-            <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded mr-3"></span>
-            <span className="text-white text-lg">+34 123 456 789</span>
+            <img src="/icons/phone.svg" alt="phone" className="w-6 h-6 mr-3" />
+            <span className="text-[#5c3613] text-lg">+84 909 090 909</span>
           </div>
           <div className="flex items-center mb-8 text-[#f1c43e]">
-            <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded mr-3"></span>
-            <span className="text-white text-lg">123 Street 487 House</span>
+            <img
+              src="/icons/address.svg"
+              alt="address"
+              className="w-6 h-6 mr-3"
+            />
+            <span className="text-[#5c3613] text-lg">
+              Tòa nhà Bitexco, Hồ Chí Minh
+            </span>
           </div>
           <div className="flex space-x-6 mt-4 text-[#f1c43e] text-2xl">
             <a href="#">
-              <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded"></span>
+              <img
+                src="/icons/facebook.svg"
+                alt="facebook"
+                className="w-8 h-8"
+              />
             </a>
             <a href="#">
-              <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded"></span>
+              <img src="/icons/github.svg" alt="github" className="w-8 h-8" />
             </a>
             <a href="#">
-              <span className="inline-block w-6 h-6 bg-[#f1c43e] rounded"></span>
+              <img src="/icons/youtube.svg" alt="youtube" className="w-8 h-8" />
             </a>
           </div>
         </div>
@@ -87,7 +99,7 @@ export default function Contact() {
             <div>
               <input
                 type="email"
-                className="w-full border-0 border-b border-gray-300 focus:ring-0 focus:border-[#2ec4b6] text-[#0d3d4b] placeholder-gray-400 py-2"
+                className="w-full border-0 border-b-2 border-[#f1c43e] focus:ring-0 focus:border-[#2ec4b6] text-[#0d3d4b] placeholder-gray-400 py-2"
                 placeholder="email@gmail.com"
               />
             </div>
