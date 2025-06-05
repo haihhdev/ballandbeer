@@ -86,7 +86,7 @@ export default function Product2() {
       : products.filter((product) => product.category === selectedCategory);
 
   return (
-    <div className="p-4 mb-[35vh]">
+    <div className="p-4 mb-[35vh] bg-[#f8f7f4]">
       {/* Categories and Search Form Container */}
       <div className="flex flex-wrap items-center justify-evenly py-4 md:py-8">
         {/* Categories Buttons */}

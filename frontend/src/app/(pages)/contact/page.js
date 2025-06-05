@@ -5,8 +5,6 @@ export default function Home() {
     <div>
       {/* Contact Section */}
       <Contact />
-      {/* Shopping Cart Section */}
-      <ShoppingCart />
     </div>
   );
 }

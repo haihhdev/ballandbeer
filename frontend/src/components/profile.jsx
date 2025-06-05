@@ -124,7 +124,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row bg-gray-100 min-h-screen p-6 mb-[30vh]">
+    <div className="flex flex-col md:flex-row bg-[url('/images/contactbg.png')] bg-cover bg-center bg-gray-100 min-h-screen p-6">
       {/* Sidebar */}
       <div className="w-full md:w-1/4 bg-white rounded-lg shadow-md p-4">
         <div className="flex flex-col items-center">

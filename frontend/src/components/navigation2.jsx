@@ -37,7 +37,7 @@ export default function Header() {
   return (
     <header className="">
       {/* Navigation */}
-      <div className="top-0 left-0 w-full bg-[#f8f7f4]">
+      <div className="top-0 left-0 w-full bg-[#f8f7f4] drop-shadow-md">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2">
           {/* Logo */}
           <a
