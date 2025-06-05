@@ -42,7 +42,7 @@ export default function Header() {
         playsInline
         className="absolute top-0 left-0 w-full h-full object-cover"
       >
-        <source src="/Football.mp4" type="video/mp4" />
+        <source src="/videos/Football.mp4" type="video/mp4" />
       </video>
 
       {/* Centered Text */}
