@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -10,6 +11,7 @@ export default function Register() {
     confirmPassword: "",
     terms: false,
   });
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -56,11 +58,11 @@ export default function Register() {
   };
 
   return (
-    <section className="bg-[url(/images/logbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900 mb-[30vh]">
-      <div className="flex items-center justify-center min-h-screen px-6 py-8 mx-auto">
-        <div className="w-full lg:max-w-xl p-8 space-y-8 sm:p-8 bg-white/20 rounded-lg backdrop-blur-[2px] shadow-xl/30">
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-gray-50/80 md:text-2xl dark:text-white text-center">
-            ⚽Tạo tài khoản🍺
+    <section className="bg-[url(/images/beerbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen px-8 py-8 mx-auto xl:-ml-[50vh]">
+        <div className="w-full lg:max-w-xl p-8 space-y-8 sm:p-8 bg-white/20 rounded-lg backdrop-blur-[2px] shadow-xl/30 mb-24">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-[#f09627]  dark:text-white text-center">
+            Tạo tài khoản
           </h1>
           <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -68,7 +70,7 @@ export default function Register() {
                 type="email"
                 name="email"
                 id="email"
-                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                className="bg-transparent border-b-2 border-b-[#fde290] text-white text-sm block w-full p-2.5 focus:outline-none focus:border-[#f1c43e]"
                 placeholder="Email"
                 required
                 value={form.email}
@@ -80,7 +82,7 @@ export default function Register() {
                 type="text"
                 name="username"
                 id="username"
-                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                className="bg-transparent border-b-2 border-b-[#fde290] text-white text-sm block w-full p-2.5 focus:outline-none focus:border-[#f1c43e]"
                 placeholder="Tên đăng nhập"
                 required
                 value={form.username}
@@ -92,7 +94,7 @@ export default function Register() {
                 type="password"
                 name="password"
                 id="password"
-                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                className="bg-transparent border-b-2 border-b-[#fde290] text-white text-sm block w-full p-2.5 focus:outline-none focus:border-[#f1c43e]"
                 placeholder="Mật khẩu"
                 required
                 value={form.password}
@@ -104,7 +106,7 @@ export default function Register() {
                 type="password"
                 name="confirmPassword"
                 id="confirm-password"
-                className="bg-transparent border-b-2 border-b-green-200 text-white text-sm block w-full p-2.5 focus:outline-none focus:border-green-300"
+                className="bg-transparent border-b-2 border-b-[#fde290] text-white text-sm block w-full p-2.5 focus:outline-none focus:border-[#f1c43e]"
                 placeholder="Nhập lại mật khẩu"
                 required
                 value={form.confirmPassword}
@@ -131,7 +133,7 @@ export default function Register() {
                 >
                   Tôi đồng ý{" "}
                   <a
-                    className="font-medium text-emerald-400 hover:text-lime-500 hover:underline"
+                    className="font-medium text-[#f09627] hover:text-[#f1c43e] hover:underline"
                     href="#"
                   >
                     Điều khoản và điều kiện
@@ -142,7 +144,7 @@ export default function Register() {
             <div className="flex justify-center">
               <button
                 type="submit"
-                className="w-full px-[28vh] py-3 text-base font-medium text-center text-white bg-green-500 py-2 px-4 rounded-md hover:bg-green-700 focus:ring-4 focus:ring-blue-300 sm:w-auto"
+                className="w-full text-base font-medium text-center text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300 py-2 px-4 rounded-md focus:ring-4 focus:ring-blue-300 "
               >
                 Tạo tài khoản
               </button>
@@ -150,8 +152,12 @@ export default function Register() {
             <p className="text-sm font-light text-gray-50 dark:text-white">
               Đã có tài khoản?{" "}
               <a
-                href="#"
-                className="text-emerald-400 hover:text-lime-500 hover:underline dark:text-blue-500"
+                href="/login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push("/login");
+                }}
+                className="text-[#f09627] hover:text-[#f1c43e] hover:underline dark:text-blue-500"
               >
                 Đăng nhập tại đây
               </a>
