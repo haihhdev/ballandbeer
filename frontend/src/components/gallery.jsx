@@ -34,8 +34,35 @@ export default function ImageTrack() {
     setPrevPercentage(percentage);
   };
 
+  const handleTouchStart = (e) => {
+    setMouseDownAt(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    if (mouseDownAt === 0) return;
+
+    const mouseDelta = mouseDownAt - e.touches[0].clientX;
+    const maxDelta = window.innerWidth;
+    let nextPercentage = prevPercentage + (mouseDelta / maxDelta) * -100;
+
+    nextPercentage = Math.max(Math.min(nextPercentage, 0), -75);
+    setPercentage(nextPercentage);
+
+    const track = trackRef.current;
+    track.style.transform = `translate(${nextPercentage}%, -50%)`;
+
+    Array.from(track.getElementsByClassName("image")).forEach((image) => {
+      image.style.objectPosition = `${100 + nextPercentage}% 50%`;
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setMouseDownAt(0);
+    setPrevPercentage(percentage);
+  };
+
   const images = [
-    "/images/homebg.jpg",
+    "/images/gal_book.jpg",
     "/images/gal_clothes.jpg",
     "/images/gal_boots.jpg",
     "/images/gal_food.jpg",
@@ -44,19 +71,23 @@ export default function ImageTrack() {
   return (
     <div
       id="gallery"
-      className="h-screen w-screen bg-black overflow-hidden relative mt-8 p-4 box-border pt-32 md:pt-40"
+      className="xl:h-screen lg:h-screen h-[36rem] w-screen overflow-hidden relative p-4 box-border xl:pt-4 select-none"
+      style={{ background: "linear-gradient(to right, #000000, #4a4a4a)" }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div
         ref={trackRef}
-        className="absolute flex gap-12 left-1/3 top-1/2 transform -translate-y-1/2 justify-center"
+        className="absolute flex gap-4 xl:gap-12 left-[2rem] xl:left-1/4 top-1/2 transform -translate-y-1/2 lg:mt-20 xl:mt-0"
         style={{ transform: "translate(0%, -50%)" }}
       >
         {images.map((src, index) => {
-          const buttonTexts = ["Đặt Sân", "Quần Áo", "Giày", "Đặt Món"];
+          const buttonTexts = ["ĐẶT SÂN", "QUẦN ÁO", "GIÀY", "ĐẶT MÓN"];
           const buttonLinks = [
             "/booking",
             "/products",
@@ -67,22 +98,25 @@ export default function ImageTrack() {
           return (
             <div
               key={index}
-              className="relative w-[80vmin] h-[56vmin] group user-select-none"
+              className="relative w-[80vmin] h-[56vmin] group user-select-none select-none xl:pt-1 mb-[10vh] xl:mb-0"
               onContextMenu={(e) => e.preventDefault()}
             >
               <img
                 src={src}
                 alt={`Image ${index + 1}`}
-                className="image w-[80vmin] h-[56vmin] object-cover object-[100%_50%] cursor-pointer transition-transform duration-300 group-hover:scale-110 user-select-none mt-[10vh]" // Prevent image selection
+                className="image w-[80vmin] h-[56vmin] object-cover object-[100%_50%] cursor-pointer transition-transform duration-300 user-select-none mt-[4rem]" // Prevent image selection
                 draggable="false"
                 onDragStart={(e) => e.preventDefault()}
               />
               <a
                 href={buttonLinks[index]}
-                className="relative bottom-16 left-110 bg-transparent border border-white text-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-white hover:text-black group-hover:scale-125 rounded-sm scale-110"
+                className="relative bottom-[4rem] left-[2rem] bg-transparent border font-semibold border-[#f8f7f4] text-[#f8f7f4] px-3 py-2 xl:px-6 xl:py-4 text-sm transition-colors duration-300 hover:bg-[#f8f7f4] hover:text-[#5c3613] active:bg-[#f8f7f4] active:text-[#5c3613] select-none"
               >
-                {buttonTexts[index]}
+                XEM THÊM
               </a>
+              <div className="absolute top-[5rem] left-[2rem] z-10 text-[#f8f7f4] font-semibold text-4xl xl:text-5xl xl:mt-2 tracking-tight drop-shadow-lg select-none">
+                {buttonTexts[index]}
+              </div>
             </div>
           );
         })}
