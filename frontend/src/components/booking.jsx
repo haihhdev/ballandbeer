@@ -1,38 +1,84 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRef } from "react";
 
 export default function Booking() {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const router = useRouter(); // Initialize useRouter
+  const leftVideoRef = useRef(null);
+  const rightVideoRef = useRef(null);
 
-  const handleNavigation = (fieldType) => {
-    router.push(`/bookinginfo?field=${fieldType}`); // Navigate with query parameter
-  };
+  // Play video on hover, pause on mouse leave
+  const handleMouseEnter = (ref) => ref.current && ref.current.play();
+  const handleMouseLeave = (ref) => ref.current && ref.current.pause();
 
   return (
-    <div className="grid grid-cols-2 gap-6 h-screen  relative mt-[4vh] bg-[#f8f7f4]">
-      {/* Left Button */}
-      <button
-        className="relative w-full h-full bg-cover bg-center hover:opacity-80 hover:scale-105 p-4 transition-transform duration-300"
-        style={{ backgroundImage: "url('/images/san7.webp')" }}
-        onClick={() => handleNavigation("san5")} // Navigate to bookinginfo with field=san5
+    <div className="grid grid-cols-2 h-screen w-screen bg-black relative overflow-hidden">
+      {/* Left Video */}
+      <div
+        className="relative group cursor-pointer"
+        onMouseEnter={() => handleMouseEnter(leftVideoRef)}
+        onMouseLeave={() => handleMouseLeave(leftVideoRef)}
       >
-        <div className="absolute bottom-16 inset-x-0 text-center text-white text-4xl font-bold">
-          Sân 5
+        <video
+          ref={leftVideoRef}
+          src="/videos/cr7.mp4"
+          className="w-full h-full object-cover"
+          loop
+          muted
+          preload="auto"
+          playsInline
+        />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition duration-300" />
+        {/* Text & Button */}
+        <div className="absolute bottom-20 left-0 w-full text-center z-10">
+          <div className="text-white text-3xl md:text-4xl font-serif font-bold mb-4 drop-shadow-lg">
+            Sân 7
+          </div>
+          <a
+            href="/bookinginfo?field=san7"
+            className="inline-block px-6 py-2 border border-white text-white text-lg font-semibold hover:bg-white hover:text-black transition"
+          >
+            Đặt sân
+          </a>
         </div>
-      </button>
+      </div>
 
-      {/* Right Button */}
-      <button
-        className="relative w-full h-full bg-cover bg-center hover:opacity-80 hover:scale-105 p-4 transition-transform duration-300"
-        style={{ backgroundImage: "url('/images/san5.jpg')" }}
-        onClick={() => handleNavigation("san7")} // Navigate to bookinginfo with field=san7
+      {/* Right Video */}
+      <div
+        className="relative group cursor-pointer"
+        onMouseEnter={() => handleMouseEnter(rightVideoRef)}
+        onMouseLeave={() => handleMouseLeave(rightVideoRef)}
       >
-        <div className="absolute bottom-16 inset-x-0 text-center text-white text-4xl font-bold">
-          Sân 7
+        <video
+          ref={rightVideoRef}
+          src="/videos/messi.mp4"
+          className="w-full h-full object-cover"
+          loop
+          muted
+          preload="auto"
+          playsInline
+        />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition duration-300" />
+        {/* Text & Button */}
+        <div className="absolute bottom-20 left-0 w-full text-center z-10">
+          <div className="text-white text-3xl md:text-4xl font-serif font-bold mb-4 drop-shadow-lg">
+            Sân 5
+          </div>
+          <a
+            href="/bookinginfo?field=san5"
+            className="inline-block px-6 py-2 border border-white text-white text-lg font-semibold hover:bg-white hover:text-black transition"
+          >
+            Đặt sân
+          </a>
         </div>
-      </button>
+      </div>
+
+      {/* Center Logo/Text */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none text-center">
+        <span className="text-white text-6xl md:text-8xl font-serif font-bold opacity-90 leading-none">
+          B&B
+        </span>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation"; // Import useRouter and usePathname
+import Portal from "./Portal";
 
 export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false); // For "Vi" dropdown
@@ -37,7 +38,7 @@ export default function Header() {
   return (
     <header className="">
       {/* Navigation */}
-      <div className="top-0 left-0 w-full bg-[#f8f7f4] drop-shadow-md">
+      <div className="top-0 left-0 w-full bg-[#f8f7f4] drop-shadow-md z-[9999]">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2">
           {/* Logo */}
           <a
@@ -52,7 +53,7 @@ export default function Header() {
           </a>
           <div className="flex items-center md:order-2 space-x-3 rtl:space-x-reverse">
             {isLoggedIn ? (
-              <div className="relative flex items-center space-x-4 rtl:space-x-reverse">
+              <div className="relative flex items-center space-x-4 rtl:space-x-reverse z-[9999]">
                 {/* Cart Button */}
                 <Link href="/shoppingcart">
                   <button className="relative flex items-center object-cover justify-center w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 shadow-md">
@@ -81,70 +82,72 @@ export default function Header() {
 
                 {/* Profile Dropdown Menu */}
                 {profileDropdownOpen && (
-                  <div className="absolute top-12 right-2 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
-                    <div className="p-4 border-b border-gray-200">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        {userProfile.fullname || "Họ và Tên"}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        {userProfile.email || "j97@gmail.com"}
-                      </span>
+                  <Portal>
+                    <div className="fixed top-[5.5rem] right-8 w-48 bg-white rounded-lg shadow-lg z-[99999]">
+                      <div className="p-4 border-b border-gray-200">
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {userProfile.fullname || "Họ và Tên"}
+                        </h3>
+                        <span className="text-xs text-gray-500">
+                          {userProfile.email || "j97@gmail.com"}
+                        </span>
+                      </div>
+                      <ul className="py-2">
+                        <li>
+                          <a
+                            href="/profile"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <img
+                              src="/images/avt.svg"
+                              alt="My Profile"
+                              className="w-4 h-4 mr-2"
+                            />
+                            Tài khoản của tôi
+                          </a>
+                        </li>
+                        <li>
+                          <a
+                            href="#"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <img
+                              src="/images/setting.svg"
+                              alt="Settings"
+                              className="w-4 h-4 mr-2"
+                            />
+                            Cài đặt
+                          </a>
+                        </li>
+                        <li>
+                          <a
+                            href="#"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <img
+                              src="/images/help.svg"
+                              alt="Help"
+                              className="w-4 h-4 mr-2"
+                            />
+                            Trợ giúp
+                          </a>
+                        </li>
+                        <li>
+                          <button
+                            onClick={handleLogout} // Call handleLogout on click
+                            className="flex items-center px-4 py-2 text-sm text-red-800 hover:bg-gray-100 w-full text-left"
+                          >
+                            <img
+                              src="/images/logout.svg"
+                              alt="Logout"
+                              className="w-4 h-4 mr-2"
+                            />
+                            Đăng xuất
+                          </button>
+                        </li>
+                      </ul>
                     </div>
-                    <ul className="py-2">
-                      <li>
-                        <a
-                          href="/profile"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          <img
-                            src="/images/avt.svg"
-                            alt="My Profile"
-                            className="w-4 h-4 mr-2"
-                          />
-                          Tài khoản của tôi
-                        </a>
-                      </li>
-                      <li>
-                        <a
-                          href="#"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          <img
-                            src="/images/setting.svg"
-                            alt="Settings"
-                            className="w-4 h-4 mr-2"
-                          />
-                          Cài đặt
-                        </a>
-                      </li>
-                      <li>
-                        <a
-                          href="#"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          <img
-                            src="/images/help.svg"
-                            alt="Help"
-                            className="w-4 h-4 mr-2"
-                          />
-                          Trợ giúp
-                        </a>
-                      </li>
-                      <li>
-                        <button
-                          onClick={handleLogout} // Call handleLogout on click
-                          className="flex items-center px-4 py-2 text-sm text-red-800 hover:bg-gray-100 w-full text-left"
-                        >
-                          <img
-                            src="/images/logout.svg"
-                            alt="Logout"
-                            className="w-4 h-4 mr-2"
-                          />
-                          Đăng xuất
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
+                  </Portal>
                 )}
               </div>
             ) : (
