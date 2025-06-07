@@ -9,6 +9,7 @@ export default function ProductInfo() {
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -63,7 +64,6 @@ export default function ProductInfo() {
   if (!product) return <p>Product not found.</p>;
 
   const handleBuyNow = () => {
-    const quantity = document.getElementById("quantityInput").value;
     const totalPrice = product.price * quantity;
     router.push(
       `/checkout?name=${product.name}&price=${product.price}&image=${product.image}&quantity=${quantity}&totalPrice=${totalPrice}`
@@ -72,11 +72,10 @@ export default function ProductInfo() {
 
   const handleAddToCart = async () => {
     setAddingToCart(true);
-    const quantity = document.getElementById("quantityInput").value;
     const userToken = localStorage.getItem("token");
     const productToAdd = {
       productId: product._id,
-      quantity: parseInt(quantity, 10),
+      quantity: quantity,
     };
 
     try {
@@ -131,7 +130,7 @@ export default function ProductInfo() {
   };
 
   return (
-    <div className="bg-green-50 text-black p-6 mb-[32vh] relative">
+    <div className="bg-white text-black p-6 relative">
       {addingToCart && (
         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="w-16 h-16 border-4 border-white border-dashed rounded-full animate-spin"></div>
@@ -148,42 +147,53 @@ export default function ProductInfo() {
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold">{product.name}</h1>
+          <h1 className="text-2xl font-bold text-[#5c3613]">{product.name}</h1>
           <div className="flex items-center mt-2">
             <span className="text-yellow-400 text-lg">★★★★★</span>
             <span className="ml-2 text-sm">({reviews} Lượt đánh giá.)</span>
           </div>
-          <p className="text-3xl font-semibold mt-4">{product.price} VND</p>
+          <p className="text-3xl font-semibold mt-4 text-[#5c3613]">{product.price} VND</p>
 
           <div className="flex space-x-4 mt-6">
             <button
               onClick={handleAddToCart}
-              className="rounded-lg px-5 py-2.5 border-2 border-green-600 text-black font-medium hover:bg-green-500 hover:text-white hover:scale-105 transition-transform"
+              className="rounded-lg px-5 py-2.5 border-2 border-[#5c3613] text-[#5c3613] font-medium hover:bg-[#f1c43e] shadow-lg hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] hover:text-white hover:scale-105 transition-transform"
             >
-              🛒 Thêm vào giỏ hàng
+              <img src="/icons/cart.svg" alt="cart" className="inline w-5 h-5 mr-2 mb-1" />
+              Thêm vào giỏ hàng
             </button>
             <button
               onClick={handleBuyNow}
-              className="rounded-lg bg-green-200 px-5 py-2.5 text-base font-medium text-black hover:bg-green-500 hover:text-white hover:scale-105 transition-transform"
+              className="rounded-lg px-5 py-2.5 text-base font-medium border-transparent text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105 transition-transform"
             >
               Mua ngay
             </button>
           </div>
 
           <div className="flex items-center mt-4">
-            <span className="mr-2">Quantity</span>
-            <input
-              type="number"
-              id="quantityInput"
-              min="1"
-              defaultValue="1"
-              className="w-16 p-2 border border-gray-700 bg-gray-100 rounded text-black"
-            />
+            <span className="mr-4 text-[#5c3613] font-medium">Số Lượng</span>
+            <div className="flex items-center border border-gray-300 rounded overflow-hidden select-none">
+              <button
+                className="w-10 h-10 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-100 border-r border-gray-300"
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                type="button"
+              >
+                -
+              </button>
+              <span className="w-12 h-10 flex items-center justify-center font-semibold" style={{ color: '#f09627' }}>{quantity}</span>
+              <button
+                className="w-10 h-10 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-100 border-l border-gray-300"
+                onClick={() => setQuantity(q => q + 1)}
+                type="button"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="mt-6">
-            <h3 className="font-semibold">Description</h3>
-            <p className="text-sm text-gray-400 mt-2">
+            <h3 className="font-semibold text-[#5c3613]">Description</h3>
+            <p className="text-sm mt-2 text-[#5c3613]/80">
               Đây là mô tả sản phẩm. Mô tả cung cấp thông tin chi tiết về sản phẩm,
               bao gồm chất liệu, kích thước, và các tính năng nổi bật.
               Mô tả này giúp khách hàng hiểu rõ hơn về sản phẩm trước khi quyết định mua hàng.

@@ -123,7 +123,7 @@ export default function Header() {
                       isScrolled
                         ? "border-[#5c3613] text-[#5c3613] hover:text-[#f8f7f4]"
                         : "border-transparent text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613]"
-                    } font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300`}
+                    } font-medium py-2 px-4 rounded-full shadow-lg hover:bg-[#f1c43e] hover:scale-105 hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300`}
                   >
                     Đăng ký
                   </button>
