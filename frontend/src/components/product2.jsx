@@ -86,7 +86,7 @@ export default function Product2() {
       : products.filter((product) => product.category === selectedCategory);
 
   return (
-    <div className="p-4 mb-[35vh] bg-[#f8f7f4]">
+    <div className="p-4  bg-[#f8f7f4]">
       {/* Categories and Search Form Container */}
       <div className="flex flex-wrap items-center justify-evenly py-4 md:py-8">
         {/* Categories Buttons */}
@@ -96,9 +96,9 @@ export default function Product2() {
               key={index}
               type="button"
               onClick={() => setSelectedCategory(category)}
-              className={`text-gray-900 border border-white hover:border-green-500  rounded-full text-base font-medium px-5 py-2.5 text-center dark:text-white dark:focus:ring-gray-800 ${
+              className={`text-[#5c3613] border border-white hover:border-[#f1c43e]  rounded-full text-base font-medium px-5 py-2.5 text-center dark:text-white dark:focus:ring-gray-800 ${
                 selectedCategory === category
-                  ? "bg-green-500 text-white border-2 border-green-600"
+                  ? "bg-[#f1c43e] text-[#5c3613] border-2 border-[#f1c43e]"
                   : ""
               }`}
             >
@@ -111,14 +111,14 @@ export default function Product2() {
         <form className="flex-grow max-w-md">
           <label
             htmlFor="default-search"
-            className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
+            className="mb-2 text-sm font-medium text-[#5c3613] sr-only dark:text-white"
           >
             Search
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
               <svg
-                className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                className="w-4 h-4 text-[#5c3613] dark:text-gray-400"
                 aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -136,13 +136,13 @@ export default function Product2() {
             <input
               type="search"
               id="default-search"
-              className="block w-full p-4 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              className="block w-full p-4 pl-10 text-sm text-[#5c3613] border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               placeholder="Search products..."
               required
             />
             <button
               type="submit"
-              className="text-white absolute right-2.5 bottom-2.5 bg-green-500 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              className="text-[#5c3613] absolute right-2.5 bottom-2.5 bg-[#f1c43e] hover:bg-[#f09627] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
             >
               Search
             </button>
@@ -159,7 +159,7 @@ export default function Product2() {
             <div
               key={product.id}
               onClick={() => router.push(`/productinfo/${product.id}`)} // Navigate to productinfo page
-              className="text-left cursor-pointer border border-gray-200 rounded-lg p-3 hover:border-green-500 transition-colors duration-200"
+              className="text-left cursor-pointer border-2 border-gray-200 rounded-lg p-3 hover:border-[#f09627] transition-colors duration-200"
             >
               <div>
                 <img

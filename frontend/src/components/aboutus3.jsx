@@ -31,8 +31,7 @@ export default function AboutUs3() {
               <div>
                 <div className="font-bold text-[#5c3613]">Jack-J97</div>
                 <div className="text-gray-400 text-sm">
-                  Ca sĩ, cầu thủ phủi kiêm khách hàng thân thiết của
-                  Ballandbeers
+                  Ca sĩ liêm, kiêm khách hàng thân thiết của B&B
                 </div>
               </div>
             </div>
