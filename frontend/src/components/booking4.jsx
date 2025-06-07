@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Booking() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -27,10 +29,16 @@ export default function Booking() {
     "3:00",
   ];
   const courts = [
-    { id: "field1", name: "Sân 1", image: "/images/san5.jpg" },
-    { id: "field2", name: "Sân 2", image: "/images/san5.jpg" },
-    { id: "field3", name: "Sân 3", image: "/images/san5.jpg" },
+    { id: "field1", name: "Sân thường", image: "/images/san5.jpg" },
+    { id: "field2", name: "Sân tiêu chuẩn", image: "/images/san5.jpg" },
+    { id: "field3", name: "Sân VIP", image: "/images/san5.jpg" },
   ];
+
+  const courtPrices = {
+    field1: 100000, // Sân thường
+    field2: 200000, // Sân tiêu chuẩn
+    field3: 400000, // Sân VIP
+  };
 
   // Initialize booking fields for today's date when component mounts
   useEffect(() => {
@@ -142,8 +150,6 @@ export default function Booking() {
             return null;
           }
 
-          console.log("Booking slot:", { fieldId, date, hours: [hour] });
-
           return fetch("http://localhost:4001/api/bookings/book", {
             method: "POST",
             headers: {
@@ -153,11 +159,11 @@ export default function Booking() {
             body: JSON.stringify({
               fieldId: fieldId,
               date: date,
-              hours: [hour], // Gửi mảng hours thay vì một giá trị duy nhất
+              hours: [hour],
             }),
           });
         })
-        .filter((req) => req !== null); // Loại bỏ null
+        .filter((req) => req !== null);
 
       const responses = await Promise.all(requests);
       const failedRequests = await Promise.all(
@@ -169,6 +175,7 @@ export default function Booking() {
       if (failedSlots.length === 0) {
         setSelectedSlots([]);
         courts.forEach((court) => fetchBookedSlots(date, court.id));
+        toast.success("Đặt sân thành công!");
       } else {
         console.error("Failed to book the following slots:", failedSlots);
         alert(
@@ -186,7 +193,12 @@ export default function Booking() {
       console.error("Failed to submit booking:", error);
     }
   };
-  const totalPrice = selectedSlots.length * 100000;
+
+  // Tính tổng giá dựa trên loại sân
+  const totalPrice = selectedSlots.reduce((sum, slot) => {
+    const [fieldId] = slot.split("-");
+    return sum + (courtPrices[fieldId] || 0);
+  }, 0);
 
   const handleDateSelection = async (formattedDate) => {
     setSelectedDate(formattedDate);
@@ -217,7 +229,7 @@ export default function Booking() {
     for (let i = 1; i <= daysInMonth; i++) {
       const dayDiv = document.createElement("div");
       dayDiv.className =
-        "flex items-center justify-center cursor-pointer w-[40px] h-[40px] text-dark-3 dark:text-dark-6 rounded-full hover:bg-green-500 hover:text-white";
+        "flex items-center justify-center cursor-pointer w-[40px] h-[40px] text-dark-3 dark:text-dark-6 rounded-full hover:bg-[#f0962e] hover:text-white";
 
       const [selectedDay, selectedMonth, selectedYear] = selectedDate
         ? selectedDate.split("/").map(Number)
@@ -227,7 +239,7 @@ export default function Booking() {
         selectedMonth === month + 1 &&
         selectedYear === year
       ) {
-        dayDiv.classList.add("bg-green-500", "text-white");
+        dayDiv.classList.add("bg-[#f0962e]", "text-white");
       }
 
       dayDiv.textContent = i;
@@ -261,8 +273,105 @@ export default function Booking() {
   }, [currentDate, isCalendarOpen]);
 
   return (
-    <div className="p-4 bg-[#f8f7f4] text-green ">
+    <div className="p-4 bg-[#f8f7f4] text-[#5c3613] ">
       <h1 className="text-lg text-3xl font-bold mb-4">Đặt lịch sân</h1>
+
+      <div className="flex flex-col md:flex-row justify-center items-center gap-6 mb-8 mt-4">
+        {/* BASIC */}
+        <div className="bg-white rounded-2xl shadow-lg w-80 p-8 flex flex-col items-center border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-700 mb-2 tracking-wide">
+            SÂN THƯỜNG
+          </h3>
+          <p className="text-gray-400 text-sm mb-6">
+            Giá rẻ – Phù hợp đá giao hữu, luyện tập, thi đấu bán chuyên
+          </p>
+          <div className="bg-[#f0962e] rounded-full px-8 py-4 mb-6 flex items-end">
+            <span className="text-white text-2xl font-bold">100.000 VNĐ</span>
+            <span className="text-white text-lg ml-1 mb-1">/giờ</span>
+          </div>
+          <ul className="text-gray-700 text-base space-y-2 mb-8 w-full">
+            <li className="flex items-center gap-2">
+              <span className="text-[#f0962e]">✔</span>Sân có mái che, điều hòa
+              <br />
+              không khí
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#f0962e]">✔</span>Mặt cỏ nhân tạo chất
+              lượng trung bình
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#f0962e]">✔</span>Có sẵn phòng thay đồ
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#f0962e]">✔</span>Hỗ trợ trà đá miễn phí
+            </li>
+          </ul>
+        </div>
+        {/* STANDARD */}
+        <div className="bg-white rounded-2xl shadow-2xl w-80 p-8 flex flex-col items-center  relative scale-105">
+          <div className="absolute top-0 right-0 bg-[#5c3611] text-white text-xs font-bold px-3 py-1 rounded-tr-2xl rounded-bl-2xl">
+            POPULAR
+          </div>
+
+          <h3 className="text-xl font-bold text-gray-700 mb-2 tracking-wide">
+            SÂN TIÊU CHUẨN
+          </h3>
+          <p className="text-gray-400 text-sm mb-6">
+            Dành cho đội bóng phong trào, thi đấu bán chuyên
+          </p>
+          <div className="bg-[#5c3613] rounded-full px-8 py-4 mb-6 flex items-end">
+            <span className="text-white text-2xl font-bold">200.000 VNĐ</span>
+            <span className="text-white text-lg ml-1 mb-1">/giờ</span>
+          </div>
+          <ul className="text-gray-700 text-base space-y-2 mb-8 w-full">
+            <li className="flex items-center gap-2">
+              <span className="text-[#5c3613]">✔</span>Sân cỏ nhân tạo chất
+              lượng cao
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#5c3613]">✔</span>Đầy đủ mái che, đèn chiếu
+              sáng ban đêm
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#5c3613]">✔</span>Có khu vực khán giả,
+              phòng <br /> thay đồ
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#5c3613]">✔</span>Hỗ trợ nước uống miễn phí
+            </li>
+          </ul>
+        </div>
+        {/* PREMIUM */}
+        <div className="bg-white rounded-2xl shadow-lg w-80 p-8 flex flex-col items-center border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-700 mb-2 tracking-wide">
+            SÂN VIP
+          </h3>
+          <p className="text-gray-400 text-sm mb-6">
+            Tiêu chuẩn thi đấu chuyên nghiệp – Phù hợp tổ chức giải
+          </p>
+          <div className="bg-[#f1c43e] rounded-full px-8 py-4 mb-6 flex items-end">
+            <span className="text-white text-2xl font-bold">400.000 VNĐ</span>
+            <span className="text-white text-lg ml-1 mb-1">/giờ</span>
+          </div>
+          <ul className="text-gray-700 text-base space-y-2 mb-8 w-full">
+            <li className="flex items-center gap-2">
+              <span className="text-[#f1c43e]">✔</span>Sân đạt chuẩn thi đấu
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#f1c43e]">✔</span>Cỏ nhân tạo cao cấp, hệ
+              thống thoát nước tốt
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#f1c43e]">✔</span>Phòng thay đồ, tắm nước
+              nóng
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-[#f1c43e]">✔</span>Dịch vụ trọng tài, nước
+              uống, livestream (nếu yêu cầu)
+            </li>
+          </ul>
+        </div>
+      </div>
 
       {/* Date Picker */}
       <div className="mb-6 flex justify-end">
@@ -271,14 +380,16 @@ export default function Booking() {
             id="datepicker"
             type="text"
             placeholder="Chọn ngày"
-            className="w-full rounded-lg border border-stroke bg-green-100 py-2.5 pl-[50px] pr-8 text-dark-2 text-2xl outline-none transition focus:border-primary"
+            className="w-full rounded-lg border border-stroke bg-[#f0962e]/80 py-2.5 pl-[50px] pr-8 text-dark-2 text-2xl outline-none transition focus:border-primary"
             value={selectedDate || ""}
             readOnly
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
           />
-          <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">
-            📅
-          </span>
+          <img
+            src="/icons/calendar.svg"
+            alt="calendar"
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-transparent"
+          />
         </div>
         {isCalendarOpen && (
           <div
@@ -288,7 +399,7 @@ export default function Booking() {
             <div className="flex items-center justify-between px-5">
               <button
                 id="prevMonth"
-                className="rounded-md px-2 py-2 text-dark hover:bg-green-500 hover:text-white"
+                className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e] hover:text-white"
                 onClick={handlePrevMonth}
               >
                 Prev
@@ -304,7 +415,7 @@ export default function Booking() {
               </div>
               <button
                 id="nextMonth"
-                className="rounded-md px-2 py-2 text-dark hover:bg-green-500 hover:text-white"
+                className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e]/80 hover:text-white"
                 onClick={handleNextMonth}
               >
                 Next
@@ -315,25 +426,25 @@ export default function Booking() {
               id="days-of-week"
               className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5"
             >
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Sun
               </div>
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Mon
               </div>
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Tue
               </div>
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Wed
               </div>
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Thu
               </div>
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Fri
               </div>
-              <div className="text-center text-sm font-medium text-green-500">
+              <div className="text-center text-sm font-medium text-[#f0962e]">
                 Sat
               </div>
             </div>
@@ -351,14 +462,14 @@ export default function Booking() {
 
       {/* Booking Table */}
       <div className="overflow-x-auto">
-        <div className="grid grid-cols-[150px_repeat(10,_1fr)] border border-gray-300">
-          <div className="bg-blue-100 text-center text-gray-950 font-bold border border-gray-300">
+        <div className="grid grid-cols-[150px_repeat(10,_1fr)] border border-[#f0962e] border-2">
+          <div className="bg-[#f0962e] text-center text-gray-950 font-bold border border-gray-300">
             Courts
           </div>
           {timeSlots.map((time, index) => (
             <div
               key={index}
-              className="bg-blue-100 text-center text-gray-950 font-bold border border-gray-300"
+              className="bg-[#f0962e] text-center text-gray-950 font-bold border border-gray-300"
             >
               {time}
             </div>
@@ -366,7 +477,7 @@ export default function Booking() {
 
           {courts.map((court) => (
             <React.Fragment key={court.id}>
-              <div className="bg-green-700 text-center border border-gray-300 flex flex-col items-center">
+              <div className="bg-[#f0962e] text-center border border-gray-300 flex flex-col items-center">
                 <img
                   src={court.image}
                   alt={court.name}
@@ -377,7 +488,7 @@ export default function Booking() {
               {timeSlots.map((time, index) => (
                 <div
                   key={`${court.id}-${index}`}
-                  className={`border border-gray-300 text-center cursor-pointer ${
+                  className={`border border-[#f1c43e] text-center cursor-pointer ${
                     (bookedSlots[court.id] || []).some(
                       (slot) =>
                         slot.hour === parseInt(time.split(":")[0]) &&
@@ -404,12 +515,32 @@ export default function Booking() {
 
       {/* Total Booking Time and Price */}
       {selectedSlots.length > 0 && (
-        <div className="mt-4 p-4 bg-white text-black rounded shadow">
+        <div className="mt-4 p-4 bg-white text-[#5c3613] border border-[#f0962e] border-2 rounded shadow">
           <h2 className="text-lg font-bold mb-2">Thông tin đặt sân</h2>
           <p>
             <span className="font-bold">Tổng thời gian đặt:</span>{" "}
             {selectedSlots.length} giờ
           </p>
+          <div className="mt-2 mb-2">
+            <span className="font-bold">Chi tiết:</span>
+            <ul className="list-disc ml-6 mt-1">
+              {selectedSlots.map((slot, idx) => {
+                const [fieldId, time] = slot.split("-");
+                let label = "";
+                if (fieldId === "field1") label = "Sân thường";
+                else if (fieldId === "field2") label = "Sân tiêu chuẩn";
+                else if (fieldId === "field3") label = "Sân VIP";
+                return (
+                  <li key={slot} className="text-sm">
+                    {label} - {time}h:{" "}
+                    <span className="font-semibold">
+                      {courtPrices[fieldId].toLocaleString()} VND
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
           <p>
             <span className="font-bold">Tổng giá:</span>{" "}
             {totalPrice.toLocaleString()} VND
@@ -426,6 +557,8 @@ export default function Booking() {
           Đặt sân
         </button>
       </div>
+
+      <ToastContainer />
     </div>
   );
 }
