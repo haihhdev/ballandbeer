@@ -38,7 +38,7 @@ export default function Header() {
   return (
     <header className="">
       {/* Navigation */}
-      <div className="top-0 left-0 w-full bg-[#f8f7f4] drop-shadow-md z-[9999]">
+      <div className="top-0 left-0 w-full bg-[#f8f7f4] drop-shadow-md z-50">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2">
           {/* Logo */}
           <a
@@ -70,7 +70,7 @@ export default function Header() {
                 </Link>
                 {/* Profile Avatar */}
                 <div
-                  className="w-12 h-12 rounded-full overflow-hidden cursor-pointer border-2 border-gray-300"
+                  className="w-12 h-12 rounded-full overflow-hidden cursor-pointer border-2 border-gray-300 z-50"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 >
                   <img
@@ -83,12 +83,12 @@ export default function Header() {
                 {/* Profile Dropdown Menu */}
                 {profileDropdownOpen && (
                   <Portal>
-                    <div className="fixed top-[5.5rem] right-8 w-48 bg-white rounded-lg shadow-lg z-[99999]">
+                    <div className="fixed top-[5.5rem] right-30 w-64 bg-white rounded-lg shadow-lg z-[99999]">
                       <div className="p-4 border-b border-gray-200">
-                        <h3 className="text-sm font-semibold text-gray-900">
+                        <h3 className="text-sm font-semibold text-[#5c3613]">
                           {userProfile.fullname || "Họ và Tên"}
                         </h3>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-[#5c3613]">
                           {userProfile.email || "j97@gmail.com"}
                         </span>
                       </div>
@@ -96,7 +96,7 @@ export default function Header() {
                         <li>
                           <a
                             href="/profile"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
                           >
                             <img
                               src="/images/avt.svg"
@@ -109,7 +109,7 @@ export default function Header() {
                         <li>
                           <a
                             href="#"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
                           >
                             <img
                               src="/images/setting.svg"
@@ -122,7 +122,7 @@ export default function Header() {
                         <li>
                           <a
                             href="#"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
                           >
                             <img
                               src="/images/help.svg"
@@ -134,7 +134,7 @@ export default function Header() {
                         </li>
                         <li>
                           <button
-                            onClick={handleLogout} // Call handleLogout on click
+                            onClick={handleLogout}
                             className="flex items-center px-4 py-2 text-sm text-red-800 hover:bg-gray-100 w-full text-left"
                           >
                             <img

@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react"; // Thêm useEffect và useRef
 import Link from "next/link";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("accountDetails");
@@ -74,6 +76,7 @@ export default function Profile() {
     setMessage("");
     const userId = localStorage.getItem("userId");
     if (!userId) {
+      toast.error("Không tìm thấy userId!");
       setMessage("Không tìm thấy userId!");
       return;
     }
@@ -88,6 +91,7 @@ export default function Profile() {
       );
       const data = await res.json();
       if (res.ok) {
+        toast.success("Cập nhật thành công!");
         setMessage("Cập nhật thành công!");
         // Cập nhật lại localStorage
         localStorage.setItem(
@@ -98,9 +102,11 @@ export default function Profile() {
           })
         );
       } else {
+        toast.error(data.message || "Cập nhật thất bại!");
         setMessage(data.message || "Cập nhật thất bại!");
       }
     } catch (err) {
+      toast.error("Có lỗi xảy ra!");
       setMessage("Có lỗi xảy ra!");
     }
   };
@@ -125,6 +131,7 @@ export default function Profile() {
 
   return (
     <div className="flex flex-col md:flex-row bg-[url('/images/contactbg.png')] bg-cover bg-center bg-gray-100 min-h-screen p-6">
+      <ToastContainer />
       {/* Sidebar */}
       <div className="w-full md:w-1/4 bg-white rounded-lg shadow-md p-4">
         <div className="flex flex-col items-center">
@@ -151,7 +158,7 @@ export default function Profile() {
               onClick={() => setActiveTab("history")}
               className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg ${
                 activeTab === "history"
-                  ? "bg-blue-800 text-white"
+                  ? "bg-[#f1c43e] text-[#5c3613]"
                   : "text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -163,7 +170,7 @@ export default function Profile() {
               onClick={() => setActiveTab("accountDetails")}
               className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg ${
                 activeTab === "accountDetails"
-                  ? "bg-blue-800 text-white"
+                  ? "bg-[#f1c43e] text-[#5c3613]"
                   : "text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -175,7 +182,7 @@ export default function Profile() {
               onClick={() => setActiveTab("changePassword")}
               className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg ${
                 activeTab === "changePassword"
-                  ? "bg-blue-800 text-white"
+                  ? "bg-[#f1c43e] text-[#5c3613]"
                   : "text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -188,7 +195,7 @@ export default function Profile() {
                 onClick={() => setActiveTab("logout")}
                 className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg ${
                   activeTab === "logout"
-                    ? "bg-blue-800 text-white"
+                    ? "bg-[#f1c43e] text-[#5c3613]"
                     : "text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -203,13 +210,15 @@ export default function Profile() {
       <div className="w-full md:w-3/4 bg-white rounded-lg shadow-md p-6 mt-6 md:mt-0 md:ml-6">
         {activeTab === "accountDetails" && (
           <div>
-            <h2 className="text-xl font-semibold mb-4">Tài khoản của tôi</h2>
+            <h2 className="text-xl text-[#5c3613] font-semibold mb-4">
+              Tài khoản của tôi
+            </h2>
             {loading ? (
               <p>Đang tải thông tin...</p>
             ) : (
               <form className="space-y-4" onSubmit={handleSave}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Email
                   </label>
                   <input
@@ -221,7 +230,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Tên đăng nhập
                   </label>
                   <input
@@ -233,7 +242,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Họ Và Tên
                   </label>
                   <input
@@ -245,7 +254,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Số điện thoại
                   </label>
                   <input
@@ -257,7 +266,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Facebook
                   </label>
                   <input
@@ -269,7 +278,7 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Địa chỉ
                   </label>
                   <input
@@ -281,22 +290,23 @@ export default function Profile() {
                   />
                 </div>
                 {/* Save Info Button */}
-                <div className="flex justify-end">
+                <div className="flex justify-end ">
                   <button
                     type="submit"
-                    className="bg-green-500 py-2 px-8 rounded-md hover:bg-green-700 text-white font-medium  shadow-md"
+                    className=" bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-200 rounded py-2 px-8  text-[#5c3613] font-medium  shadow-md"
                   >
                     Lưu
                   </button>
                 </div>
-                {message && <p className="text-green-600 mt-2">{message}</p>}
               </form>
             )}
           </div>
         )}
         {activeTab === "history" && (
           <div>
-            <h2 className="text-xl font-semibold mb-4">Lịch sử đơn hàng</h2>
+            <h2 className="text-xl text-[#5c3613] font-semibold mb-4">
+              Lịch sử đơn hàng
+            </h2>
             {orderHistory.length === 0 ? (
               <p>Chưa có đơn hàng nào.</p>
             ) : (
@@ -336,10 +346,12 @@ export default function Profile() {
         )}
         {activeTab === "changePassword" && (
           <div>
-            <h2 className="text-xl font-semibold mb-4 ">Đổi mật khẩu</h2>
+            <h2 className="text-xl text-[#5c3613] font-semibold mb-4 ">
+              Đổi mật khẩu
+            </h2>
             <form className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-[#5c3613]">
                   Mật khẩu hiện tại
                 </label>
                 <input
@@ -350,7 +362,7 @@ export default function Profile() {
               </div>
               <div className=" gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[#5c3613]">
                     Mật khẩu mới
                   </label>
                   <input
@@ -361,7 +373,7 @@ export default function Profile() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-[#5c3613]">
                   Xác nhận mật khẩu mới
                 </label>
                 <input
@@ -375,7 +387,7 @@ export default function Profile() {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="bg-green-500 py-2 px-4 rounded-md hover:bg-green-700 text-white font-medium  shadow-md"
+                  className="text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300 rounded py-2 px-8 font-medium  shadow-md"
                 >
                   Lưu mật khẩu
                 </button>
