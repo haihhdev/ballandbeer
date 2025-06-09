@@ -45,9 +45,19 @@ export default function Product2() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        //const response = await fetch("/api/products");
         const response = await fetch("http://localhost:4003/api/products");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
+        
+        // Check if data is an array
+        if (!Array.isArray(data)) {
+          console.error('Received non-array data:', data);
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
 
         const formattedProducts = data.map((item) => ({
           id: item._id,
@@ -62,6 +72,7 @@ export default function Product2() {
         setLoading(false);
       } catch (error) {
         console.error("Error fetching products:", error);
+        setProducts([]);
         setLoading(false);
       }
     };
@@ -86,7 +97,7 @@ export default function Product2() {
       : products.filter((product) => product.category === selectedCategory);
 
   return (
-    <div className="p-4  bg-[#f8f7f4]">
+    <div className="p-4  bg-white">
       {/* Categories and Search Form Container */}
       <div className="flex flex-wrap items-center justify-evenly py-4 md:py-8">
         {/* Categories Buttons */}

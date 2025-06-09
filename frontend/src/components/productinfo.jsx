@@ -8,6 +8,7 @@ export default function ProductInfo() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
@@ -49,8 +50,16 @@ export default function ProductInfo() {
           image: imageMap[data._id] || "/images/default.jpg",
         });
         setLoading(false);
-        const randomReviews = Math.floor(Math.random() * (500 - 100 + 1)) + 100;
-        setReviews(randomReviews);
+        
+        // Fetch comments and calculate average rating
+        const commentsResponse = await fetch(`http://localhost:4003/api/products/${id}/comments`);
+        const commentsData = await commentsResponse.json();
+        if (commentsData && Array.isArray(commentsData)) {
+          setReviews(commentsData.length);
+          const totalRating = commentsData.reduce((sum, comment) => sum + comment.rating, 0);
+          const avgRating = commentsData.length > 0 ? Math.ceil(totalRating / commentsData.length) : 0;
+          setAverageRating(avgRating);
+        }
       } catch (error) {
         console.error("Error fetching product:", error);
         setLoading(false);
@@ -149,8 +158,12 @@ export default function ProductInfo() {
         <div>
           <h1 className="text-2xl font-bold text-[#5c3613]">{product.name}</h1>
           <div className="flex items-center mt-2">
-            <span className="text-yellow-400 text-lg">★★★★★</span>
-            <span className="ml-2 text-sm">({reviews} Lượt đánh giá.)</span>
+            <span className="text-yellow-400 text-lg">
+              {[...Array(5)].map((_, index) => (
+                <span key={index}>{index < averageRating ? '★' : '☆'}</span>
+              ))}
+            </span>
+            <span className="ml-2 text-sm">({reviews} Lượt đánh giá)</span>
           </div>
           <p className="text-3xl font-semibold mt-4 text-[#5c3613]">{product.price} VND</p>
 
@@ -192,7 +205,7 @@ export default function ProductInfo() {
           </div>
 
           <div className="mt-6">
-            <h3 className="font-semibold text-[#5c3613]">Description</h3>
+            <h3 className="font-semibold text-[#5c3613]">Mô tả sản phẩm</h3>
             <p className="text-sm mt-2 text-[#5c3613]/80">
               Đây là mô tả sản phẩm. Mô tả cung cấp thông tin chi tiết về sản phẩm,
               bao gồm chất liệu, kích thước, và các tính năng nổi bật.
