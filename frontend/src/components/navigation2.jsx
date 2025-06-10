@@ -16,6 +16,7 @@ export default function Header() {
   const [isFetching, setIsFetching] = useState(false);
   const router = useRouter(); // Initialize router
   const pathname = usePathname();
+  const [cartCount, setCartCount] = useState(0);
 
   // Check login status on component mount
   useEffect(() => {
@@ -70,6 +71,20 @@ export default function Header() {
     }
   }, [profileDropdownOpen, isLoggedIn]);
 
+  useEffect(() => {
+    const updateCartCount = () => {
+      const count = parseInt(localStorage.getItem("cartCount")) || 0;
+      setCartCount(count);
+    };
+    updateCartCount();
+    window.addEventListener("storage", updateCartCount);
+    window.addEventListener("cartCountUpdated", updateCartCount);
+    return () => {
+      window.removeEventListener("storage", updateCartCount);
+      window.removeEventListener("cartCountUpdated", updateCartCount);
+    };
+  }, []);
+
   const handleLogout = () => {
     setIsLoggedIn(false); // Update state to reflect logout
     localStorage.removeItem("isLoggedIn"); // Remove login status
@@ -105,8 +120,8 @@ export default function Header() {
                       className="w-8 h-6\8 object-cover"
                     />
                     {/* Optional: Badge for cart item count */}
-                    <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-[#5c3613] text-xs font-bold rounded-full flex items-center justify-center">
-                      5
+                    <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-[#fff] text-xs font-bold rounded-full flex items-center justify-center">
+                      {cartCount}
                     </span>
                   </button>
                 </Link>

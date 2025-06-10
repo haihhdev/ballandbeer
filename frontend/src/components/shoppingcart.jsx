@@ -39,7 +39,7 @@ export default function ShoppingCart() {
           id: item.productId,
           name: product?.name || "Không tìm thấy",
           price: product?.price || 0,
-          image: product?.image 
+          image: product?.image
             ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${product.image}`
             : "/images/missing.png",
           quantity: item.quantity,
@@ -47,6 +47,8 @@ export default function ShoppingCart() {
       });
 
       setCartItems(cartWithDetails);
+      localStorage.setItem("cartCount", cartWithDetails.length);
+      window.dispatchEvent(new Event("cartCountUpdated"));
     };
 
     fetchCart();
@@ -105,13 +107,15 @@ export default function ShoppingCart() {
         id: item.productId,
         name: product?.name || "Không tìm thấy",
         price: product?.price || 0,
-        image: product?.image 
+        image: product?.image
           ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${product.image}`
           : "/images/missing.png",
         quantity: item.quantity,
       };
     });
     setCartItems(cartWithDetails);
+    localStorage.setItem("cartCount", cartWithDetails.length);
+    window.dispatchEvent(new Event("cartCountUpdated"));
   };
 
   const handleCheckout = () => {
