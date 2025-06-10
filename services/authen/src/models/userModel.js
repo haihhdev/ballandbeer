@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    avatar: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

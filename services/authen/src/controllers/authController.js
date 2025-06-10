@@ -72,3 +72,40 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.loginWithGoogle = async (req, res) => {
+  const { email, username, avatar } = req.body;
+  try {
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Nếu chưa có user, tạo mới
+      // Tạo username duy nhất nếu bị trùng
+      let uniqueUsername = username;
+      let count = 1;
+      while (await User.findOne({ username: uniqueUsername })) {
+        uniqueUsername = username + count;
+        count++;
+      }
+      user = new User({
+        email,
+        username: uniqueUsername,
+        avatar,
+        password: "google_oauth_no_password",
+      });
+      await user.save();
+    }
+    const token = generateToken(user._id);
+    res.json({
+      message: "Login with Google successful",
+      token,
+      data: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        avatar: user.avatar || "",
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -82,17 +82,32 @@ export default function Login() {
       const auth = getAuth();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      const token = await user.getIdToken();
-      // Lưu thông tin user và token vào localStorage
-      localStorage.setItem("token", token);
+      // Gửi thông tin user lên backend để tạo/lấy user
+      const response = await fetch("http://localhost:4000/api/auth/google", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: user.email,
+          username: user.displayName || user.email.split("@")[0],
+          avatar: user.photoURL || "",
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Đăng nhập Google thất bại.");
+      }
+      const data = await response.json();
+      localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userId", user.uid);
+      localStorage.setItem("userId", data.data?._id);
       localStorage.setItem(
         "userProfile",
         JSON.stringify({
-          avatar: user.photoURL || "",
-          email: user.email || "",
-          username: user.displayName || "",
+          avatar: data.data?.avatar || "",
+          email: data.data?.email || "",
+          username: data.data?.username || "",
         })
       );
       router.push("/");
