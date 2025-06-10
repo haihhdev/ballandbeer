@@ -114,6 +114,8 @@ export default function ProductInfo() {
   // Sử dụng ảnh base64 nếu có, nếu không thì dùng ảnh mặc định
   const productImage = product.image && product.image.startsWith("data:image")
     ? product.image
+    : product.image
+    ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${product.image}`
     : "/images/missing.png";
 
   return (

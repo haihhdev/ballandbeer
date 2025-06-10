@@ -10,11 +10,11 @@ export default function Contact() {
   });
 
   const tags = [
-    "UX/ UI design",
-    "Web design",
-    "Design system",
-    "Graphic design",
-    "Other",
+    "Công việc",
+    "Hàng hoá",
+    "Dịch vụ",
+    "Đồ uống",
+    "Khác",
   ];
 
   return (
@@ -67,7 +67,7 @@ export default function Contact() {
         {/* Right */}
         <div className="flex-1 bg-white rounded-2xl shadow-lg p-8 max-w-xl mx-auto">
           <div className="mb-4 font-semibold text-[#5c3613]">
-            I'm interested in:
+            Tôi có quan tâm đến:
           </div>
           <div className="flex flex-wrap gap-3 mb-6">
             {tags.map((tag) => (
@@ -88,32 +88,32 @@ export default function Contact() {
           <form className="space-y-6">
             <div>
               <label className="block text-[#5c3613] font-semibold mb-1">
-                Your nameeeee
+                Tên của bạn
               </label>
               <input
                 type="text"
                 className="w-full border-0 border-b-2 border-[#f1c43e] focus:ring-0 focus:border-[#f1c43e] text-[#0d3d4b] placeholder-gray-400 py-2"
-                placeholder="Enter your name..."
+                placeholder="Nhập tên của bạn..."
               />
             </div>
             <div>
               <input
                 type="email"
                 className="w-full border-0 border-b-2 border-[#f1c43e] focus:ring-0 focus:border-[#2ec4b6] text-[#0d3d4b] placeholder-gray-400 py-2"
-                placeholder="email@gmail.com"
+                placeholder="Nhập email của bạn..."
               />
             </div>
             <div>
               <textarea
                 className="w-full border border-gray-300 rounded-lg focus:ring-0 focus:border-[#2ec4b6] text-[#0d3d4b] placeholder-gray-400 py-2 px-3 min-h-[90px]"
-                placeholder="Your message"
+                placeholder="Nhập tin nhắn của bạn..."
               />
             </div>
             <button
               type="submit"
               className="w-full bg-[#5c3613] text-white rounded-full py-3 text-lg font-semibold mt-2 hover:bg-[#f1c43e] transition"
             >
-              Send message
+              Gửi tin nhắn
             </button>
           </form>
         </div>
