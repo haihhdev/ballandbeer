@@ -18,6 +18,8 @@ export default function Product2() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("Sản phẩm nổi bật");
 
   // Fetch products from API
   useEffect(() => {
@@ -28,10 +30,10 @@ export default function Product2() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        
+
         // Check if data is an array
         if (!Array.isArray(data)) {
-          console.error('Received non-array data:', data);
+          console.error("Received non-array data:", data);
           setProducts([]);
           setLoading(false);
           return;
@@ -76,8 +78,46 @@ export default function Product2() {
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
-  // Lấy sản phẩm cho trang hiện tại
-  const paginatedProducts = filteredProducts.slice(
+  // Sắp xếp sản phẩm theo lựa chọn
+  const sortProducts = (products) => {
+    let sorted = [...products];
+    switch (sortOption) {
+      case "Giá: Tăng dần":
+        sorted.sort(
+          (a, b) =>
+            parseInt(a.price.replace(/\D/g, "")) -
+            parseInt(b.price.replace(/\D/g, ""))
+        );
+        break;
+      case "Giá: Giảm dần":
+        sorted.sort(
+          (a, b) =>
+            parseInt(b.price.replace(/\D/g, "")) -
+            parseInt(a.price.replace(/\D/g, ""))
+        );
+        break;
+      case "Tên: A-Z":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "Tên: Z-A":
+        sorted.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      default:
+        // Sản phẩm nổi bật giữ nguyên thứ tự
+        break;
+    }
+    return sorted;
+  };
+
+  // Lọc sản phẩm theo tên
+  const searchedProducts = filteredProducts.filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Sắp xếp sản phẩm sau khi lọc
+  const finalProducts = sortProducts(searchedProducts);
+
+  const paginatedProducts = finalProducts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -118,47 +158,64 @@ export default function Product2() {
           ))}
         </div>
 
-        {/* Search Form */}
-        <form className="flex-grow max-w-md">
-          <label
-            htmlFor="default-search"
-            className="mb-2 text-sm font-medium text-[#5c3613] sr-only dark:text-white"
+        {/* Search Form và Sort Dropdown */}
+        <div className="flex flex-1 items-center justify-end gap-4 max-w-md">
+          <form
+            className="flex-grow"
+            onSubmit={(e) => {
+              e.preventDefault();
+            }}
           >
-            Search
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <svg
-                className="w-4 h-4 text-[#5c3613] dark:text-gray-400"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                />
-              </svg>
-            </div>
-            <input
-              type="search"
-              id="default-search"
-              className="block w-full p-4 pl-10 text-sm text-[#5c3613] border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              placeholder="Search products..."
-              required
-            />
-            <button
-              type="submit"
-              className="text-[#5c3613] absolute right-2.5 bottom-2.5 bg-[#f1c43e] hover:bg-[#f09627] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            <label
+              htmlFor="default-search"
+              className="mb-2 text-sm font-medium text-[#5c3613] sr-only dark:text-white"
             >
               Search
-            </button>
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-[#5c3613] dark:text-gray-400"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="search"
+                id="default-search"
+                className="block w-full p-2 pl-10 text-sm text-[#5c3613] border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder="Tìm sản phẩm..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </form>
+          {/* Sort Dropdown */}
+          <div className="flex items-center">
+            <select
+              id="sort-select"
+              className="border border-gray-300 rounded px-2 py-2 text-[#5c3613] bg-white focus:outline-none focus:ring-2 focus:ring-[#f1c43e] focus:shadow-[0_0_8px_2px_rgba(240,150,39,0.5)] transition-all duration-200 font-medium text-base"
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+            >
+              <option>Sản phẩm nổi bật</option>
+              <option>Giá: Tăng dần</option>
+              <option>Giá: Giảm dần</option>
+              <option>Tên: A-Z</option>
+              <option>Tên: Z-A</option>
+            </select>
           </div>
-        </form>
+        </div>
       </div>
 
       {/* Loading State */}
@@ -181,8 +238,13 @@ export default function Product2() {
                     alt={product.name}
                   />
                   <div className="mt-2">
-                    <h3 className="text-lg font-bold text-[#5c3613]">{product.name}</h3>
-                    <p className="text-[#5c3613]">Giá: <span className="text-[#f09627]">{product.price}</span></p>
+                    <h3 className="text-lg font-bold text-[#5c3613]">
+                      {product.name}
+                    </h3>
+                    <p className="text-[#5c3613]">
+                      Giá:{" "}
+                      <span className="text-[#f09627]">{product.price}</span>
+                    </p>
                     <p className="text-[#5c3613]">
                       Sản phẩm còn lại: {product.quantity}
                     </p>
