@@ -88,7 +88,7 @@ export default function Contact() {
           <form className="space-y-6">
             <div>
               <label className="block text-[#5c3613] font-semibold mb-1">
-                Your name
+                Your nameeeee
               </label>
               <input
                 type="text"
