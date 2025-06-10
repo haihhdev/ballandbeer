@@ -13,20 +13,62 @@ export default function Header() {
     email: "",
     fullname: "",
   });
+  const [isFetching, setIsFetching] = useState(false);
   const router = useRouter(); // Initialize router
   const pathname = usePathname();
 
   // Check login status on component mount
   useEffect(() => {
-    const profile = localStorage.getItem("userProfile");
-    if (profile) {
-      setUserProfile(JSON.parse(profile));
-    }
     const loggedInStatus = localStorage.getItem("isLoggedIn");
     if (loggedInStatus === "true") {
       setIsLoggedIn(true);
+      // Fetch user info ngay khi login thành công
+      const userId = localStorage.getItem("userId");
+      if (userId) {
+        fetch(`http://localhost:4004/api/profile/id/${userId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.data) {
+              setUserProfile({
+                avatar: data.data.avatar || "",
+                email: data.data.email || "",
+                fullname: data.data.fullname || "",
+              });
+            }
+          });
+      }
     }
   }, []);
+
+  // Fetch user info khi mở dropdown (nếu muốn luôn cập nhật mới)
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setIsFetching(true);
+      try {
+        const userId = localStorage.getItem("userId");
+        if (!userId) return;
+        const res = await fetch(
+          `http://localhost:4004/api/profile/id/${userId}`
+        );
+        const data = await res.json();
+        if (data && data.data) {
+          setUserProfile({
+            avatar: data.data.avatar || "",
+            email: data.data.email || "",
+            fullname: data.data.fullname || "",
+          });
+        }
+      } catch (err) {
+        // Xử lý lỗi nếu cần
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    if (profileDropdownOpen && isLoggedIn) {
+      fetchUserProfile();
+    }
+  }, [profileDropdownOpen, isLoggedIn]);
 
   const handleLogout = () => {
     setIsLoggedIn(false); // Update state to reflect logout

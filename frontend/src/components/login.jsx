@@ -64,21 +64,7 @@ export default function Login() {
       console.log("Login API response:", data);
       if (data.data && data.data._id) {
         localStorage.setItem("userId", data.data._id);
-        console.log("userId saved to localStorage:", data.data._id);
-        // Lưu thông tin user cho navigation
-        localStorage.setItem(
-          "userProfile",
-          JSON.stringify({
-            avatar: data.data.avatar || "",
-            email: data.data.email || "",
-            username: data.data.username || "",
-          })
-        );
-      } else {
-        console.log("userId not found in API response");
       }
-
-      // Lưu token và trạng thái đăng nhập vào localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
 

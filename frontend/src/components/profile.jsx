@@ -136,7 +136,7 @@ export default function Profile() {
       <div className="w-full md:w-1/4 bg-white rounded-lg shadow-md p-4">
         <div className="flex flex-col items-center">
           <img
-            src={user.avatar || "/images/j97.jpg"}
+            src={user.avatar}
             alt="Profile Avatar"
             className="w-24 h-24 object-cover rounded-full mb-4 cursor-pointer"
             onClick={handleAvatarClick}
