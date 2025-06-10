@@ -39,7 +39,9 @@ export default function ShoppingCart() {
           id: item.productId,
           name: product?.name || "Không tìm thấy",
           price: product?.price || 0,
-          image: product?.image || "/images/default.jpg",
+          image: product?.image 
+            ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${product.image}`
+            : "/images/missing.png",
           quantity: item.quantity,
         };
       });
@@ -103,7 +105,9 @@ export default function ShoppingCart() {
         id: item.productId,
         name: product?.name || "Không tìm thấy",
         price: product?.price || 0,
-        image: product?.image || "/images/default.jpg",
+        image: product?.image 
+          ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${product.image}`
+          : "/images/missing.png",
         quantity: item.quantity,
       };
     });
