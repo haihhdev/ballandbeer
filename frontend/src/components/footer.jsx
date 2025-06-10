@@ -12,7 +12,7 @@ export default function Footer() {
             className="w-24 h-24 mb-2 object-contain rounded"
           />
           <div className="text-sm text-white/90 mb-2 mt-2">
-            Cùng bạn kết nối đam mê bóng đá – dễ dàng đặt sân.
+            Đặt sân nhanh chóng - Cùng bạn kết nối đam mê bóng đá.
             <br />
             <span className="font-semibold">Ball & Beer</span>
           </div>
@@ -22,22 +22,22 @@ export default function Footer() {
           <div className="font-bold text-[#ffd600] mb-2">Quick Links</div>
           <ul className="space-y-1 text-white/90">
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/" className="hover:underline">
                 Trang chủ
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/booking" className="hover:underline">
                 Đặt sân
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/products" className="hover:underline">
                 Sản phẩm
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Liên hệ
               </Link>
             </li>
@@ -48,22 +48,22 @@ export default function Footer() {
           <div className="font-bold text-[#ffd600] mb-2">Support</div>
           <ul className="space-y-1 text-white/90">
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Hỗ trợ
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Câu hỏi thường gặp
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Chính sách bảo mật
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Điều khoản & điều kiện
               </Link>
             </li>
@@ -74,23 +74,28 @@ export default function Footer() {
           <div className="font-bold text-[#ffd600] mb-2">Liên hệ</div>
           <ul className="space-y-1 text-white/90">
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Địa chỉ: 123 Đường Nguyễn Tất Thành, P. Bến Nghé, Q.1, TP.HCM
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Số điện thoại: 0909090909
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:underline">
+              <Link href="/contact" className="hover:underline">
                 Email: ballandbeer@gmail.com
               </Link>
             </li>
             <li>
               Fanpage:{" "}
-              <Link href="https://www.facebook.com/ballandbeer" className="hover:underline" target="_blank" rel="noopener noreferrer">
+              <Link
+                href="https://www.facebook.com/ballandbeer"
+                className="hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Ball & Beer
               </Link>
             </li>

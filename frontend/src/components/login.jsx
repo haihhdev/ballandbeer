@@ -1,6 +1,28 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { initializeApp } from "firebase/app";
+
+// Firebase config (thay bằng config của bạn)
+const firebaseConfig = {
+  apiKey: "AIzaSyCx_VdnaBLNsdAJs0LmN3kqQ0nWEbyxhV0",
+  authDomain: "ballandbeer-98153.firebaseapp.com",
+  projectId: "ballandbeer-98153",
+  storageBucket: "ballandbeer-98153.firebasestorage.app",
+  messagingSenderId: "979256560459",
+  appId: "1:979256560459:web:e27264aa80c97ae22c36ce",
+};
+
+let firebaseApp;
+if (typeof window !== "undefined" && !window._firebaseInitialized) {
+  firebaseApp = initializeApp(firebaseConfig);
+  window._firebaseInitialized = true;
+} else if (typeof window !== "undefined") {
+  firebaseApp = initializeApp(firebaseConfig);
+}
+
+const provider = new GoogleAuthProvider();
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -69,6 +91,30 @@ export default function Login() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const auth = getAuth();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const token = await user.getIdToken();
+      // Lưu thông tin user và token vào localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userId", user.uid);
+      localStorage.setItem(
+        "userProfile",
+        JSON.stringify({
+          avatar: user.photoURL || "",
+          email: user.email || "",
+          username: user.displayName || "",
+        })
+      );
+      router.push("/");
+    } catch (err) {
+      setError("Đăng nhập Google thất bại: " + err.message);
+    }
+  };
+
   return (
     <section className="bg-[url(/images/beerbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900">
       <div className="py-8 px-8 mx-auto max-w-screen-xl lg:py-16 grid lg:grid-cols-2 gap-4 lg:gap-8">
@@ -80,7 +126,8 @@ export default function Login() {
             </h2>
             <div className="flex justify-center">
               <button
-                type="submit"
+                type="button"
+                onClick={handleGoogleLogin}
                 className="w-full px-5 py-3 font-medium text-[#000] bg-[#f8f7f4] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105 hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-200 rounded-md flex items-center justify-center gap-2"
               >
                 <img src="/icons/google.svg" alt="google" className="h-5 w-5" />

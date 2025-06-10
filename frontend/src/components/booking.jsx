@@ -35,7 +35,7 @@ export default function Booking() {
           </div>
           <a
             href="/bookinginfo?field=san7"
-            className="inline-block px-6 py-2 border border-white text-white text-lg font-semibold hover:bg-white hover:text-black transition"
+            className="inline-block px-6 py-2 border border-white rounded-md text-white text-lg font-semibold hover:bg-white hover:text-black transition"
           >
             Đặt sân
           </a>
@@ -66,7 +66,7 @@ export default function Booking() {
           </div>
           <a
             href="/bookinginfo?field=san5"
-            className="inline-block px-6 py-2 border border-white text-white text-lg font-semibold hover:bg-white hover:text-black transition"
+            className="inline-block px-6 py-2 border border-white rounded-md text-white text-lg font-semibold hover:bg-white hover:text-black transition"
           >
             Đặt sân
           </a>

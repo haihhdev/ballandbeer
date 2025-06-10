@@ -12,11 +12,16 @@ export default function ShoppingCart() {
       if (!userToken) return;
 
       // Lấy tất cả order của user
-      const ordersRes = await fetch("http://localhost:4002/api/orders/my-orders", {
-        headers: { Authorization: `Bearer ${userToken}` },
-      });
+      const ordersRes = await fetch(
+        "http://localhost:4002/api/orders/my-orders",
+        {
+          headers: { Authorization: `Bearer ${userToken}` },
+        }
+      );
       const ordersData = await ordersRes.json();
-      const pendingOrder = ordersData.data.find(order => order.status === "pending");
+      const pendingOrder = ordersData.data.find(
+        (order) => order.status === "pending"
+      );
 
       if (!pendingOrder) {
         setCartItems([]);
@@ -28,8 +33,8 @@ export default function ShoppingCart() {
       const productsData = await productsRes.json();
 
       // Map productId sang thông tin sản phẩm
-      const cartWithDetails = pendingOrder.products.map(item => {
-        const product = productsData.find(p => p._id === item.productId);
+      const cartWithDetails = pendingOrder.products.map((item) => {
+        const product = productsData.find((p) => p._id === item.productId);
         return {
           id: item.productId,
           name: product?.name || "Không tìm thấy",
@@ -53,9 +58,11 @@ export default function ShoppingCart() {
     fetch("http://localhost:4002/api/orders/my-orders", {
       headers: { Authorization: `Bearer ${userToken}` },
     })
-      .then(res => res.json())
-      .then(ordersData => {
-        const pendingOrder = ordersData.data.find(order => order.status === "pending");
+      .then((res) => res.json())
+      .then((ordersData) => {
+        const pendingOrder = ordersData.data.find(
+          (order) => order.status === "pending"
+        );
         if (pendingOrder) setPendingOrderId(pendingOrder._id);
       });
   }, []);
@@ -65,26 +72,33 @@ export default function ShoppingCart() {
     const userToken = localStorage.getItem("token");
     if (!userToken || !pendingOrderId) return;
     // Lấy lại order pending
-    const ordersRes = await fetch("http://localhost:4002/api/orders/my-orders", {
-      headers: { Authorization: `Bearer ${userToken}` },
-    });
+    const ordersRes = await fetch(
+      "http://localhost:4002/api/orders/my-orders",
+      {
+        headers: { Authorization: `Bearer ${userToken}` },
+      }
+    );
     const ordersData = await ordersRes.json();
-    const pendingOrder = ordersData.data.find(order => order.status === "pending");
+    const pendingOrder = ordersData.data.find(
+      (order) => order.status === "pending"
+    );
     if (!pendingOrder) return;
-    const updatedProducts = pendingOrder.products.filter(item => item.productId !== id);
+    const updatedProducts = pendingOrder.products.filter(
+      (item) => item.productId !== id
+    );
     await fetch(`http://localhost:4002/api/orders/${pendingOrderId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${userToken}`,
       },
-      body: JSON.stringify({ products: updatedProducts, status: "pending" })
+      body: JSON.stringify({ products: updatedProducts, status: "pending" }),
     });
     // Cập nhật lại cartItems
     const productsRes = await fetch("http://localhost:4003/api/products");
     const productsData = await productsRes.json();
-    const cartWithDetails = updatedProducts.map(item => {
-      const product = productsData.find(p => p._id === item.productId);
+    const cartWithDetails = updatedProducts.map((item) => {
+      const product = productsData.find((p) => p._id === item.productId);
       return {
         id: item.productId,
         name: product?.name || "Không tìm thấy",
@@ -102,12 +116,11 @@ export default function ShoppingCart() {
   };
 
   return (
-    <div className="p-4 bg-gray-100 mb-[50vh]">
-      <h1 className="text-2xl font-bold mb-4">Giỏ Hàng</h1>
-      <div className="bg-white shadow-md rounded-lg p-4">
-        <table className="w-full text-left">
+    <div className="p-4 bg-[#fff] mb-[30vh]">
+      <div className="bg-white shadow-md rounded-lg p-4 border border-[#f09627]">
+        <table className="w-full text-left text-[#5c3613]">
           <thead>
-            <tr className="border-b">
+            <tr className="border-b border-[#f09627]">
               <th className="py-2">Sản Phẩm</th>
               <th className="py-2">Đơn Giá</th>
               <th className="py-2">Số Lượng</th>
@@ -117,7 +130,7 @@ export default function ShoppingCart() {
           </thead>
           <tbody>
             {cartItems.map((item) => (
-              <tr key={item.id} className="border-b">
+              <tr key={item.id} className="border-b border-[#f09627]">
                 <td className="py-4 flex items-center">
                   <img
                     src={item.image}
@@ -162,7 +175,7 @@ export default function ShoppingCart() {
           </div>
           <button
             onClick={handleCheckout} // Gọi hàm handleCheckout
-            className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600"
+            className="text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300 px-6 py-2 rounded-md"
           >
             Mua Hàng
           </button>

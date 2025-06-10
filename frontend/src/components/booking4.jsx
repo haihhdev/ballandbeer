@@ -274,8 +274,6 @@ export default function Booking() {
 
   return (
     <div className="p-4 bg-[#f8f7f4] text-[#5c3613] ">
-      <h1 className="text-lg text-3xl font-bold mb-4">Đặt lịch sân</h1>
-
       <div className="flex flex-col md:flex-row justify-center items-center gap-6 mb-8 mt-4">
         {/* BASIC */}
         <div className="bg-white rounded-2xl shadow-lg w-80 p-8 flex flex-col items-center border border-gray-200">
@@ -373,143 +371,146 @@ export default function Booking() {
         </div>
       </div>
 
-      {/* Date Picker */}
-      <div className="mb-6 flex justify-end">
-        <div className="relative w-1/4">
-          <input
-            id="datepicker"
-            type="text"
-            placeholder="Chọn ngày"
-            className="w-full rounded-lg border border-stroke bg-[#f0962e]/80 py-2.5 pl-[50px] pr-8 text-dark-2 text-2xl outline-none transition focus:border-primary"
-            value={selectedDate || ""}
-            readOnly
-            onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-          />
-          <img
-            src="/icons/calendar.svg"
-            alt="calendar"
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-transparent"
-          />
-        </div>
-        {isCalendarOpen && (
-          <div
-            id="datepicker-container"
-            className="shadow-datepicker absolute mt-2 rounded-xl border border-stroke bg-white pt-5"
-          >
-            <div className="flex items-center justify-between px-5">
-              <button
-                id="prevMonth"
-                className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e] hover:text-white"
-                onClick={handlePrevMonth}
-              >
-                Prev
-              </button>
-              <div
-                id="currentMonth"
-                className="text-lg font-medium text-dark-3"
-              >
-                {currentDate.toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </div>
-              <button
-                id="nextMonth"
-                className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e]/80 hover:text-white"
-                onClick={handleNextMonth}
-              >
-                Next
-              </button>
-            </div>
-
-            <div
-              id="days-of-week"
-              className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5"
-            >
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Sun
-              </div>
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Mon
-              </div>
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Tue
-              </div>
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Wed
-              </div>
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Thu
-              </div>
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Fri
-              </div>
-              <div className="text-center text-sm font-medium text-[#f0962e]">
-                Sat
-              </div>
-            </div>
-
-            <div
-              ref={daysContainerRef}
-              id="days-container"
-              className="mt-2 grid grid-cols-7 gap-2 px-5"
-            >
-              {/* Days will be rendered here */}
-            </div>
+      {/* Booking Wrapper */}
+      <div className="bg-[#fff] border-2 border-[#f0962e] rounded-xl shadow-lg p-4 mb-8">
+        {/* Date Picker Row */}
+        <div className="mb-6 flex flex-col md:flex-row items-center md:justify-between gap-4">
+          <h1 className="text-lg text-6xl font-bold  text-[#5c3613]">
+            Đặt lịch sân
+          </h1>
+          <div className="relative w-full md:w-1/4">
+            <input
+              id="datepicker"
+              type="text"
+              placeholder="Chọn ngày"
+              className="w-full rounded-lg border border-stroke bg-[#f0962e]/80 py-2.5 pl-[50px] pr-8 text-dark-2 text-2xl outline-none transition focus:border-primary"
+              value={selectedDate || ""}
+              readOnly
+              onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+            />
+            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">
+              📅
+            </span>
           </div>
-        )}
-      </div>
-
-      {/* Booking Table */}
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-[150px_repeat(10,_1fr)] border border-[#f0962e] border-2">
-          <div className="bg-[#f0962e] text-center text-gray-950 font-bold border border-gray-300">
-            Courts
-          </div>
-          {timeSlots.map((time, index) => (
+          {isCalendarOpen && (
             <div
-              key={index}
-              className="bg-[#f0962e] text-center text-gray-950 font-bold border border-gray-300"
+              id="datepicker-container"
+              className="shadow-datepicker absolute mt-2 rounded-xl border border-stroke bg-white pt-5"
             >
-              {time}
-            </div>
-          ))}
-
-          {courts.map((court) => (
-            <React.Fragment key={court.id}>
-              <div className="bg-[#f0962e] text-center border border-gray-300 flex flex-col items-center">
-                <img
-                  src={court.image}
-                  alt={court.name}
-                  className="w-full h-auto object-cover mb-2"
-                />
-                <span>{court.name}</span>
-              </div>
-              {timeSlots.map((time, index) => (
+              <div className="flex items-center justify-between px-5">
+                <button
+                  id="prevMonth"
+                  className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e] hover:text-white"
+                  onClick={handlePrevMonth}
+                >
+                  Prev
+                </button>
                 <div
-                  key={`${court.id}-${index}`}
-                  className={`border border-[#f1c43e] text-center cursor-pointer ${
-                    (bookedSlots[court.id] || []).some(
-                      (slot) =>
-                        slot.hour === parseInt(time.split(":")[0]) &&
-                        slot.isBooked
-                    )
-                      ? "bg-gray-500 cursor-not-allowed"
-                      : selectedSlots.includes(`${court.id}-${time}`)
-                      ? "bg-yellow-500"
-                      : "bg-white"
-                  }`}
-                  onClick={() =>
-                    !(bookedSlots[court.id] || []).some(
-                      (slot) =>
-                        slot.hour === parseInt(time.split(":")[0]) &&
-                        slot.isBooked
-                    ) && toggleSlot(court.id, time)
-                  }
-                ></div>
-              ))}
-            </React.Fragment>
-          ))}
+                  id="currentMonth"
+                  className="text-lg font-medium text-dark-3"
+                >
+                  {currentDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </div>
+                <button
+                  id="nextMonth"
+                  className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e]/80 hover:text-white"
+                  onClick={handleNextMonth}
+                >
+                  Next
+                </button>
+              </div>
+
+              <div
+                id="days-of-week"
+                className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5"
+              >
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Sun
+                </div>
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Mon
+                </div>
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Tue
+                </div>
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Wed
+                </div>
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Thu
+                </div>
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Fri
+                </div>
+                <div className="text-center text-sm font-medium text-[#f0962e]">
+                  Sat
+                </div>
+              </div>
+
+              <div
+                ref={daysContainerRef}
+                id="days-container"
+                className="mt-2 grid grid-cols-7 gap-2 px-5"
+              >
+                {/* Days will be rendered here */}
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Booking Table */}
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-[150px_repeat(10,_1fr)] border border-[#f0962e] border-2">
+            <div className="bg-[#f0962e] text-center text-gray-950 font-bold border border-gray-300">
+              Courts
+            </div>
+            {timeSlots.map((time, index) => (
+              <div
+                key={index}
+                className="bg-[#f0962e] text-center text-gray-950 font-bold border border-gray-300"
+              >
+                {time}
+              </div>
+            ))}
+
+            {courts.map((court) => (
+              <React.Fragment key={court.id}>
+                <div className="bg-[#f0962e] text-center border border-gray-300 flex flex-col items-center">
+                  <img
+                    src={court.image}
+                    alt={court.name}
+                    className="w-full h-auto object-cover mb-2"
+                  />
+                  <span>{court.name}</span>
+                </div>
+                {timeSlots.map((time, index) => (
+                  <div
+                    key={`${court.id}-${index}`}
+                    className={`border border-[#f1c43e] text-center cursor-pointer ${
+                      (bookedSlots[court.id] || []).some(
+                        (slot) =>
+                          slot.hour === parseInt(time.split(":")[0]) &&
+                          slot.isBooked
+                      )
+                        ? "bg-gray-500 cursor-not-allowed"
+                        : selectedSlots.includes(`${court.id}-${time}`)
+                        ? "bg-yellow-500"
+                        : "bg-white"
+                    }`}
+                    onClick={() =>
+                      !(bookedSlots[court.id] || []).some(
+                        (slot) =>
+                          slot.hour === parseInt(time.split(":")[0]) &&
+                          slot.isBooked
+                      ) && toggleSlot(court.id, time)
+                    }
+                  ></div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       </div>
 
