@@ -6,7 +6,6 @@ export default function Home() {
     <div>
       {/* Product2 Section */}
       <Product2 />
-      <CreateProductForm />
     </div>
   );
 }

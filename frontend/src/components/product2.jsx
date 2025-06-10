@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter
+import Pagination from "./Pagination";
 
 export default function Product2() {
   const router = useRouter(); // Initialize useRouter
@@ -15,6 +16,8 @@ export default function Product2() {
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   // Fetch products from API
   useEffect(() => {
@@ -40,7 +43,7 @@ export default function Product2() {
           price: `${item.price.toLocaleString()} VND`,
           quantity: item.quantity,
           category: convertCategory(item.category),
-          image: item.image || "/images/default.jpg",
+          image: `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${item.image}`,
         }));
 
         setProducts(formattedProducts);
@@ -70,6 +73,28 @@ export default function Product2() {
     selectedCategory === "Tất cả"
       ? products
       : products.filter((product) => product.category === selectedCategory);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+  // Lấy sản phẩm cho trang hiện tại
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Khi đổi category thì về trang 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory]);
+
+  // Khi đổi trang thì cuộn lên đầu danh sách
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    const listTop = document.getElementById("product-list-top");
+    if (listTop) {
+      listTop.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <div className="p-4  bg-white">
@@ -140,30 +165,41 @@ export default function Product2() {
       {loading ? (
         <p>Loading products...</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              onClick={() => router.push(`/productinfo/${product.id}`)} // Navigate to productinfo page
-              className="text-left cursor-pointer border-2 border-gray-200 rounded-lg p-3 hover:border-[#f09627] transition-colors duration-200"
-            >
-              <div>
-                <img
-                  className="h-120 w-full object-cover rounded-lg"
-                  src={product.image}
-                  alt={product.name}
-                />
-                <div className="mt-2">
-                  <h3 className="text-lg font-bold">{product.name}</h3>
-                  <p className="text-gray-700">Giá: {product.price}</p>
-                  <p className="text-gray-500">
-                    Sản phẩm còn lại: {product.quantity}
-                  </p>
+        <>
+          <div id="product-list-top" />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {paginatedProducts.map((product) => (
+              <div
+                key={product.id}
+                onClick={() => router.push(`/productinfo/${product.id}`)} // Navigate to productinfo page
+                className="text-left cursor-pointer border-2 border-gray-200 rounded-lg p-3 hover:border-[#f09627] transition-colors duration-200"
+              >
+                <div>
+                  <img
+                    className="h-120 w-full object-cover rounded-lg"
+                    src={product.image}
+                    alt={product.name}
+                  />
+                  <div className="mt-2">
+                    <h3 className="text-lg font-bold text-[#5c3613]">{product.name}</h3>
+                    <p className="text-[#5c3613]">Giá: <span className="text-[#f09627]">{product.price}</span></p>
+                    <p className="text-[#5c3613]">
+                      Sản phẩm còn lại: {product.quantity}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
       )}
     </div>
   );
