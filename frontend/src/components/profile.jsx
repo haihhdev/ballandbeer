@@ -115,9 +115,46 @@ export default function Profile() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Kiểm tra kích thước file (giới hạn 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Kích thước ảnh không được vượt quá 5MB!");
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setUser((prev) => ({ ...prev, avatar: reader.result })); // base64
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Tạo canvas để resize ảnh
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          // Tính toán kích thước mới giữ nguyên tỷ lệ
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Chuyển đổi sang base64 với chất lượng 0.7 (70%)
+          const resizedImage = canvas.toDataURL('image/jpeg', 0.7);
+          setUser((prev) => ({ ...prev, avatar: resizedImage }));
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -136,7 +173,7 @@ export default function Profile() {
       <div className="w-full md:w-1/4 bg-white rounded-lg shadow-md p-4">
         <div className="flex flex-col items-center">
           <img
-            src={user.avatar}
+            src={user.avatar || "/images/j97.jpg"}
             alt="Profile Avatar"
             className="w-24 h-24 object-cover rounded-full mb-4 cursor-pointer"
             onClick={handleAvatarClick}

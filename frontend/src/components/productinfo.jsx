@@ -14,30 +14,6 @@ export default function ProductInfo() {
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const imageMap = {
-    "67ff9ff35e234d7307549c8f": "/images/products/giay4.jpeg",
-    "67ff9ff35e234d7307549c90": "/images/products/giay2.jpeg",
-    "67ff9ff35e234d7307549c91": "/images/products/giay1.jpeg",
-    "67ff9ff35e234d7307549c92": "/images/products/giay5.webp",
-    "67ff9ff35e234d7307549c93": "/images/products/giay6.jpeg",
-    "67ff9ff35e234d7307549c94": "/images/products/binhnuoc.jpg",
-    "67ff9ff35e234d7307549c95": "/images/products/bocongdong.webp",
-    "67ff9ff35e234d7307549c96": "/images/products/bongda.webp",
-    "67ff9ff35e234d7307549c97": "/images/products/gangtay.jpg",
-    "67ff9ff35e234d7307549c98": "/images/products/tat.webp",
-    "67ff9ff35e234d7307549c99": "/images/products/aoj97.jpg",
-    "67ff9ff35e234d7307549c9a": "/images/products/ao5.jpeg",
-    "67ff9ff35e234d7307549c9b": "/images/products/ao1.webp",
-    "67ff9ff35e234d7307549c9c": "/images/products/ao4.jpg",
-    "67ff9ff35e234d7307549c9d": "/images/products/ao2.webp",
-    "67ff9ff35e234d7307549c9e": "/images/products/sting.jpg",
-    "67ff9ff35e234d7307549c9f": "/images/products/nuoc4.jpg",
-    "67ff9ff35e234d7307549ca0": "/images/products/nuoc1.jpeg",
-    "67ff9ff35e234d7307549ca1": "/images/products/nuoc2.jpg",
-    "67ff9ff35e234d7307549ca2": "/images/products/doan2.webp",
-    "67ff9ff35e234d7307549ca3": "/images/products/doan1.jpg",
-  };
-
   useEffect(() => {
     if (!id) return;
 
@@ -45,10 +21,7 @@ export default function ProductInfo() {
       try {
         const response = await fetch(`http://localhost:4003/api/products/${id}`);
         const data = await response.json();
-        setProduct({
-          ...data,
-          image: imageMap[data._id] || "/images/default.jpg",
-        });
+        setProduct(data);
         setLoading(false);
         
         // Fetch comments and calculate average rating
@@ -138,6 +111,11 @@ export default function ProductInfo() {
     }
   };
 
+  // Sử dụng ảnh base64 nếu có, nếu không thì dùng ảnh mặc định
+  const productImage = product.image && product.image.startsWith("data:image")
+    ? product.image
+    : "/images/missing.png";
+
   return (
     <div className="bg-white text-black p-6 relative">
       {addingToCart && (
@@ -149,7 +127,7 @@ export default function ProductInfo() {
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20">
         <div className="flex flex-col items-center">
           <img
-            src={product.image || "/images/default.jpg"}
+            src={productImage}
             alt={product.name}
             className="w-full max-w-md object-cover"
           />

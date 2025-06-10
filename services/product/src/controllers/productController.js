@@ -30,13 +30,16 @@ exports.getProductById = async (req, res) => { // Thêm controller này
 exports.createProduct = async (req, res) => {
   try {
     const data = req.body;
-    if (req.file) {
-      data.image = `/uploads/${req.file.filename}`;
-    }
+    // The image is already in base64 format from the frontend
     const newProduct = await productService.create(data);
     res.status(201).json(newProduct);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error creating product:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

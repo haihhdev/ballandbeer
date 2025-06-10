@@ -28,18 +28,35 @@ export default function CreateProductForm() {
     setLoading(true);
     setMessage("");
     try {
-      const formData = new FormData();
-      formData.append("name", name);
-      formData.append("price", price);
-      formData.append("quantity", quantity);
-      formData.append("category", category);
-      formData.append("desc", desc);
-      if (image) formData.append("image", image);
+      let imageBase64 = null;
+      if (image) {
+        const reader = new FileReader();
+        reader.readAsDataURL(image);
+        await new Promise((resolve) => {
+          reader.onloadend = () => {
+            imageBase64 = reader.result;
+            resolve();
+          };
+        });
+      }
+
+      const productData = {
+        name,
+        price: Number(price),
+        quantity: Number(quantity),
+        category,
+        desc,
+        image: imageBase64
+      };
 
       const response = await fetch("http://localhost:4003/api/products", {
         method: "POST",
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData)
       });
+
       if (response.ok) {
         setMessage("Tạo sản phẩm thành công!");
         setName("");
@@ -50,7 +67,8 @@ export default function CreateProductForm() {
         setImage(null);
         setImagePreview(null);
       } else {
-        setMessage("Có lỗi xảy ra khi tạo sản phẩm!");
+        const errorData = await response.json();
+        setMessage(errorData.message || "Có lỗi xảy ra khi tạo sản phẩm!");
       }
     } catch (err) {
       setMessage("Lỗi kết nối server!");

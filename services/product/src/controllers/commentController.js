@@ -5,6 +5,7 @@ exports.getProductComments = async (req, res) => {
   try {
     const { productId } = req.params;
     const comments = await Comment.find({ productId })
+      .populate('userId', 'avatar fullname username')
       .sort({ createdAt: -1 });
     res.json(comments);
   } catch (error) {
@@ -17,19 +18,47 @@ exports.createComment = async (req, res) => {
   try {
     const { productId } = req.params;
     const { content, rating, image } = req.body;
-    const userId = req.user.id; // From auth middleware
+    const userId = req.user.id;
 
-    const comment = await Comment.create({
+    // Validate required fields
+    if (!content || !rating) {
+      return res.status(400).json({ message: 'Content and rating are required' });
+    }
+
+    // Validate rating range
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    // Create comment object
+    const commentData = {
       productId,
       userId,
       content,
       rating,
-      image
-    });
+      hearts: 0,
+      heartedBy: []
+    };
 
-    res.status(201).json(comment);
+    // Add image if provided
+    if (image) {
+      commentData.image = image;
+    }
+
+    const comment = await Comment.create(commentData);
+    
+    // Populate user data before sending response
+    const populatedComment = await Comment.findById(comment._id)
+      .populate('userId', 'avatar fullname username');
+
+    res.status(201).json(populatedComment);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error creating comment:', error);
+    console.error('Request body:', req.body);
+    res.status(500).json({ 
+      message: 'Error creating comment',
+      error: error.message 
+    });
   }
 };
 

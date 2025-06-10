@@ -47,7 +47,7 @@ export default function Register() {
         localStorage.setItem("userId", data.data._id);
         console.log("userId saved to localStorage:", data.data._id);
         alert("Đăng ký thành công!");
-        // Có thể chuyển hướng hoặc reset form ở đây nếu muốn
+        router.push("/login");
       } else {
         console.log("userId not found in API response");
         alert(data.message || "Đăng ký thất bại!");

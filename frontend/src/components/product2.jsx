@@ -16,31 +16,6 @@ export default function Product2() {
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
 
-  // Map of product _id to image paths
-  const imageMap = {
-    "67ff9ff35e234d7307549c8f": "/images/products/giay4.jpeg",
-    "67ff9ff35e234d7307549c90": "/images/products/giay2.jpeg",
-    "67ff9ff35e234d7307549c91": "/images/products/giay1.jpeg",
-    "67ff9ff35e234d7307549c92": "/images/products/giay5.webp",
-    "67ff9ff35e234d7307549c93": "/images/products/giay6.jpeg",
-    "67ff9ff35e234d7307549c94": "/images/products/binhnuoc.jpg",
-    "67ff9ff35e234d7307549c95": "/images/products/bocongdong.webp",
-    "67ff9ff35e234d7307549c96": "/images/products/bongda.webp",
-    "67ff9ff35e234d7307549c97": "/images/products/gangtay.jpg",
-    "67ff9ff35e234d7307549c98": "/images/products/tat.webp",
-    "67ff9ff35e234d7307549c99": "/images/products/aoj97.jpg",
-    "67ff9ff35e234d7307549c9a": "/images/products/ao5.jpeg",
-    "67ff9ff35e234d7307549c9b": "/images/products/ao1.webp",
-    "67ff9ff35e234d7307549c9c": "/images/products/ao4.jpg",
-    "67ff9ff35e234d7307549c9d": "/images/products/ao2.webp",
-    "67ff9ff35e234d7307549c9e": "/images/products/sting.jpg",
-    "67ff9ff35e234d7307549c9f": "/images/products/nuoc4.jpg",
-    "67ff9ff35e234d7307549ca0": "/images/products/nuoc1.jpeg",
-    "67ff9ff35e234d7307549ca1": "/images/products/nuoc2.jpg",
-    "67ff9ff35e234d7307549ca2": "/images/products/doan2.webp",
-    "67ff9ff35e234d7307549ca3": "/images/products/doan1.jpg",
-  };
-
   // Fetch products from API
   useEffect(() => {
     const fetchProducts = async () => {
@@ -65,7 +40,7 @@ export default function Product2() {
           price: `${item.price.toLocaleString()} VND`,
           quantity: item.quantity,
           category: convertCategory(item.category),
-          image: imageMap[item._id] || "/images/default.jpg",
+          image: item.image || "/images/default.jpg",
         }));
 
         setProducts(formattedProducts);

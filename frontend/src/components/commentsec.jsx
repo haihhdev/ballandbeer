@@ -46,10 +46,52 @@ export default function CommentSection() {
         toast.error("Kích thước ảnh không được vượt quá 5MB!", { autoClose: 2000 });
         return;
       }
-      setSelectedImage(file);
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Tạo canvas để resize ảnh
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          // Tính toán kích thước mới giữ nguyên tỷ lệ
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Chuyển đổi sang base64 với chất lượng 0.7 (70%)
+          const resizedImage = canvas.toDataURL('image/jpeg', 0.7);
+          
+          // Chuyển base64 thành File object
+          fetch(resizedImage)
+            .then(res => res.blob())
+            .then(blob => {
+              const resizedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              setSelectedImage(resizedFile);
+              setImagePreview(resizedImage);
+            });
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -177,38 +219,41 @@ export default function CommentSection() {
 
     try {
       const userToken = localStorage.getItem("token");
-      const formData = new FormData();
-      formData.append("content", inputValue);
-      formData.append("rating", selectedRating);
+      const commentData = {
+        content: inputValue,
+        rating: selectedRating
+      };
+
+      // Add image if exists
       if (selectedImage) {
-        formData.append("image", selectedImage);
-      }
-      if (selectedEmoji) {
-        formData.append("emoji", selectedEmoji);
+        commentData.image = imagePreview; // Use the resized and compressed image
       }
 
       const response = await fetch(`http://localhost:4003/api/products/${id}/comments`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${userToken}`,
         },
-        body: formData,
+        body: JSON.stringify(commentData),
       });
 
-      if (response.ok) {
-        toast.success("Bình luận đã được đăng tải thành công!", { autoClose: 2000 });
-        setInputValue("");
-        setSelectedRating(0);
-        setSelectedImage(null);
-        setImagePreview(null);
-        setSelectedEmoji("");
-        fetchComments();
-      } else {
-        toast.error("Có lỗi xảy ra khi đăng tải bình luận!", { autoClose: 2000 });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Có lỗi xảy ra khi đăng tải bình luận!');
       }
+
+      const data = await response.json();
+      toast.success("Bình luận đã được đăng tải thành công!", { autoClose: 2000 });
+      setInputValue("");
+      setSelectedRating(0);
+      setSelectedImage(null);
+      setImagePreview(null);
+      setSelectedEmoji("");
+      fetchComments();
     } catch (error) {
       console.error("Error sending comment:", error);
-      toast.error("Có lỗi xảy ra khi đăng tải bình luận!", { autoClose: 2000 });
+      toast.error(error.message || "Có lỗi xảy ra khi đăng tải bình luận!", { autoClose: 2000 });
     }
   };
 
@@ -376,16 +421,13 @@ export default function CommentSection() {
       {/* Comment list */}
       <div className="space-y-8">
         {comments.map((c) => {
-          const myUserId = localStorage.getItem("userId");
-          const myProfile = JSON.parse(localStorage.getItem("userProfile") || "{}");
-
-          let avatar = c.userId === myUserId ? myProfile.avatar : null;
-          let fullname = c.userId === myUserId ? myProfile.fullname : null;
-          let username = c.userId === myUserId ? myProfile.username : null;
-
-          if (!avatar) avatar = "/icons/user.svg";
+          let avatar = c.userId?.avatar || "/icons/user.svg";
+          let fullname = c.userId?.fullname;
+          let username = c.userId?.username;
           const displayName = fullname || username || "Người dùng";
-          const isMyComment = c.userId === myUserId;
+          const myUserId = localStorage.getItem("userId");
+          let commentUserId = c.userId?._id || c.userId;
+          const isMyComment = myUserId && commentUserId && myUserId === commentUserId.toString();
 
           return (
             <div key={c._id} className="flex gap-4">
