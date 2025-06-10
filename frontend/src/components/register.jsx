@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -24,11 +26,11 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
-      alert("Mật khẩu không khớp!");
+      toast.error("Mật khẩu không khớp!");
       return;
     }
     if (!form.terms) {
-      alert("Bạn phải đồng ý điều khoản!");
+      toast.error("Bạn phải đồng ý điều khoản!");
       return;
     }
     try {
@@ -42,18 +44,17 @@ export default function Register() {
         }),
       });
       const data = await res.json();
-      console.log("Register API response:", data);
-      if (data.data && data.data._id) {
-        localStorage.setItem("userId", data.data._id);
-        console.log("userId saved to localStorage:", data.data._id);
-        alert("Đăng ký thành công!");
-        router.push("/login");
+      if (data.message === "User registered successfully") {
+        toast.success("Đăng ký thành công!");
+        setTimeout(() => {
+          router.push("/login");
+        }, 1500);
       } else {
-        console.log("userId not found in API response");
-        alert(data.message || "Đăng ký thất bại!");
+        toast.error(data.message || "Đăng ký thất bại!");
       }
     } catch (err) {
-      alert("Có lỗi xảy ra!");
+      image.png;
+      toast.error("Có lỗi xảy ra!");
     }
   };
 
@@ -163,6 +164,7 @@ export default function Register() {
               </a>
             </p>
           </form>
+          <ToastContainer position="top-center" autoClose={2000} />
         </div>
       </div>
     </section>

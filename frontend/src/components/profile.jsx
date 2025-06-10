@@ -126,7 +126,7 @@ export default function Profile() {
         const img = new Image();
         img.onload = () => {
           // Tạo canvas để resize ảnh
-          const canvas = document.createElement('canvas');
+          const canvas = document.createElement("canvas");
           const MAX_WIDTH = 800;
           const MAX_HEIGHT = 800;
           let width = img.width;
@@ -147,11 +147,11 @@ export default function Profile() {
 
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
 
           // Chuyển đổi sang base64 với chất lượng 0.7 (70%)
-          const resizedImage = canvas.toDataURL('image/jpeg', 0.7);
+          const resizedImage = canvas.toDataURL("image/jpeg", 0.7);
           setUser((prev) => ({ ...prev, avatar: resizedImage }));
         };
         img.src = event.target.result;
@@ -173,7 +173,7 @@ export default function Profile() {
       <div className="w-full md:w-1/4 bg-white rounded-lg shadow-md p-4">
         <div className="flex flex-col items-center">
           <img
-            src={user.avatar || "/images/j97.jpg"}
+            src={user.avatar || "/icons/user.svg"}
             alt="Profile Avatar"
             className="w-24 h-24 object-cover rounded-full mb-4 cursor-pointer"
             onClick={handleAvatarClick}
