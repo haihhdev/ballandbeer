@@ -12,8 +12,9 @@ export default function Contact() {
   const tags = [
     "Công việc",
     "Hàng hoá",
-    "Dịch vụ",
-    "Đồ uống",
+    "Đặt chỗ",
+    "Thái độ nhân viên",
+    "Cơ sở vật chất",
     "Khác",
   ];
 
