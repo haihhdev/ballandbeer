@@ -1,18 +1,32 @@
 "use client";
+import { motion } from "framer-motion";
 
 export default function AboutUs() {
   return (
-    <section className="bg-[#f8f7f4] py-12 px-4 text-black -mt-[34vh] z-10 relative">
+    <motion.section className="bg-[#f8f7f4] py-12 px-4 text-black -mt-[34vh] z-10 relative">
       <div className="max-w-6xl mx-auto">
         {/* Title Section */}
-        <h2 className="text-5xl font-bold text-[#5c3613] text-center mb-2">
-          Vì Sao Chọn Ball & Beer?
-        </h2>
-        <p className="text-gray-700 text-2xl text-center mb-8">
-          Đặt sân dễ dàng, mua đồ thể thao nhanh chóng, dịch vụ tận tâm.
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <h2 className="text-5xl font-bold text-[#5c3613] text-center mb-2">
+            Vì Sao Chọn Ball & Beer?
+          </h2>
+          <p className="text-gray-700 text-2xl text-center mb-8">
+            Đặt sân dễ dàng, mua đồ thể thao nhanh chóng, dịch vụ tận tâm.
+          </p>
+        </motion.div>
         {/* Content Section */}
-        <div className="flex flex-col md:flex-row md:items-start md:space-x-10">
+        <motion.div
+          className="flex flex-col md:flex-row md:items-start md:space-x-10"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
           {/* Left: Image */}
           <div className="md:w-1/2 w-full mb-6 md:mb-0 flex justify-center">
             <img
@@ -96,8 +110,8 @@ export default function AboutUs() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }

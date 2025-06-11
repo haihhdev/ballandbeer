@@ -1,18 +1,38 @@
 "use client";
+import { motion } from "framer-motion";
 
 export default function AboutUs() {
   return (
-    <section className="bg-[#f8f7f4] py-12 px-6 text-[#5c3613]">
+    <motion.section
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.8 }}
+      className="bg-[#f8f7f4] py-12 px-6 text-[#5c3613]"
+    >
       <div className="max-w-screen-lg mx-auto flex flex-col items-center">
         {/* Title Section */}
-        <h1 className="text-3xl md:text-6xl font-bold mb-4 text-center">
-          Ball & Beer
-        </h1>
-        <p className="text-2xl md:text-2xl font-bold italic mb-4 text-center">
-          “Uống càng say, đá càng bay!”
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <h1 className="text-3xl md:text-6xl font-bold mb-4 text-center">
+            Ball & Beer
+          </h1>
+          <p className="text-2xl md:text-2xl font-bold italic mb-4 text-center">
+            "Uống càng say, đá càng bay!"
+          </p>
+        </motion.div>
         {/* Content Section */}
-        <div className="flex flex-col md:flex-row items-center">
+        <motion.div
+          className="flex flex-col md:flex-row items-center"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
           {/* Left Section: Logo */}
           <div className="flex-shrink-0 mb-6 md:mb-0 md:mr-8">
             <img
@@ -38,8 +58,8 @@ export default function AboutUs() {
               nhất.
             </p>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }

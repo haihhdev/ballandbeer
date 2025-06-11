@@ -1,19 +1,39 @@
 "use client";
+import { motion } from "framer-motion";
 
 export default function AboutUs3() {
   return (
-    <section className="bg-[#fff] py-12 px-4">
+    <motion.section
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.8 }}
+      className="bg-[#fff] py-12 px-4"
+    >
       <div className="max-w-5xl mx-auto">
         {/* Title */}
-        <h2 className="text-5xl  font-bold text-[#5c3613] text-center mb-2">
-          Khách Hàng Nói Gì Về B&B?
-        </h2>
-        <p className="text-xl text-gray-600 text-center mb-10">
-          Từ siêu sao sân cỏ đến sinh viên và nghệ sĩ – ai cũng chọn B&B để thỏa
-          đam mê bóng đá.
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <h2 className="text-5xl  font-bold text-[#5c3613] text-center mb-2">
+            Khách Hàng Nói Gì Về B&B?
+          </h2>
+          <p className="text-xl text-gray-600 text-center mb-10">
+            Từ siêu sao sân cỏ đến sinh viên và nghệ sĩ – ai cũng chọn B&B để
+            thỏa đam mê bóng đá.
+          </p>
+        </motion.div>
         {/* Testimonials */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
           {/* Card 1 */}
           <div className="bg-[#f8f7f4] rounded-xl shadow-md p-6 flex flex-col h-full">
             <div className="text-gray-800 italic mb-6">
@@ -85,8 +105,8 @@ export default function AboutUs3() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }
