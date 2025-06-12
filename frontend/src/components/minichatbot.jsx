@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
 export default function MiniChatBot() {
   const [show, setShow] = useState(false);
@@ -23,6 +24,10 @@ export default function MiniChatBot() {
   const chatBodyRef = useRef(null);
   const emojiList = ["😀","😂","😍","😡","👍","🤔"];
   const [typingBot, setTypingBot] = useState("");
+  const router = useRouter();
+  const [pendingRoute, setPendingRoute] = useState(null);
+  const [lastSuggestedRoute, setLastSuggestedRoute] = useState(null);
+  const routeBtnRef = useRef(null);
 
   // Load prompt data when component mounts
   useEffect(() => {
@@ -64,10 +69,56 @@ export default function MiniChatBot() {
     }
   }, [show]);
 
-  const handleSend = async () => {
-    if (input.trim() === "") return;
-    
-    const userMessage = input.trim();
+  // Sau khi bot trả lời xong, kiểm tra nội dung để xác định có cần hiển thị nút chuyển trang không
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.from === 'bot') {
+      const text = lastMsg.text.toLowerCase();
+      if (text.includes('đặt sân')) {
+        setPendingRoute('/booking');
+        setLastSuggestedRoute('/booking');
+        console.log('Đề xuất chuyển sang /booking');
+      } else if (text.includes('sản phẩm')) {
+        setPendingRoute('/products');
+        setLastSuggestedRoute('/products');
+        console.log('Đề xuất chuyển sang /product');
+      } else {
+        setPendingRoute(null);
+      }
+      console.log('lastSuggestedRoute:', lastSuggestedRoute);
+    }
+  }, [messages]);
+
+  // Ẩn nút chuyển trang nếu user gửi chat mới sau khi nút đã hiện ra
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.from === 'user' && pendingRoute) {
+      setPendingRoute(null);
+    }
+  }, [messages]);
+
+  // Tự động scroll xuống khi nút chuyển trang xuất hiện
+  useEffect(() => {
+    if (pendingRoute && typingBot === "" && routeBtnRef.current && chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    }
+  }, [pendingRoute, typingBot]);
+
+  // Hàm gửi tin nhắn user (dùng lại cho cả input và option)
+  const sendUserMessage = async (userMessage) => {
+    // Kiểm tra xác nhận chuyển trang
+    const confirmWords = [
+      'chuyển giúp tôi', 'chuyển đi', 'vâng', 'ok', 'oke', 'được', 'đồng ý', 'yes', 'please', 'chuyển đi', "làm cho tôi", "làm giúp tôi", "làm giùm tôi",
+    ];
+    if (lastSuggestedRoute && confirmWords.some(w => userMessage.toLowerCase().includes(w))) {
+      console.log("Chuyển trang tới:", lastSuggestedRoute);
+      router.push(lastSuggestedRoute);
+      setLastSuggestedRoute(null);
+      setPendingRoute(null);
+      return;
+    }
     setMessages(prev => [...prev, { from: "user", text: userMessage }]);
     setInput("");
     setIsLoading(true);
@@ -105,17 +156,16 @@ export default function MiniChatBot() {
       const botResponse = data.choices[0].message.content;
       // Hiệu ứng typing từng ký tự
       let i = 0;
-      setTypingBot(botResponse[0] || "");
-      i = 1;
+      setTypingBot("");
       const typeInterval = setInterval(() => {
-        setTypingBot(prev => prev + botResponse[i]);
+        setTypingBot(botResponse.slice(0, i + 1));
         i++;
         if (i >= botResponse.length) {
           clearInterval(typeInterval);
           setMessages(prev => [...prev, { from: "bot", text: botResponse }]);
           setTypingBot("");
         }
-      }, 30);
+      }, 15);
     } catch (error) {
       console.error("Error:", error);
       toast.error(error.message || "Có lỗi xảy ra khi gửi tin nhắn!");
@@ -128,6 +178,12 @@ export default function MiniChatBot() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Sửa handleSend để dùng hàm mới
+  const handleSend = async () => {
+    if (input.trim() === "") return;
+    await sendUserMessage(input.trim());
   };
 
   const handleEmojiSelect = (emoji) => {
@@ -249,11 +305,22 @@ export default function MiniChatBot() {
                   <button
                     key={opt}
                     className="border border-[#f1c43e] text-[#5c3613] rounded-lg px-3 py-2 text-left hover:bg-[#f1c43e]/10 transition"
-                    onClick={() => setMessages([...messages, { from: "user", text: opt }])}
+                    onClick={() => sendUserMessage(opt)}
                   >
                     {opt}
                   </button>
                 ))}
+              </div>
+            )}
+            {pendingRoute && typingBot === "" && (
+              <div className="mb-3 flex justify-center">
+                <button
+                  ref={routeBtnRef}
+                  className="bg-[#f09627] text-white px-4 py-2 rounded-lg hover:bg-[#f1c43e] transition-colors transition-opacity duration-500 opacity-100"
+                  onClick={() => router.push(pendingRoute)}
+                >
+                  {pendingRoute === '/booking' ? 'Chuyển sang trang Đặt Sân' : 'Chuyển sang trang Sản Phẩm'}
+                </button>
               </div>
             )}
           </div>
