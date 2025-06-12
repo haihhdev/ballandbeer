@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { toast } from "react-toastify";
 
 export default function MiniChatBot() {
   const [show, setShow] = useState(false);
@@ -16,19 +17,38 @@ export default function MiniChatBot() {
   ];
   const [input, setInput] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [promptData, setPromptData] = useState("");
   const inputRef = useRef(null);
   const chatBodyRef = useRef(null);
-  const emojiList = ["😀","😂","😍","😢","😡","👍","🤔"];
+  const emojiList = ["😀","😂","😍","😡","👍","🤔"];
+  const [typingBot, setTypingBot] = useState("");
+
+  // Load prompt data when component mounts
+  useEffect(() => {
+    const loadPromptData = async () => {
+      try {
+        const response = await fetch('/data/prompt.txt');
+        const text = await response.text();
+        setPromptData(text);
+        console.log("Prompt loaded:", text);
+      } catch (error) {
+        console.error('Error loading prompt data:', error);
+        toast.error('Chức năng AI đang bảo trì, vui lòng thử lại sau.');
+      }
+    };
+    loadPromptData();
+  }, []);
 
   // Ẩn options nếu đã có ít nhất 1 message từ user
   const hasUserMessage = messages.some(m => m.from === 'user');
 
-  // Scroll xuống dưới cùng khi có tin nhắn mới
+  // Scroll xuống dưới cùng khi có tin nhắn mới hoặc khi bot đang typing
   useEffect(() => {
     if (chatBodyRef.current) {
       chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, typingBot]);
 
   // Hiệu ứng zoom khi mở/đóng chat
   useEffect(() => {
@@ -44,10 +64,70 @@ export default function MiniChatBot() {
     }
   }, [show]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim() === "") return;
-    setMessages([...messages, { from: "user", text: input }]);
+    
+    const userMessage = input.trim();
+    setMessages(prev => [...prev, { from: "user", text: userMessage }]);
     setInput("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: `Bạn là trợ lý ảo của cửa hàng Ball and Beer. Hãy trả lời dựa trên thông tin sau: ${promptData}`
+            },
+            {
+              role: "user",
+              content: userMessage
+            }
+          ],
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          temperature: 0.7,
+          max_tokens: 500
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error?.message || 'Failed to get response from AI');
+      }
+
+      const data = await response.json();
+      const botResponse = data.choices[0].message.content;
+      // Hiệu ứng typing từng ký tự
+      let i = 0;
+      setTypingBot(botResponse[0] || "");
+      i = 1;
+      const typeInterval = setInterval(() => {
+        setTypingBot(prev => prev + botResponse[i]);
+        i++;
+        if (i >= botResponse.length) {
+          clearInterval(typeInterval);
+          setMessages(prev => [...prev, { from: "bot", text: botResponse }]);
+          setTypingBot("");
+        }
+      }, 30);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi gửi tin nhắn!");
+      // Thêm tin nhắn lỗi vào chat
+      setMessages(prev => [...prev, { 
+        from: "bot", 
+        text: "Xin lỗi, tôi đang gặp một số vấn đề kỹ thuật. Vui lòng thử lại sau." 
+      }]);
+      setTypingBot("");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmojiSelect = (emoji) => {
@@ -108,8 +188,8 @@ export default function MiniChatBot() {
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-[#f09627] to-[#f1c43e] flex items-center px-4 py-3">
-            <div className="bg-white rounded-full p-1 mr-3 flex items-center justify-center w-9 h-9">
-              <img src="/images/bbbotavatar.jpg" alt="bot" className="w-8 h-8 rounded-full object-cover" />
+            <div className="bg-white rounded-full p-1 mr-3 flex items-center justify-center w-10 h-10">
+              <img src="/images/bbbotavatar.jpg" alt="bot" className="w-9 h-9 rounded-full object-cover" />
             </div>
             <span className="text-white font-bold text-lg flex-1">BnBBot</span>
             {/* Reset button */}
@@ -138,10 +218,30 @@ export default function MiniChatBot() {
             {messages.map((msg, idx) => (
               <div key={idx} className={`mb-3 ${msg.from === "bot" ? "" : "text-right"}`}>
                 <div className={`inline-block px-3 py-2 rounded-lg ${msg.from === "bot" ? "bg-[#f8f7f4] text-[#5c3613]" : "bg-[#f09627] text-white"}`}>
-                  {msg.text}
+                  {msg.from === 'bot'
+                    ? msg.text.split('\n').map((line, i, arr) => (
+                        <span key={i}>
+                          {line}
+                          {i < arr.length - 1 && <br />}
+                        </span>
+                      ))
+                    : msg.text}
                 </div>
               </div>
             ))}
+            {typingBot && (
+              <div className="mb-3">
+                <div className="inline-block px-3 py-2 rounded-lg bg-[#f8f7f4] text-[#5c3613]">
+                  {typingBot.split('\n').map((line, i, arr) => (
+                    <span key={i}>
+                      {line}
+                      {i < arr.length - 1 && <br />}
+                    </span>
+                  ))}
+                  <span className="animate-pulse">|</span>
+                </div>
+              </div>
+            )}
             {/* Options: chỉ hiện nếu chưa có message từ user */}
             {!hasUserMessage && (
               <div className="flex flex-col gap-2 mt-2">

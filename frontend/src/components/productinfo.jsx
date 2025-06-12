@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function ProductInfo() {
   const { id } = useParams();
@@ -46,6 +48,19 @@ export default function ProductInfo() {
   if (!product) return <p>Product not found.</p>;
 
   const handleBuyNow = () => {
+    const userToken = localStorage.getItem("token");
+    if (!userToken) {
+      toast.warning("Vui lòng đăng nhập để có thể mua hàng!", {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return;
+    }
+
     const totalPrice = product.price * quantity;
     router.push(
       `/checkout?name=${product.name}&price=${product.price}&image=${product.image}&quantity=${quantity}&totalPrice=${totalPrice}`
@@ -53,8 +68,20 @@ export default function ProductInfo() {
   };
 
   const handleAddToCart = async () => {
-    setAddingToCart(true);
     const userToken = localStorage.getItem("token");
+    if (!userToken) {
+      toast.warning("Vui lòng đăng nhập để có thể mua hàng!", {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return;
+    }
+
+    setAddingToCart(true);
     const productToAdd = {
       productId: product._id,
       quantity: quantity,
@@ -120,6 +147,7 @@ export default function ProductInfo() {
 
   return (
     <div className="bg-white text-black p-6 relative">
+      <ToastContainer />
       {addingToCart && (
         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="w-16 h-16 border-4 border-white border-dashed rounded-full animate-spin"></div>

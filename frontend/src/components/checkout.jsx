@@ -5,7 +5,7 @@ export default function Checkout() {
   const searchParams = useSearchParams(); // Lấy query parameters
   const name = searchParams.get("name");
   const price = searchParams.get("price");
-  const image = searchParams.get("image");
+  const image = `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${searchParams.get("image")}`;
   const quantity = searchParams.get("quantity"); // Lấy số lượng
   const totalPrice = searchParams.get("totalPrice"); // Lấy tổng tiền
 
