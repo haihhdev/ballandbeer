@@ -24,9 +24,9 @@ export default function Booking() {
     "10:00",
     "11:00",
     "12:00",
-    "1:00",
-    "2:00",
-    "3:00",
+    "13:00",
+    "14:00",
+    "15:00",
   ];
   const courts = [
     { id: "field1", name: "Sân thường", image: "/images/san5.jpg" },
@@ -131,6 +131,18 @@ export default function Booking() {
   // Submit selected slots to the API
   const handleSubmit = async () => {
     try {
+      // Kiểm tra xem đã chọn sân chưa
+      if (selectedSlots.length === 0) {
+        toast.warning("Vui lòng chọn sân và thời gian đặt!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+        });
+        return;
+      }
+
       const token = localStorage.getItem("token");
       if (!token) {
         alert("Bạn cần đăng nhập để thực hiện thao tác này.");
@@ -140,30 +152,31 @@ export default function Booking() {
 
       const date = selectedDate.split("/").reverse().join("-");
 
-      const requests = selectedSlots
-        .map((slot) => {
-          const [fieldId, time] = slot.split("-");
-          const hour = time ? parseInt(time.split(":")[0]) : null;
+      // Nhóm các slot theo fieldId
+      const fieldSlotMap = {};
+      selectedSlots.forEach((slot) => {
+        const [fieldId, time] = slot.split("-");
+        const hour = time ? parseInt(time.split(":")[0]) : null;
+        if (!hour && hour !== 0) return;
+        if (!fieldSlotMap[fieldId]) fieldSlotMap[fieldId] = [];
+        fieldSlotMap[fieldId].push(hour);
+      });
 
-          if (!hour && hour !== 0) {
-            console.warn(`Invalid slot format: ${slot}`);
-            return null;
-          }
-
-          return fetch("http://localhost:4001/api/bookings/book", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              fieldId: fieldId,
-              date: date,
-              hours: [hour],
-            }),
-          });
+      // Gửi 1 request cho mỗi sân với tất cả các giờ đã chọn
+      const requests = Object.entries(fieldSlotMap).map(([fieldId, hours]) =>
+        fetch("http://localhost:4001/api/bookings/book", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fieldId: fieldId,
+            date: date,
+            hours: hours,
+          }),
         })
-        .filter((req) => req !== null);
+      );
 
       const responses = await Promise.all(requests);
       const failedRequests = await Promise.all(
@@ -176,6 +189,40 @@ export default function Booking() {
         setSelectedSlots([]);
         courts.forEach((court) => fetchBookedSlots(date, court.id));
         toast.success("Đặt sân thành công!");
+
+        // Lưu toàn bộ thông tin các slot đã đặt vào localStorage, group theo sân
+        const fieldSlotMap = {};
+        selectedSlots.forEach((slot) => {
+          const [fieldId, time] = slot.split("-");
+          const court = courts.find((c) => c.id === fieldId);
+          const startHour = parseInt(time);
+          const endHour = startHour + 1;
+          const timeRange = `${startHour}:00 - ${endHour}:00`;
+          if (!fieldSlotMap[fieldId]) {
+            fieldSlotMap[fieldId] = {
+              courtName: court?.name || "",
+              courtImage: court?.image || "",
+              date: selectedDate,
+              times: [],
+              price: 0, // tổng tiền cho tất cả times
+            };
+          }
+          fieldSlotMap[fieldId].times.push(timeRange);
+          fieldSlotMap[fieldId].price += courtPrices[fieldId] || 0;
+        });
+        const bookingDetails = Object.values(fieldSlotMap);
+        const totalPrice = selectedSlots.reduce((sum, slot) => {
+          const [fieldId] = slot.split("-");
+          return sum + (courtPrices[fieldId] || 0);
+        }, 0);
+        localStorage.setItem(
+          "pendingBooking",
+          JSON.stringify({
+            bookings: bookingDetails,
+            totalPrice,
+          })
+        );
+        window.location.href = `/payment?amount=${totalPrice}`;
       } else {
         console.error("Failed to book the following slots:", failedSlots);
         alert(
@@ -388,9 +435,13 @@ export default function Booking() {
               readOnly
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
             />
-            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">
-              📅
-            </span>
+            <img
+              src="/icons/calendar.svg"
+              alt="calendar"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl"
+              width={20}
+              height={20}
+            />
           </div>
           {isCalendarOpen && (
             <div

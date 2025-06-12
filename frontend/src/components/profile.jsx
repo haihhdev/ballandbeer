@@ -3,10 +3,14 @@ import { useState, useEffect, useRef } from "react"; // Thêm useEffect và useR
 import Link from "next/link";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useSearchParams } from "next/navigation";
 
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState("accountDetails");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") || "accountDetails";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [orderHistory, setOrderHistory] = useState([]); // State để lưu lịch sử đơn hàng
+  const [bookingHistory, setBookingHistory] = useState([]); // Thêm state cho lịch sử đặt sân
   const [user, setUser] = useState({
     email: "",
     username: "",
@@ -24,6 +28,10 @@ export default function Profile() {
     // Lấy lịch sử đơn hàng từ localStorage
     const orders = JSON.parse(localStorage.getItem("orderHistory")) || [];
     setOrderHistory(orders);
+
+    // Lấy lịch sử đặt sân từ localStorage
+    const bookings = JSON.parse(localStorage.getItem("bookingHistory")) || [];
+    setBookingHistory(bookings);
 
     // Lấy userId từ localStorage (giả định đã lưu sau khi login)
     const userId = localStorage.getItem("userId");
@@ -64,6 +72,11 @@ export default function Profile() {
     // Xóa lịch sử đơn hàng khỏi localStorage
     localStorage.removeItem("orderHistory");
     setOrderHistory([]); // Cập nhật state để làm mới giao diện
+  };
+
+  const handleClearBookingHistory = () => {
+    localStorage.removeItem("bookingHistory");
+    setBookingHistory([]);
   };
 
   const handleChange = (e) => {
@@ -199,7 +212,19 @@ export default function Profile() {
                   : "text-gray-700 hover:bg-gray-200"
               }`}
             >
-              <i className="fa fa-home mr-2"></i> Lịch sử đơn hàng
+              <i className="fa fa-shopping-cart mr-2"></i> Lịch sử đơn hàng
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab("bookingHistory")}
+              className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg ${
+                activeTab === "bookingHistory"
+                  ? "bg-[#f1c43e] text-[#5c3613]"
+                  : "text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <i className="fa fa-calendar mr-2"></i> Lịch sử đặt sân
             </button>
           </li>
           <li>
@@ -348,10 +373,10 @@ export default function Profile() {
               <p>Chưa có đơn hàng nào.</p>
             ) : (
               <div>
-                <ul className="space-y-4">
+                <ul className="space-y-4 ">
                   {orderHistory.map((order, index) => (
                     <li key={index} className="border-b pb-4">
-                      <div className="flex items-center">
+                      <div className="flex items-center text-[#5c3613]">
                         <img
                           src={order.image}
                           alt={order.name}
@@ -381,6 +406,72 @@ export default function Profile() {
             )}
           </div>
         )}
+
+        {activeTab === "bookingHistory" && (
+          <div>
+            <h2 className="text-xl text-[#5c3613] font-semibold mb-4">
+              Lịch sử đặt sân
+            </h2>
+            {bookingHistory.length === 0 ? (
+              <p>Chưa có lịch sử đặt sân nào.</p>
+            ) : (
+              <div>
+                <ul className="space-y-4">
+                  {bookingHistory.map((booking, index) => {
+                    if (!booking || typeof booking !== "object") return null;
+                    return (
+                      <li key={index} className="border-b pb-4">
+                        <div className="flex items-center text-[#5c3613]">
+                          <img
+                            src={booking.courtImage || "/images/san5.jpg"}
+                            alt={booking.courtName || "Sân bóng"}
+                            className="w-16 h-16 object-cover rounded mr-4"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {booking.courtName || "Sân bóng"}
+                            </p>
+                            <p className="text-sm">
+                              Ngày: {booking.date || "-"}
+                            </p>
+                            <p className="text-sm">
+                              Khung giờ:{" "}
+                              {Array.isArray(booking.times)
+                                ? booking.times.join(", ")
+                                : booking.time || "-"}
+                            </p>
+                            <p className="text-sm">
+                              Tổng tiền:{" "}
+                              {booking.price
+                                ? booking.price.toLocaleString()
+                                : typeof booking.totalPrice === "number"
+                                ? booking.totalPrice.toLocaleString()
+                                : "-"}{" "}
+                              VND
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Trạng thái: {booking.status || "Đã thanh toán"}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Ngày thanh toán: {booking.paymentDate || "-"}
+                            </p>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <button
+                  onClick={handleClearBookingHistory}
+                  className="mt-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-700"
+                >
+                  Xóa lịch sử đặt sân
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === "changePassword" && (
           <div>
             <h2 className="text-xl text-[#5c3613] font-semibold mb-4 ">

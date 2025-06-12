@@ -1,5 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const PAYMENT_METHODS = [
   {
@@ -10,7 +13,6 @@ const PAYMENT_METHODS = [
     bankCode: "momo",
     account: "0900000000",
     owner: "NGUYEN VAN A",
-    amount: "2000",
     content: "BALLANDBEER",
     type: "wallet",
   },
@@ -22,7 +24,6 @@ const PAYMENT_METHODS = [
     bankCode: "vcb",
     account: "100000000000000",
     owner: "NGUYEN VAN A",
-    amount: "2000",
     content: "BALLANDBEER",
     type: "bank",
   },
@@ -34,7 +35,6 @@ const PAYMENT_METHODS = [
     bankCode: "vietinbank",
     account: "0000000000000000",
     owner: "NGUYEN VAN A",
-    amount: "2000",
     content: "BALLANDBEER",
     type: "bank",
   },
@@ -58,7 +58,55 @@ function getQRUrl(method) {
 }
 
 export default function PaymentQR() {
-  const [selected, setSelected] = useState(PAYMENT_METHODS[0]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const amount = searchParams.get("amount") || "0";
+  const date = searchParams.get("date") || "";
+  const time = searchParams.get("time") || "";
+  const courtName = searchParams.get("courtName") || "";
+  const courtImage = searchParams.get("courtImage") || "/images/san5.jpg";
+
+  const [selected, setSelected] = useState({
+    ...PAYMENT_METHODS[0],
+    amount: amount,
+  });
+
+  // Update amount when URL changes
+  useEffect(() => {
+    setSelected((prev) => ({
+      ...prev,
+      amount: amount,
+    }));
+  }, [amount]);
+
+  const handlePaymentSuccess = () => {
+    // Lưu toàn bộ booking từ localStorage vào lịch sử
+    const pending = JSON.parse(localStorage.getItem("pendingBooking") || "{}");
+    const bookingHistory =
+      JSON.parse(localStorage.getItem("bookingHistory")) || [];
+    if (pending.bookings && Array.isArray(pending.bookings)) {
+      pending.bookings.forEach((b) => {
+        bookingHistory.unshift({
+          ...b,
+          status: "Đã thanh toán",
+          paymentDate: new Date().toLocaleDateString("vi-VN"),
+        });
+      });
+      localStorage.setItem("bookingHistory", JSON.stringify(bookingHistory));
+      localStorage.removeItem("pendingBooking");
+    }
+
+    toast.success("Thanh toán thành công", {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+    });
+    setTimeout(() => {
+      router.push("/profile?tab=bookingHistory");
+    }, 2000);
+  };
 
   const qrUrl = getQRUrl(selected);
 
@@ -73,7 +121,7 @@ export default function PaymentQR() {
           {PAYMENT_METHODS.map((method) => (
             <button
               key={method.key}
-              onClick={() => setSelected(method)}
+              onClick={() => setSelected({ ...method, amount: amount })}
               className={`h-12 p-2 border rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none
                 ${
                   selected.key === method.key
@@ -142,9 +190,16 @@ export default function PaymentQR() {
               </span>
               , để chúng tôi kích hoạt đơn hàng
             </div>
+            <button
+              className="bg-[#f0932b] hover:bg-[#f0932b]/80 text-white px-4 py-2 rounded-md mt-4 w-full"
+              onClick={handlePaymentSuccess}
+            >
+              Xác nhận thanh toán
+            </button>
           </div>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 }
