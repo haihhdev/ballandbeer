@@ -59,10 +59,10 @@ export default function Register() {
   };
 
   return (
-    <section className="bg-[url(/images/beerbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900">
+    <section className="bg-[url(/images/beerbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8">
       <div className="flex items-center justify-center min-h-screen px-8 py-8 mx-auto xl:-ml-[50vh]">
         <div className="w-full lg:max-w-xl p-8 space-y-8 sm:p-8 bg-white/20 rounded-lg backdrop-blur-[2px] shadow-xl/30 mb-24">
-          <h1 className="text-3xl font-bold leading-tight tracking-tight text-[#f09627]  dark:text-white text-center">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-[#f09627]  text-center">
             Tạo tài khoản
           </h1>
           <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
@@ -150,7 +150,7 @@ export default function Register() {
                 Tạo tài khoản
               </button>
             </div>
-            <p className="text-sm font-light text-gray-50 dark:text-white">
+            <p className="text-sm font-light text-gray-50">
               Đã có tài khoản?{" "}
               <a
                 href="/login"
@@ -158,7 +158,7 @@ export default function Register() {
                   e.preventDefault();
                   router.push("/login");
                 }}
-                className="text-[#f09627] hover:text-[#f1c43e] hover:underline dark:text-blue-500"
+                className="text-[#f09627] hover:text-[#f1c43e] hover:underline"
               >
                 Đăng nhập tại đây
               </a>

@@ -198,7 +198,7 @@ export default function Profile() {
             ref={fileInputRef}
             style={{ display: "none" }}
           />
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-lg text-[#5c3613] font-semibold">
             {user.fullname || "Họ và Tên"}
           </h2>
         </div>
@@ -286,7 +286,7 @@ export default function Profile() {
                   <input
                     type="email"
                     name="email"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full text-[#5c3613] mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     value={user.email}
                     onChange={handleChange}
                   />
@@ -298,7 +298,7 @@ export default function Profile() {
                   <input
                     type="text"
                     name="username"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                    className="w-full text-[#5c3613] mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                     value={user.username}
                     disabled
                   />
@@ -310,7 +310,7 @@ export default function Profile() {
                   <input
                     type="text"
                     name="fullname"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full text-[#5c3613] mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     value={user.fullname}
                     onChange={handleChange}
                   />
@@ -322,7 +322,7 @@ export default function Profile() {
                   <input
                     type="phone"
                     name="phone"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full text-[#5c3613] mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     value={user.phone}
                     onChange={handleChange}
                   />
@@ -334,7 +334,7 @@ export default function Profile() {
                   <input
                     type="url"
                     name="facebook"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full text-[#5c3613] mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     value={user.facebook}
                     onChange={handleChange}
                   />
@@ -346,7 +346,7 @@ export default function Profile() {
                   <input
                     type="text"
                     name="address"
-                    className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full text-[#5c3613] mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     value={user.address}
                     onChange={handleChange}
                   />
@@ -420,7 +420,10 @@ export default function Profile() {
                   {bookingHistory.map((booking, index) => {
                     if (!booking || typeof booking !== "object") return null;
                     return (
-                      <li key={index} className="border-b pb-4">
+                      <li
+                        key={index}
+                        className="border-b border-[#5c3613] pb-4"
+                      >
                         <div className="flex items-center text-[#5c3613]">
                           <img
                             src={booking.courtImage || "/images/san5.jpg"}

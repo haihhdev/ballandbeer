@@ -117,12 +117,12 @@ export default function Login() {
   };
 
   return (
-    <section className="bg-[url(/images/beerbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 dark:bg-gray-900">
+    <section className="bg-[url(/images/beerbg.jpg)] bg-center bg-blend-darken bg-black/30 bg-no-repeat bg-cover pt-8 ">
       <div className="py-8 px-8 mx-auto max-w-screen-xl lg:py-16 grid lg:grid-cols-2 gap-4 lg:gap-8">
         {/* Right Section */}
         <div>
           <div className="w-full lg:max-w-xl p-8 space-y-8 sm:p-8 bg-white/20 rounded-lg backdrop-blur-[2px] shadow-xl/30 xl:ml-32 xl:mb-24">
-            <h2 className="text-2xl text-center font-bold text-[#f09627] dark:text-white">
+            <h2 className="text-2xl text-center font-bold text-[#f09627] ">
               Đăng nhập tài khoản
             </h2>
             <div className="flex justify-center">
@@ -135,7 +135,7 @@ export default function Login() {
                 <span>Đăng nhập với Google</span>
               </button>
             </div>
-            <h2 className="text-xl text-center font-bold text-[#f09627] dark:text-white">
+            <h2 className="text-xl text-center font-bold text-[#f09627] ">
               hoặc
             </h2>
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -181,7 +181,7 @@ export default function Login() {
               >
                 {loading ? "Đang xử lý..." : "Đăng nhập"}
               </button>
-              <div className="text-sm font-medium text-gray-50 dark:text-white">
+              <div className="text-sm font-medium text-gray-50">
                 Chưa đăng kí?{" "}
                 <a
                   href="/register"
@@ -189,7 +189,7 @@ export default function Login() {
                     e.preventDefault();
                     router.push("/register");
                   }}
-                  className="text-[#f09627] hover:text-[#f1c43e] hover:underline dark:text-blue-500"
+                  className="text-[#f09627] hover:text-[#f1c43e] hover:underline"
                 >
                   Tạo tài khoản
                 </a>

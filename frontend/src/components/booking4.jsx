@@ -276,7 +276,7 @@ export default function Booking() {
     for (let i = 1; i <= daysInMonth; i++) {
       const dayDiv = document.createElement("div");
       dayDiv.className =
-        "flex items-center justify-center cursor-pointer w-[40px] h-[40px] text-dark-3 dark:text-dark-6 rounded-full hover:bg-[#f0962e] hover:text-white";
+        "flex items-center justify-center cursor-pointer w-[40px] h-[40px] text-dark-3  rounded-full hover:bg-[#f0962e] hover:text-white";
 
       const [selectedDay, selectedMonth, selectedYear] = selectedDate
         ? selectedDate.split("/").map(Number)
@@ -430,7 +430,7 @@ export default function Booking() {
               id="datepicker"
               type="text"
               placeholder="Chọn ngày"
-              className="w-full rounded-lg border border-stroke bg-[#f0962e]/80 py-2.5 pl-[50px] pr-8 text-dark-2 text-2xl outline-none transition focus:border-primary"
+              className="w-full rounded-lg border border-stroke hover:bg-[#f0962e] hover:border-[#f0962e] bg-[#f0962e]/80 py-2.5 pl-[50px] pr-8 text-dark-2 text-2xl outline-none transition focus:border-primary"
               value={selectedDate || ""}
               readOnly
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
@@ -442,74 +442,74 @@ export default function Booking() {
               width={20}
               height={20}
             />
-          </div>
-          {isCalendarOpen && (
-            <div
-              id="datepicker-container"
-              className="shadow-datepicker absolute mt-2 rounded-xl border border-stroke bg-white pt-5"
-            >
-              <div className="flex items-center justify-between px-5">
-                <button
-                  id="prevMonth"
-                  className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e] hover:text-white"
-                  onClick={handlePrevMonth}
-                >
-                  Prev
-                </button>
+            {isCalendarOpen && (
+              <div
+                id="datepicker-container"
+                className="shadow-datepicker absolute left-0 w-full z-50 mt-2 rounded-xl border border-stroke bg-white pt-5"
+              >
+                <div className="flex items-center justify-between px-5">
+                  <button
+                    id="prevMonth"
+                    className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e] hover:text-white"
+                    onClick={handlePrevMonth}
+                  >
+                    Prev
+                  </button>
+                  <div
+                    id="currentMonth"
+                    className="text-lg font-medium text-dark-3"
+                  >
+                    {currentDate.toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </div>
+                  <button
+                    id="nextMonth"
+                    className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e]/80 hover:text-white"
+                    onClick={handleNextMonth}
+                  >
+                    Next
+                  </button>
+                </div>
+
                 <div
-                  id="currentMonth"
-                  className="text-lg font-medium text-dark-3"
+                  id="days-of-week"
+                  className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5"
                 >
-                  {currentDate.toLocaleDateString("en-US", {
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Sun
+                  </div>
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Mon
+                  </div>
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Tue
+                  </div>
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Wed
+                  </div>
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Thu
+                  </div>
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Fri
+                  </div>
+                  <div className="text-center text-sm font-medium text-[#f0962e]">
+                    Sat
+                  </div>
                 </div>
-                <button
-                  id="nextMonth"
-                  className="rounded-md px-2 py-2 text-dark hover:bg-[#f0962e]/80 hover:text-white"
-                  onClick={handleNextMonth}
+
+                <div
+                  ref={daysContainerRef}
+                  id="days-container"
+                  className="mt-2 grid grid-cols-7 gap-2 px-5"
                 >
-                  Next
-                </button>
-              </div>
-
-              <div
-                id="days-of-week"
-                className="mb-4 mt-6 grid grid-cols-7 gap-2 px-5"
-              >
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Sun
-                </div>
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Mon
-                </div>
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Tue
-                </div>
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Wed
-                </div>
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Thu
-                </div>
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Fri
-                </div>
-                <div className="text-center text-sm font-medium text-[#f0962e]">
-                  Sat
+                  {/* Days will be rendered here */}
                 </div>
               </div>
-
-              <div
-                ref={daysContainerRef}
-                id="days-container"
-                className="mt-2 grid grid-cols-7 gap-2 px-5"
-              >
-                {/* Days will be rendered here */}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         {/* Booking Table */}
         <div className="overflow-x-auto">

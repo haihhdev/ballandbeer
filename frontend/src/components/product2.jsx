@@ -147,7 +147,7 @@ export default function Product2() {
               key={index}
               type="button"
               onClick={() => setSelectedCategory(category)}
-              className={`text-[#5c3613] border border-white hover:border-[#f1c43e]  rounded-full text-base font-medium px-5 py-2.5 text-center dark:text-white dark:focus:ring-gray-800 ${
+              className={`text-[#5c3613] border border-white hover:border-[#f1c43e]  rounded-full text-base font-medium px-5 py-2.5 text-center  ${
                 selectedCategory === category
                   ? "bg-[#f1c43e] text-[#5c3613] border-2 border-[#f1c43e]"
                   : ""
@@ -168,14 +168,14 @@ export default function Product2() {
           >
             <label
               htmlFor="default-search"
-              className="mb-2 text-sm font-medium text-[#5c3613] sr-only dark:text-white"
+              className="mb-2 text-sm font-medium text-[#5c3613] sr-only"
             >
               Search
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg
-                  className="w-4 h-4 text-[#5c3613] dark:text-gray-400"
+                  className="w-4 h-4 text-[#5c3613]"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -193,7 +193,7 @@ export default function Product2() {
               <input
                 type="search"
                 id="default-search"
-                className="block w-full p-2 pl-10 text-sm text-[#5c3613] border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                className="block w-full p-2 pl-10 text-sm text-[#5c3613] border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Tìm sản phẩm..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

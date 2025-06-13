@@ -230,7 +230,7 @@ export default function Header() {
             className="items-center justify-between hidden w-full md:flex md:w-auto md:order-1"
             id="navbar-user"
           >
-            <ul className="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50/50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-transparent dark:bg-gray-800/50 md:dark:bg-transparent dark:border-gray-700">
+            <ul className="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50/50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-transparent">
               {/* Language Dropdown */}
               <li className="relative">
                 <button
@@ -245,11 +245,11 @@ export default function Header() {
                   <span>Vi🔻</span>
                 </button>
                 {dropdownOpen && (
-                  <ul className="absolute left-0 mt-2 w-40 bg-white border border-gray-100 rounded-lg shadow-lg dark:bg-gray-800 dark:border-gray-700">
+                  <ul className="absolute left-0 mt-2 w-40 bg-white border border-gray-100 rounded-lg shadow-lg">
                     <li>
                       <a
                         href="/option1"
-                        className="block px-4 py-2 text-sm text-gray-950 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                        className="block px-4 py-2 text-sm text-gray-950 hover:bg-gray-100"
                       >
                         Tiếng Việt
                       </a>
@@ -257,7 +257,7 @@ export default function Header() {
                     <li>
                       <a
                         href="/option2"
-                        className="block px-4 py-2 text-sm text-gray-950 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                        className="block px-4 py-2 text-sm text-gray-950 hover:bg-gray-100"
                       >
                         Tiếng Anh
                       </a>
