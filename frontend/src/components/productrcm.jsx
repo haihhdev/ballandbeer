@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import { useRouter } from "next/navigation";
 
 export default function ProductCarousel() {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +93,11 @@ export default function ProductCarousel() {
         <div className="w-full px-2">
           <Slider {...settings}>
             {products.map((product, idx) => (
-              <div key={product.id || idx} className="p-3 h-full">
+              <div
+                key={product.id || idx}
+                className="p-3 h-full cursor-pointer"
+                onClick={() => router.push(`/productinfo/${product.id}`)}
+              >
                 <div className="bg-white rounded-2xl border border-[#f0962e] shadow flex flex-col justify-between items-center h-full min-h-[420px]">
                   <div className="w-full flex justify-center items-center p-4 min-h-[260px]">
                     <img

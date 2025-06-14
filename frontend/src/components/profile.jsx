@@ -376,22 +376,77 @@ export default function Profile() {
                 <ul className="space-y-4 ">
                   {orderHistory.map((order, index) => (
                     <li key={index} className="border-b pb-4">
-                      <div className="flex items-center text-[#5c3613]">
-                        <img
-                          src={order.image}
-                          alt={order.name}
-                          className="w-16 h-16 object-cover rounded mr-4"
-                        />
-                        <div>
-                          <p className="text-sm font-semibold">{order.name}</p>
-                          <p className="text-sm">Số lượng: {order.quantity}</p>
-                          <p className="text-sm">
-                            Tổng tiền: {order.totalPrice} VND
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Ngày đặt: {order.date}
-                          </p>
+                      <div className="text-[#5c3613]">
+                        <div className="mb-2">
+                          <span className="font-semibold">Ngày đặt:</span>{" "}
+                          {order.date}
+                          {order.paymentDate && (
+                            <span className="ml-4 font-semibold">
+                              Ngày thanh toán:
+                            </span>
+                          )}{" "}
+                          {order.paymentDate || "-"}
                         </div>
+                        <div className="mb-2">
+                          <span className="font-semibold">Trạng thái:</span>{" "}
+                          {order.status || "Đã thanh toán"}
+                        </div>
+                        {order.items && Array.isArray(order.items) ? (
+                          <div>
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex items-center mb-2">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-12 h-12 object-cover rounded mr-2"
+                                />
+                                <div>
+                                  <p className="text-sm font-semibold">
+                                    {item.name}
+                                  </p>
+                                  <p className="text-xs">
+                                    Số lượng: {item.quantity}
+                                  </p>
+                                  <p className="text-xs">
+                                    Đơn giá: {item.price.toLocaleString()} VND
+                                  </p>
+                                  <p className="text-xs text-red-500">
+                                    Thành tiền:{" "}
+                                    {(
+                                      item.price * item.quantity
+                                    ).toLocaleString()}{" "}
+                                    VND
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="font-bold text-right text-[#f09627]">
+                              Tổng tiền: {order.totalPrice.toLocaleString()} VND
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <img
+                              src={order.image}
+                              alt={order.name}
+                              className="w-12 h-12 object-cover rounded mr-2"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {order.name}
+                              </p>
+                              <p className="text-xs">
+                                Số lượng: {order.quantity}
+                              </p>
+                              <p className="text-xs">
+                                Đơn giá: {order.price} VND
+                              </p>
+                              <p className="text-xs text-red-500">
+                                Thành tiền: {order.totalPrice} VND
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </li>
                   ))}

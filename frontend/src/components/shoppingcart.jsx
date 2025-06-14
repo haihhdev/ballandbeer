@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function ShoppingCart() {
   const [cartItems, setCartItems] = useState([]);
@@ -119,12 +121,35 @@ export default function ShoppingCart() {
   };
 
   const handleCheckout = () => {
-    // Điều hướng tới trang Checkout
+    if (cartItems.length === 0) {
+      toast.warning("Giỏ hàng trống!", {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return;
+    }
+    // Lưu toàn bộ cartItems vào localStorage
+    localStorage.setItem(
+      "pendingOrder",
+      JSON.stringify({
+        items: cartItems,
+        totalPrice: cartItems.reduce(
+          (total, item) => total + item.price * item.quantity,
+          0
+        ),
+        date: new Date().toLocaleString(),
+      })
+    );
     router.push("/checkout");
   };
 
   return (
     <div className="p-4 bg-[#fff] mb-[30vh]">
+      <ToastContainer />
       <div className="bg-white shadow-md rounded-lg p-4 border border-[#f09627]">
         <table className="w-full text-left text-[#5c3613]">
           <thead>

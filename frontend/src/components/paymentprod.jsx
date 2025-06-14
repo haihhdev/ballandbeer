@@ -13,7 +13,7 @@ const PAYMENT_METHODS = [
     bankCode: "momo",
     account: "0900000000",
     owner: "NGUYEN VAN A",
-    content: "BALLANDBEER_FIELD",
+    content: "BALLANDBEER_PRODUCT",
     type: "wallet",
   },
   {
@@ -24,7 +24,7 @@ const PAYMENT_METHODS = [
     bankCode: "vcb",
     account: "100000000000000",
     owner: "NGUYEN VAN A",
-    content: "BALLANDBEER_FIELD",
+    content: "BALLANDBEER_PRODUCT",
     type: "bank",
   },
   {
@@ -35,7 +35,7 @@ const PAYMENT_METHODS = [
     bankCode: "vietinbank",
     account: "0000000000000000",
     owner: "NGUYEN VAN A",
-    content: "BALLANDBEER_FIELD",
+    content: "BALLANDBEER_PRODUCT",
     type: "bank",
   },
 ];
@@ -80,20 +80,23 @@ export default function PaymentQR() {
   }, [amount]);
 
   const handlePaymentSuccess = () => {
-    // Lưu toàn bộ booking từ localStorage vào lịch sử
-    const pending = JSON.parse(localStorage.getItem("pendingBooking") || "{}");
-    const bookingHistory =
-      JSON.parse(localStorage.getItem("bookingHistory")) || [];
-    if (pending.bookings && Array.isArray(pending.bookings)) {
-      pending.bookings.forEach((b) => {
-        bookingHistory.unshift({
-          ...b,
-          status: "Đã thanh toán",
-          paymentDate: new Date().toLocaleDateString("vi-VN"),
-        });
+    // Get pending order from localStorage
+    const pendingOrder = JSON.parse(
+      localStorage.getItem("pendingOrder") || "{}"
+    );
+
+    // Get existing order history
+    const orderHistory = JSON.parse(localStorage.getItem("orderHistory")) || [];
+
+    // Add new order to history
+    if (pendingOrder && (pendingOrder.items || []).length > 0) {
+      orderHistory.unshift({
+        ...pendingOrder,
+        status: "Đã thanh toán",
+        paymentDate: new Date().toLocaleDateString("vi-VN"),
       });
-      localStorage.setItem("bookingHistory", JSON.stringify(bookingHistory));
-      localStorage.removeItem("pendingBooking");
+      localStorage.setItem("orderHistory", JSON.stringify(orderHistory));
+      localStorage.removeItem("pendingOrder");
     }
 
     toast.success("Thanh toán thành công", {
@@ -104,7 +107,7 @@ export default function PaymentQR() {
       pauseOnHover: true,
     });
     setTimeout(() => {
-      router.push("/profile?tab=bookingHistory");
+      router.push("/profile?tab=history");
     }, 2000);
   };
 
