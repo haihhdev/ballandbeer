@@ -14,7 +14,7 @@ export default function NotFound() {
   return (
     <div
       ref={jackRef}
-      className="jack flex flex-col items-center justify-center min-h-screen text-white mb-[30vh]"
+      className="jack flex flex-col items-center justify-center min-h-screen text-white"
       style={{
         backgroundImage: "url('/images/bg404.png')",
         backgroundSize: "cover",
@@ -31,12 +31,14 @@ export default function NotFound() {
         </h1>
       </div>
       <h2 className="text-3xl mt-4">Trang không còn tồn tại</h2>
-      <p className="text-lg mt-2 text-gray-400">
+      <div className="flex flex-col items-center justify-center">
+      <p className="text-lg mt-2 text-gray-400 text-center">
         Nghe nói trang này từng vui vẻ lắm...
       </p>
-      <p className="text-lg mt-2 text-gray-400">
+      <p className="text-lg mt-2 text-gray-400 text-center">
         Cho đến ngày nó phát hiện mình không có bố lẫn không có tình yêu.
       </p>
+      </div>
       <Link
         href="/"
         className="mt-6 px-6 py-3 border-2 border-white bg-transparent text-white rounded-lg hover:bg-gray-50 hover:text-gray-900 hover:scale-110 transition"

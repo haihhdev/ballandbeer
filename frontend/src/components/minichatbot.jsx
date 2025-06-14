@@ -36,7 +36,6 @@ export default function MiniChatBot() {
         const response = await fetch('/data/prompt.txt');
         const text = await response.text();
         setPromptData(text);
-        console.log("Prompt loaded:", text);
       } catch (error) {
         console.error('Error loading prompt data:', error);
         toast.error('Chức năng AI đang bảo trì, vui lòng thử lại sau.');

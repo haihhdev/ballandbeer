@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommender-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommender-api
+  template:
+    metadata:
+      labels:
+        app: recommender-api
+    spec:
+      containers:
+        - name: recommender-api
+          image: hao1706/ballandbeer:recommender
+          ports:
+            - containerPort: 4005

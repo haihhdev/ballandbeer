@@ -3,26 +3,48 @@ import { useState, useEffect } from "react";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { useRouter } from "next/navigation";
 
 export default function ProductCarousel() {
-  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("http://localhost:4003/api/products");
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        if (!Array.isArray(data)) {
+        // Get userId from localStorage
+        const userId = localStorage.getItem('userId');
+        
+        // First, get recommended product IDs from RCM FastAPI
+        const rcmResponse = await fetch("http://localhost:4005/recommend", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            k: 5
+          })
+        });
+        
+        if (!rcmResponse.ok) throw new Error(`RCM API error! status: ${rcmResponse.status}`);
+        const rcmData = await rcmResponse.json();
+        
+        // Then fetch product details for each recommended product
+        const productPromises = rcmData.recommendations.map(async (rec) => {
+          const response = await fetch(`http://localhost:4003/api/products/${rec.product_id}`);
+          if (!response.ok) throw new Error(`Product API error! status: ${response.status}`);
+          return response.json();
+        });
+        
+        const productDetails = await Promise.all(productPromises);
+        
+        if (!Array.isArray(productDetails)) {
           setProducts([]);
           setLoading(false);
           return;
         }
-        const formattedProducts = data.slice(0, 5).map((item, idx) => {
+
+        const formattedProducts = productDetails.map((item, idx) => {
           let salePercent = 0;
           if (idx === 0) salePercent = 50;
           else if (idx === 1) salePercent = 40;
@@ -38,9 +60,11 @@ export default function ProductCarousel() {
             salePercent,
           };
         });
+        
         setProducts(formattedProducts);
         setLoading(false);
       } catch (error) {
+        console.error('Error fetching products:', error);
         setProducts([]);
         setLoading(false);
       }
@@ -93,11 +117,7 @@ export default function ProductCarousel() {
         <div className="w-full px-2">
           <Slider {...settings}>
             {products.map((product, idx) => (
-              <div
-                key={product.id || idx}
-                className="p-3 h-full cursor-pointer"
-                onClick={() => router.push(`/productinfo/${product.id}`)}
-              >
+              <div key={product.id || idx} className="p-3 h-full">
                 <div className="bg-white rounded-2xl border border-[#f0962e] shadow flex flex-col justify-between items-center h-full min-h-[420px]">
                   <div className="w-full flex justify-center items-center p-4 min-h-[260px]">
                     <img
