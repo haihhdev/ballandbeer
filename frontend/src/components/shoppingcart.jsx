@@ -27,8 +27,10 @@ export default function ShoppingCart() {
 
       if (!pendingOrder) {
         setCartItems([]);
+        localStorage.removeItem("pendingOrderId"); // Xóa nếu không có order pending
         return;
       }
+      localStorage.setItem("pendingOrderId", pendingOrder._id); // Lưu orderId vào localStorage
 
       // Lấy toàn bộ sản phẩm để map productId sang thông tin chi tiết
       const productsRes = await fetch("http://localhost:4003/api/products");
@@ -69,7 +71,10 @@ export default function ShoppingCart() {
         const pendingOrder = ordersData.data.find(
           (order) => order.status === "pending"
         );
-        if (pendingOrder) setPendingOrderId(pendingOrder._id);
+        if (pendingOrder) {
+          setPendingOrderId(pendingOrder._id);
+          localStorage.setItem("pendingOrderId", pendingOrder._id); // Lưu orderId vào localStorage
+        }
       });
   }, []);
 

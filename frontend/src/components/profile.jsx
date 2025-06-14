@@ -24,19 +24,41 @@ export default function Profile() {
   const [message, setMessage] = useState("");
   const fileInputRef = useRef(null);
 
+  // Add date formatting function
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "-";
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+
+  // Thêm hàm fetch chi tiết sản phẩm
+  const fetchProductDetail = async (productId) => {
+    try {
+      const res = await fetch(
+        `http://localhost:4003/api/products/${productId}`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      return null;
+    }
+  };
+
   useEffect(() => {
-    // Lấy lịch sử đơn hàng từ localStorage
-    const orders = JSON.parse(localStorage.getItem("orderHistory")) || [];
-    setOrderHistory(orders);
-
-    // Lấy lịch sử đặt sân từ localStorage
-    const bookings = JSON.parse(localStorage.getItem("bookingHistory")) || [];
-    setBookingHistory(bookings);
-
     // Lấy userId từ localStorage (giả định đã lưu sau khi login)
     const userId = localStorage.getItem("userId");
     console.log("userId from localStorage:", userId);
     if (userId) {
+      // Fetch user profile
       fetch(`http://localhost:4004/api/profile/id/${userId}`)
         .then((res) => res.json())
         .then((data) => {
@@ -63,6 +85,49 @@ export default function Profile() {
           setLoading(false);
         })
         .catch(() => setLoading(false));
+
+      // Fetch orders from order service
+      const token = localStorage.getItem("token");
+      fetch("http://localhost:4002/api/orders/my-orders", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((res) => res.json())
+        .then(async (data) => {
+          let orders = [];
+          if (data && data.data && Array.isArray(data.data)) {
+            orders = data.data.filter(
+              (order) =>
+                order.status === "complete" || order.status === "completed"
+            );
+          }
+          // Fetch chi tiết ảnh cho từng sản phẩm trong từng order
+          const ordersWithImages = await Promise.all(
+            orders.map(async (order) => {
+              const productsWithImages = await Promise.all(
+                order.products.map(async (item) => {
+                  const productDetail = await fetchProductDetail(
+                    item.productId || item.id
+                  );
+                  return {
+                    ...item,
+                    image: productDetail
+                      ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${productDetail.image}`
+                      : "/icons/no-image.png",
+                    name: productDetail ? productDetail.name : item.name,
+                  };
+                })
+              );
+              return { ...order, products: productsWithImages };
+            })
+          );
+          setOrderHistory(ordersWithImages);
+        })
+        .catch((error) => {
+          console.error("Error fetching orders:", error);
+          setOrderHistory([]);
+        });
     } else {
       setLoading(false);
     }
@@ -373,27 +438,30 @@ export default function Profile() {
               <p>Chưa có đơn hàng nào.</p>
             ) : (
               <div>
-                <ul className="space-y-4 ">
+                <ul className="space-y-4">
                   {orderHistory.map((order, index) => (
-                    <li key={index} className="border-b pb-4">
+                    <li
+                      key={index}
+                      className="border-b-2 border-[#5c3613] pb-4"
+                    >
                       <div className="text-[#5c3613]">
                         <div className="mb-2">
+                          <span className="font-semibold">Mã đơn hàng:</span>{" "}
+                          {order._id}
+                        </div>
+                        <div className="mb-2">
                           <span className="font-semibold">Ngày đặt:</span>{" "}
-                          {order.date}
-                          {order.paymentDate && (
-                            <span className="ml-4 font-semibold">
-                              Ngày thanh toán:
-                            </span>
-                          )}{" "}
-                          {order.paymentDate || "-"}
+                          {formatDate(order.createdAt)}
                         </div>
                         <div className="mb-2">
                           <span className="font-semibold">Trạng thái:</span>{" "}
-                          {order.status || "Đã thanh toán"}
+                          {order.status === "complete"
+                            ? "Đã thanh toán"
+                            : order.status}
                         </div>
-                        {order.items && Array.isArray(order.items) ? (
+                        {order.products && Array.isArray(order.products) ? (
                           <div>
-                            {order.items.map((item, idx) => (
+                            {order.products.map((item, idx) => (
                               <div key={idx} className="flex items-center mb-2">
                                 <img
                                   src={item.image}
@@ -421,42 +489,17 @@ export default function Profile() {
                               </div>
                             ))}
                             <div className="font-bold text-right text-[#f09627]">
-                              Tổng tiền: {order.totalPrice.toLocaleString()} VND
+                              Tổng tiền: {order.totalAmount.toLocaleString()}{" "}
+                              VND
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center">
-                            <img
-                              src={order.image}
-                              alt={order.name}
-                              className="w-12 h-12 object-cover rounded mr-2"
-                            />
-                            <div>
-                              <p className="text-sm font-semibold">
-                                {order.name}
-                              </p>
-                              <p className="text-xs">
-                                Số lượng: {order.quantity}
-                              </p>
-                              <p className="text-xs">
-                                Đơn giá: {order.price} VND
-                              </p>
-                              <p className="text-xs text-red-500">
-                                Thành tiền: {order.totalPrice} VND
-                              </p>
-                            </div>
-                          </div>
+                          <p>Không có thông tin sản phẩm</p>
                         )}
                       </div>
                     </li>
                   ))}
                 </ul>
-                <button
-                  onClick={handleClearHistory} // Gọi hàm xóa lịch sử
-                  className="mt-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-700"
-                >
-                  Xóa lịch sử mua hàng
-                </button>
               </div>
             )}
           </div>
@@ -477,7 +520,7 @@ export default function Profile() {
                     return (
                       <li
                         key={index}
-                        className="border-b border-[#5c3613] pb-4"
+                        className="border-b-2 border-[#5c3613] pb-4"
                       >
                         <div className="flex items-center text-[#5c3613]">
                           <img

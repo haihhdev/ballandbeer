@@ -79,11 +79,25 @@ export default function PaymentQR() {
     }));
   }, [amount]);
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
     // Get pending order from localStorage
     const pendingOrder = JSON.parse(
       localStorage.getItem("pendingOrder") || "{}"
     );
+
+    // Gửi API cập nhật trạng thái đơn hàng
+    const orderId = localStorage.getItem("pendingOrderId");
+    const userToken = localStorage.getItem("token");
+    if (orderId && userToken) {
+      await fetch(`http://localhost:4002/api/orders/${orderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ status: "complete" }),
+      });
+    }
 
     // Get existing order history
     const orderHistory = JSON.parse(localStorage.getItem("orderHistory")) || [];
