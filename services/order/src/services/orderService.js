@@ -76,7 +76,7 @@ exports.updateOrder = async (orderId, products, status) => {
     }
 
     if (status) {
-      if (status !== 'pending' && status !== 'completed') {
+      if (status !== 'pending' && status !== 'complete') {
         return { status: 400, message: 'Invalid status value' };
       }
       order.status = status;

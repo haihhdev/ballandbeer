@@ -125,7 +125,8 @@ pipeline {
             booking: 4001,
             order  : 4002,
             product: 4003,
-            profile: 4004
+            profile: 4004,
+            rcm    : 4005
           ]
 
           withCredentials([file(credentialsId: 'ENV_TEMPLATE', variable: 'ENV_TEMPLATE')]) {
