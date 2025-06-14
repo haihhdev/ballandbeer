@@ -42,3 +42,7 @@ coverage/
 *.env.local
 .env.test
 .env.production
+
+# Machine learning models
+rcm_fastapi/product_model/
+rcm_fastapi/user_model/
