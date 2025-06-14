@@ -10,6 +10,12 @@ const runOrderConsumer = async () => {
 
   await consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
+      console.log(
+        "[Kafka] Received message:",
+        message.value.toString(),
+        "from topic:", topic,
+        "partition:", partition
+      );
       try {
         const { type, payload } = JSON.parse(message.value.toString());
 
@@ -18,6 +24,7 @@ const runOrderConsumer = async () => {
             await orderService.createOrder(payload);
             break;
           case "UPDATE_ORDER":
+            console.log("update order");
             await orderService.updateOrder(
               payload.orderId,
               payload.products,

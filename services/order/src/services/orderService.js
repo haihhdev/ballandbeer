@@ -81,8 +81,9 @@ exports.updateOrder = async (orderId, products, status) => {
       }
       order.status = status;
     }
-
+    console.log("before order updated:", order);
     await order.save();
+    console.log("after order updated:", order);
     return { status: 200, data: order };
   } catch (err) {
     return { status: 500, message: err.message };
