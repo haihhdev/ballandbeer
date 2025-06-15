@@ -103,7 +103,7 @@ module "ec2_instance" {
 
   root_block_device = [
     {
-      volume_size = 20
+      volume_size = 50
       volume_type = "gp2"
     }
   ]

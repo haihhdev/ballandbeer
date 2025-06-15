@@ -88,11 +88,11 @@ pipeline {
             order  : 4002,
             product: 4003,
             profile: 4004,
-            rcm    : 4005
+            rcm_fastapi: 4005
           ]
 
           withCredentials([file(credentialsId: 'ENV_TEMPLATE', variable: 'ENV_TEMPLATE')]) {
-            def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+            def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile', 'rcm_fastapi']
             for (svc in services) {
               def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
               def imageTag = "${svc}-${timestamp}"
