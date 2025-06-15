@@ -7,4 +7,4 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: hao1706/ballandbeer:frontend-202506150954
+          image: hao1706/ballandbeer:frontend-202506151159
