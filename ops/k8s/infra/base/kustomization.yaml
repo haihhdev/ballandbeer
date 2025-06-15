@@ -1,5 +1,3 @@
 resources:
   - vault-deployment.yaml
   - vault-service.yaml
-  - redpanda-deployment.yaml
-  - redpanda-service.yaml

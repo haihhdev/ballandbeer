@@ -62,8 +62,16 @@ export default function Login() {
 
       const data = await response.json();
       console.log("Login API response:", data);
+      console.log("Data structure:", {
+        hasData: !!data.data,
+        hasId: data.data?._id ? true : false,
+        fullData: data.data
+      });
       if (data.data && data.data._id) {
+        console.log("Setting userId in localStorage:", data.data._id);
         localStorage.setItem("userId", data.data._id);
+      } else {
+        console.log("No userId found in response data");
       }
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");

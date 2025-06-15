@@ -33,20 +33,11 @@ pipeline{
                 }
             }
         }
-        stage('Initializing Terraform'){
+        stage('Terraform Init, Validate & Plan'){
             steps {
                 script {
                     dir("${TERRAFORM_DIR}"){
                         sh 'terraform init'
-                    }
-                }
-            }
-        }
-        
-        stage('Terraform Validate & Plan'){
-            steps {
-                script {
-                    dir("${TERRAFORM_DIR}"){
                         sh 'terraform validate'
                         sh "terraform plan -var-file=${TF_VARS_FILE}"
                     }
@@ -164,6 +155,7 @@ pipeline{
             steps {
                 script {
                     sh '''
+                        kubectl apply -k "github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/ecr/?ref=release-1.30"
                         kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer
                         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml
                         kubectl create namespace argocd || true
@@ -179,6 +171,29 @@ pipeline{
                         ADMIN_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
                         echo "ArgoCD Admin Password: $ADMIN_PASSWORD"
                     '''
+                }
+            }
+        }
+
+        stage('Install Redpanda & Console') {
+            steps {
+                script {
+                    sh """
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
+
+                        kubectl create namespace redpanda --dry-run=client -o yaml | kubectl apply -f -
+
+                        helm repo add redpanda https://charts.redpanda.com || true
+                        helm repo update
+
+                        helm upgrade --install redpanda redpanda/redpanda \
+                            --namespace redpanda \
+                            --set statefulset.replicas=1 \
+                            --set console.enabled=true \
+                            --set console.service.type=LoadBalancer \
+                            --set tls.enabled=false \
+                            --set console.config.kafka.adminApi.brokers[0]=http://redpanda.redpanda.svc.cluster.local:9644
+                    """
                 }
             }
         }
@@ -232,6 +247,23 @@ pipeline{
                         }
                         }'
                     """
+                }
+            }
+        }
+
+        stage('Show LoadBalancer URLs') {
+            steps {
+                script {
+                    sh '''
+                        echo "\n==== Ingress NGINX LoadBalancer URL ===="
+                        kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+
+                        echo "\n==== Grafana LoadBalancer URL ===="
+                        kubectl get svc grafana -n ${MONITORING_NAMESPACE} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+
+                        echo "\n==== Redpanda Console LoadBalancer URL ===="
+                        kubectl get svc redpanda-console -n redpanda -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+                    '''
                 }
             }
         }

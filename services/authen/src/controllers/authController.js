@@ -43,7 +43,6 @@ exports.login = async (req, res) => {
         email: user.email,
         username: user.username,
         avatar: user.avatar || "",
-        // Thêm các trường khác nếu muốn
       },
     });
   } catch (err) {
@@ -78,8 +77,6 @@ exports.loginWithGoogle = async (req, res) => {
   try {
     let user = await User.findOne({ email });
     if (!user) {
-      // Nếu chưa có user, tạo mới
-      // Tạo username duy nhất nếu bị trùng
       let uniqueUsername = username;
       let count = 1;
       while (await User.findOne({ username: uniqueUsername })) {
