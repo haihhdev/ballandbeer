@@ -176,7 +176,7 @@ pipeline {
       steps {
         script {
           withCredentials([
-            usernamePassword(credentialsId: 'GITHUB_TOKEN', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PAT')
+            usernamePassword(credentialsId: 'GITHUB_TOKEN_1', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PAT')
           ]) {
             sh '''
               git config --global user.email "jenkins@ci"

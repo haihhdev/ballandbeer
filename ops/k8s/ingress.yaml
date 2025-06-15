@@ -50,6 +50,14 @@ spec:
                 port:
                   number: 4004
 
+          - path: /api/recommend()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: rcm-fastapi
+                port:
+                  number: 4005
+
           - path: /()(.*)
             pathType: ImplementationSpecific
             backend:
