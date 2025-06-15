@@ -176,10 +176,6 @@ pipeline{
                         echo "Decoding ArgoCD admin password..."
                         ADMIN_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
                         echo "ArgoCD Admin Password: $ADMIN_PASSWORD"
-                        
-                        kubectl -n argocd patch secret argocd-secret \
-                          -p '{"stringData": {"admin.password": "$2a$10$7EqJtq98hPqEX7fNZaFWoO5.CrQoqeluvqH7rS2WLsYl6Jx04J86e", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
-                        kubectl -n argocd delete pod -l app.kubernetes.io/name=argocd-server
                     '''
                 }
             }
@@ -194,13 +190,21 @@ pipeline{
                         'order',
                         'product',
                         'profile',
-                        'frontend'
+                        'frontend',
+                        'recommender',
+                        'infra'
                     ]
 
                     for (svc in apps) {
                         def appFile = "ops/k8s/${svc}/overlays/dev/argocd-app.yaml"
                         echo "Applying ArgoCD app for: ${svc}"
-                        sh "kubectl apply -f ${appFile} -n argocd"
+                        try {
+                            sh "kubectl apply -f ${appFile} -n argocd"
+                            echo "Successfully deployed ${svc} application"
+                        } catch (Exception e) {
+                            echo "Failed to deploy ${svc} application: ${e.message}"
+                            currentBuild.result = 'UNSTABLE'
+                        }
                     }
                 }
             }
