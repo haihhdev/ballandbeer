@@ -13,7 +13,7 @@ export default function Contact() {
     "Công việc",
     "Hàng hoá",
     "Đặt chỗ",
-    "Thái độ nhân viên",
+    "Phản ánh thái độ nhân viên",
     "Cơ sở vật chất",
     "Thanh toán khi nhận hàng",
     "Khác",
