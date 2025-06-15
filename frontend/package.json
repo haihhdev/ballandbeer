@@ -9,12 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "firebase": "^11.9.1",
+    "framer-motion": "^12.18.1",
+    "google-auth-library": "^10.1.0",
     "mongodb": "^6.15.0",
     "next": "15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.0",
-    "react-toastify": "^11.0.5"
+    "react-slick": "^0.30.3",
+    "react-toastify": "^11.0.5",
+    "slick-carousel": "^1.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
