@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: hao1706/ballandbeer:frontend
+        image: hao1706/frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

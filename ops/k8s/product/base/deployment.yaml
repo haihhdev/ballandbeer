@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: product
-        image: hao1706/ballandbeer:product
+        image: hao1706/product:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 4003

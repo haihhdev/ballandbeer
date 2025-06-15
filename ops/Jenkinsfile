@@ -13,48 +13,9 @@ pipeline {
   }
 
   stages {
-
-    stage('Checkout & Validate Paths') {
+    stage('Checkout') {
       steps {
         checkout scm
-        script {
-          def changedPaths = sh(script: '''
-            git diff --name-only HEAD~1 HEAD
-          ''', returnStdout: true).trim()
-
-          def runPipeline = changedPaths.split('\n').any { path ->
-            return path.startsWith("services/") || path.startsWith("frontend/")
-          }
-
-          if (!runPipeline) {
-            currentBuild.result = 'NOT_BUILT'
-            error("Stopped early: no relevant changes.")
-            return
-          }
-        }
-      }
-    }
-
-    stage('Detect changed services') {
-      steps {
-        script {
-          changedServices = sh(script: '''
-            git diff --name-only HEAD~1 HEAD |
-            grep -E '^services/|^frontend/' |
-            awk -F/ '/^frontend\\// { print "frontend" } /^services\\// { print $2 }' |
-            sort -u
-          ''', returnStdout: true).trim().split('\n')
-
-          if (changedServices.size() == 1 && changedServices[0].trim() == '') {
-            echo "No changed service detected. Assuming first build. Building all services."
-            changedServices = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
-          }
-
-          def validServices = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
-          changedServices = changedServices.findAll { svc -> validServices.contains(svc) }
-
-          echo "Changed services: ${changedServices}"
-        }
       }
     }
 
@@ -63,19 +24,18 @@ pipeline {
         stage('SonarQube Analysis') {
           steps {
             script {
-              for (svc in changedServices) {
-                if (svc != 'frontend') {
-                  def path = "services/${svc}"
-                  withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    withEnv(["PATH+SCANNER=/opt/sonar-scanner/bin"]) {
-                      sh """
-                        sonar-scanner \
-                          -Dsonar.projectKey=ballandbeer-${svc} \
-                          -Dsonar.sources=${path} \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.login=$SONAR_AUTH_TOKEN
-                      """
-                    }
+              def services = ['authen', 'booking', 'order', 'product', 'profile']
+              for (svc in services) {
+                def path = "services/${svc}"
+                withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                  withEnv(["PATH+SCANNER=/opt/sonar-scanner/bin"]) {
+                    sh """
+                      sonar-scanner \
+                        -Dsonar.projectKey=ballandbeer-${svc} \
+                        -Dsonar.sources=${path} \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN
+                    """
                   }
                 }
               }
@@ -86,7 +46,8 @@ pipeline {
         stage('Pre-build Trivy Scan') {
           steps {
             script {
-              for (svc in changedServices) {
+              def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+              for (svc in services) {
                 def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
                 echo "Scanning source in ${path} with Trivy..."
                 sh """
@@ -101,7 +62,8 @@ pipeline {
           steps {
             script {
               sh "snyk auth $SNYK_TOKEN"
-              for (svc in changedServices) {
+              def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+              for (svc in services) {
                 def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
                 echo "Running Snyk code scan on ${path}..."
                 sh """
@@ -130,10 +92,13 @@ pipeline {
           ]
 
           withCredentials([file(credentialsId: 'ENV_TEMPLATE', variable: 'ENV_TEMPLATE')]) {
-            for (svc in changedServices) {
+            def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+            for (svc in services) {
               def path = (svc == 'frontend') ? 'frontend' : "services/${svc}"
               def imageTag = "${svc}-${timestamp}"
-              def image = "${REPO}:${imageTag}"
+              def serviceRepo = "hao1706/${svc}"
+              def imageWithTimestamp = "${serviceRepo}:${timestamp}"
+              def imageLatest = "${serviceRepo}:latest"
 
               echo "Building ${svc} from ${path}..."
 
@@ -151,7 +116,7 @@ pipeline {
                 """
               }
 
-              sh "docker build -t ${image} ${path}"
+              sh "docker build -t ${imageWithTimestamp} -t ${imageLatest} ${path}"
 
               if (svc == 'frontend') {
                 sh "rm -f ${path}/.env.local.build"
@@ -159,48 +124,15 @@ pipeline {
                 sh "rm -f ${path}/.env"
               }
 
-              echo "Pushing ${image} to Docker Hub..."
+              echo "Pushing ${svc} images to Docker Hub..."
               sh '''
                 echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
               '''
-              sh "docker push ${image}"
+              sh "docker push ${imageWithTimestamp}"
+              sh "docker push ${imageLatest}"
 
-              sh "echo ${imageTag} > ${svc}_tag.txt"
+              sh "echo ${timestamp} > ${svc}_tag.txt"
             }
-          }
-        }
-      }
-    }
-
-    stage('Update Kustomize patch') {
-      steps {
-        script {
-          withCredentials([
-            usernamePassword(credentialsId: 'GITHUB_TOKEN_1', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PAT')
-          ]) {
-            sh '''
-              git config --global user.email "jenkins@ci"
-              git config --global user.name "Jenkins CI"
-            '''
-
-            for (svc in changedServices) {
-              def imageTag = readFile("${svc}_tag.txt").trim()
-              def patchFile = "ops/k8s/${svc}/overlays/dev/patch-image.yaml"
-              def fullImage = "${REPO}:${imageTag}"
-
-              echo "Updating ${patchFile} with image: ${fullImage}"
-
-              sh """
-                sed -i 's|image: .*|image: ${fullImage}|' ${patchFile}
-              """
-            }
-
-            sh '''
-              git remote set-url origin https://${GIT_USER}:${GIT_PAT}@github.com/haihhdev/ballandbeer.git
-              git add ops/k8s/*/overlays/dev/patch-image.yaml
-              git commit -m "Update image tag to ${BUILD_NUMBER}"
-              git push origin HEAD:master
-            '''
           }
         }
       }
@@ -211,9 +143,11 @@ pipeline {
         stage('Trivy Image Scan') {
           steps {
             script {
-              for (svc in changedServices) {
+              def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+              for (svc in services) {
                 def imageTag = readFile("${svc}_tag.txt").trim()
-                def image = "${REPO}:${imageTag}"
+                def serviceRepo = "hao1706/${svc}"
+                def image = "${serviceRepo}:${imageTag}"
                 echo "Scanning image ${image} with Trivy..."
                 sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${image} || true"
               }
@@ -225,9 +159,11 @@ pipeline {
           steps {
             script {
               sh "snyk auth $SNYK_TOKEN"
-              for (svc in changedServices) {
+              def services = ['frontend', 'authen', 'booking', 'order', 'product', 'profile']
+              for (svc in services) {
                 def imageTag = readFile("${svc}_tag.txt").trim()
-                def image = "${REPO}:${imageTag}"
+                def serviceRepo = "hao1706/${svc}"
+                def image = "${serviceRepo}:${imageTag}"
                 echo "Running Snyk container scan on ${image}..."
                 sh """
                   snyk container test ${image} || true
