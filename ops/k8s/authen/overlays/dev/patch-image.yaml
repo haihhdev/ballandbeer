@@ -7,3 +7,4 @@ spec:
     spec:
       containers:
         - name: authen
+          image: hao1706/ballandbeer:authen-202506151159
