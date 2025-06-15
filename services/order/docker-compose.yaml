@@ -9,7 +9,6 @@ services:
       - --memory 1G
       - --reserve-memory 0M
       - --node-id 0
-      - --check=false
       - --kafka-addr PLAINTEXT://0.0.0.0:9092
       - --advertise-kafka-addr PLAINTEXT://localhost:9092
     ports:
