@@ -15,6 +15,7 @@ export default function Contact() {
     "Đặt chỗ",
     "Thái độ nhân viên",
     "Cơ sở vật chất",
+    "Thanh toán khi nhận hàng",
     "Khác",
   ];
 
