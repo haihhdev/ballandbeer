@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/haohaidevops/ballandbeer.git'
+    repoURL: 'https://github.com/haihhdev/ballandbeer.git'
     targetRevision: master
     path: ops/k8s/recommender/overlays/dev
   destination:
