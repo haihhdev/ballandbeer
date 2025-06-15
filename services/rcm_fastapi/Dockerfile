@@ -29,4 +29,5 @@ ENV HOST=0.0.0.0
 EXPOSE 4005
 
 # Command to run the application
+CMD ["python", "pipeline.py"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "4005"] 
