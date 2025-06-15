@@ -29,7 +29,7 @@ export default function CommentSection() {
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`http://localhost:4003/api/products/${id}/comments`);
+      const response = await fetch(`/api/products/${id}/comments`);
       const data = await response.json();
       if (data && Array.isArray(data)) {
         setComments(data);
@@ -105,7 +105,7 @@ export default function CommentSection() {
 
     try {
       const userToken = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:4003/api/comments/${commentId}/heart`, {
+      const response = await fetch(`/api/comments/${commentId}/heart`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${userToken}`,
@@ -131,7 +131,7 @@ export default function CommentSection() {
 
     try {
       const userToken = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:4003/api/comments/${commentId}`, {
+      const response = await fetch(`/api/comments/${commentId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${userToken}`,
@@ -158,7 +158,7 @@ export default function CommentSection() {
 
     try {
       const userToken = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:4003/api/comments/${commentId}`, {
+      const response = await fetch(`/api/comments/${commentId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -229,7 +229,7 @@ export default function CommentSection() {
         commentData.image = imagePreview; // Use the resized and compressed image
       }
 
-      const response = await fetch(`http://localhost:4003/api/products/${id}/comments`, {
+      const response = await fetch(`/api/products/${id}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

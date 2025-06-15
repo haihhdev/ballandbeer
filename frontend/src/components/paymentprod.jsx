@@ -89,7 +89,7 @@ export default function PaymentQR() {
     const orderId = localStorage.getItem("pendingOrderId");
     const userToken = localStorage.getItem("token");
     if (orderId && userToken) {
-      await fetch(`http://localhost:4002/api/orders/${orderId}`, {
+      await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

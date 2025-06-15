@@ -17,7 +17,7 @@ export default function ProductCarousel() {
         const userId = localStorage.getItem("userId");
 
         // First, get recommended product IDs from RCM FastAPI
-        const rcmResponse = await fetch("http://localhost:4005/recommend", {
+        const rcmResponse = await fetch("/recommend", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -35,7 +35,7 @@ export default function ProductCarousel() {
         // Then fetch product details for each recommended product
         const productPromises = rcmData.recommendations.map(async (rec) => {
           const response = await fetch(
-            `http://localhost:4003/api/products/${rec.product_id}`
+            `/api/products/${rec.product_id}`
           );
           if (!response.ok)
             throw new Error(`Product API error! status: ${response.status}`);

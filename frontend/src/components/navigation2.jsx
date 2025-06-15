@@ -26,7 +26,7 @@ export default function Header() {
       // Fetch user info ngay khi login thành công
       const userId = localStorage.getItem("userId");
       if (userId) {
-        fetch(`http://localhost:4004/api/profile/id/${userId}`)
+        fetch(`/api/profile/id/${userId}`)
           .then((res) => res.json())
           .then((data) => {
             if (data && data.data) {
@@ -49,7 +49,7 @@ export default function Header() {
         const userId = localStorage.getItem("userId");
         if (!userId) return;
         const res = await fetch(
-          `http://localhost:4004/api/profile/id/${userId}`
+          `/api/profile/id/${userId}`
         );
         const data = await res.json();
         if (data && data.data) {

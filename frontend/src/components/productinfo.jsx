@@ -22,7 +22,7 @@ export default function ProductInfo() {
     const fetchProduct = async () => {
       try {
         const response = await fetch(
-          `http://localhost:4003/api/products/${id}`
+          `/api/products/${id}`
         );
         const data = await response.json();
         setProduct(data);
@@ -30,7 +30,7 @@ export default function ProductInfo() {
 
         // Fetch comments and calculate average rating
         const commentsResponse = await fetch(
-          `http://localhost:4003/api/products/${id}/comments`
+          `/api/products/${id}/comments`
         );
         const commentsData = await commentsResponse.json();
         if (commentsData && Array.isArray(commentsData)) {
@@ -79,7 +79,7 @@ export default function ProductInfo() {
 
     try {
       const ordersRes = await fetch(
-        "http://localhost:4002/api/orders/my-orders",
+        `/api/orders/my-orders`,
         {
           headers: { Authorization: `Bearer ${userToken}` },
         }
@@ -107,7 +107,7 @@ export default function ProductInfo() {
           updatedProducts.push(productToAdd);
         }
 
-        await fetch(`http://localhost:4002/api/orders/${pendingOrder._id}`, {
+        await fetch(`/api/orders/${pendingOrder._id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -119,7 +119,7 @@ export default function ProductInfo() {
           }),
         });
       } else {
-        await fetch("http://localhost:4002/api/orders/", {
+        await fetch("/api/orders/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

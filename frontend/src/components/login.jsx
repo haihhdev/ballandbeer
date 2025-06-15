@@ -45,7 +45,7 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:4000/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export default function Login() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       // Gửi thông tin user lên backend để tạo/lấy user
-      const response = await fetch("http://localhost:4000/api/auth/google", {
+      const response = await fetch("/api/auth/google", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

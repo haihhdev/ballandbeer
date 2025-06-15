@@ -49,7 +49,7 @@ export default function CreateProductForm() {
         image: imageBase64
       };
 
-      const response = await fetch("http://localhost:4003/api/products", {
+      const response = await fetch("/api/products", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',

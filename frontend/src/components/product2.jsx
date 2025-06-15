@@ -25,7 +25,7 @@ export default function Product2() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("http://localhost:4003/api/products");
+        const response = await fetch("/api/products");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

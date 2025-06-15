@@ -43,7 +43,7 @@ export default function Profile() {
   const fetchProductDetail = async (productId) => {
     try {
       const res = await fetch(
-        `http://localhost:4003/api/products/${productId}`
+        `/api/products/${productId}`
       );
       if (!res.ok) return null;
       const data = await res.json();
@@ -59,7 +59,7 @@ export default function Profile() {
     console.log("userId from localStorage:", userId);
     if (userId) {
       // Fetch user profile
-      fetch(`http://localhost:4004/api/profile/id/${userId}`)
+      fetch(`/api/profile/id/${userId}`)
         .then((res) => res.json())
         .then((data) => {
           if (data && data.data) {
@@ -88,7 +88,7 @@ export default function Profile() {
 
       // Fetch orders from order service
       const token = localStorage.getItem("token");
-      fetch("http://localhost:4002/api/orders/my-orders", {
+      fetch("/api/orders/my-orders", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -160,7 +160,7 @@ export default function Profile() {
     }
     try {
       const res = await fetch(
-        `http://localhost:4004/api/profile/id/${userId}`,
+        `/api/profile/id/${userId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

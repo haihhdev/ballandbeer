@@ -15,7 +15,7 @@ export default function ShoppingCart() {
 
       // Lấy tất cả order của user
       const ordersRes = await fetch(
-        "http://localhost:4002/api/orders/my-orders",
+        "/api/orders/my-orders",
         {
           headers: { Authorization: `Bearer ${userToken}` },
         }
@@ -33,7 +33,7 @@ export default function ShoppingCart() {
       localStorage.setItem("pendingOrderId", pendingOrder._id); // Lưu orderId vào localStorage
 
       // Lấy toàn bộ sản phẩm để map productId sang thông tin chi tiết
-      const productsRes = await fetch("http://localhost:4003/api/products");
+      const productsRes = await fetch("/api/products");
       const productsData = await productsRes.json();
 
       // Map productId sang thông tin sản phẩm
@@ -63,7 +63,7 @@ export default function ShoppingCart() {
   useEffect(() => {
     const userToken = localStorage.getItem("token");
     if (!userToken) return;
-    fetch("http://localhost:4002/api/orders/my-orders", {
+    fetch("/api/orders/my-orders", {
       headers: { Authorization: `Bearer ${userToken}` },
     })
       .then((res) => res.json())
@@ -84,7 +84,7 @@ export default function ShoppingCart() {
     if (!userToken || !pendingOrderId) return;
     // Lấy lại order pending
     const ordersRes = await fetch(
-      "http://localhost:4002/api/orders/my-orders",
+      "/api/orders/my-orders",
       {
         headers: { Authorization: `Bearer ${userToken}` },
       }
@@ -97,7 +97,7 @@ export default function ShoppingCart() {
     const updatedProducts = pendingOrder.products.filter(
       (item) => item.productId !== id
     );
-    await fetch(`http://localhost:4002/api/orders/${pendingOrderId}`, {
+    await fetch(`/api/orders/${pendingOrderId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function ShoppingCart() {
       body: JSON.stringify({ products: updatedProducts, status: "pending" }),
     });
     // Cập nhật lại cartItems
-    const productsRes = await fetch("http://localhost:4003/api/products");
+    const productsRes = await fetch("/api/products");
     const productsData = await productsRes.json();
     const cartWithDetails = updatedProducts.map((item) => {
       const product = productsData.find((p) => p._id === item.productId);
