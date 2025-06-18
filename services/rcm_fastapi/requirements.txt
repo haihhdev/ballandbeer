@@ -9,3 +9,4 @@ tensorflow-recommenders==0.7.3
 hvac==2.3.0
 kubernetes==33.1.0
 python-dotenv==1.1.0
+boto3==1.26.137

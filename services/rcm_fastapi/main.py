@@ -1,11 +1,12 @@
-# main.py
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import tensorflow as tf
 import json
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import boto3
+import tempfile
+import shutil
 
 app = FastAPI()
 
@@ -25,19 +26,36 @@ product_features = None
 unique_products = None
 unique_categories = None
 
+def download_from_s3(bucket_name, s3_key, local_path):
+    """Download a file from S3 to local path"""
+    s3_client = boto3.client('s3')
+    s3_client.download_file(bucket_name, s3_key, local_path)
+
 def load_models_and_data():
     global user_model, product_model, product_features, unique_products, unique_categories
     try:
+        # Create temporary directory for models
+        temp_dir = tempfile.mkdtemp()
+        
+        # Download models from S3
+        bucket_name = os.getenv('S3_BUCKET_NAME', 'ballandbeer-rcm')
+        download_from_s3(bucket_name, 'models/user_model', os.path.join(temp_dir, 'user_model'))
+        download_from_s3(bucket_name, 'models/product_model', os.path.join(temp_dir, 'product_model'))
+        download_from_s3(bucket_name, 'data/product_data.json', os.path.join(temp_dir, 'product_data.json'))
+
         # Load models
-        user_model = tf.keras.models.load_model("user_model")
-        product_model = tf.keras.models.load_model("product_model")
+        user_model = tf.keras.models.load_model(os.path.join(temp_dir, 'user_model'))
+        product_model = tf.keras.models.load_model(os.path.join(temp_dir, 'product_model'))
 
         # Load product features
-        with open("product_data.json", "r") as f:
+        with open(os.path.join(temp_dir, 'product_data.json'), "r") as f:
             product_features = json.load(f)
 
         unique_products = list(product_features.keys())
         unique_categories = [product_features[p]["category"] for p in unique_products]
+
+        # Clean up temporary directory
+        shutil.rmtree(temp_dir)
     except Exception as e:
         print(f"Error loading models or data: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to load recommendation models")

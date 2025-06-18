@@ -127,7 +127,6 @@ pipeline{
                 script {
                     sh '''
                         kubectl apply -k "github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/ecr/?ref=release-1.30"
-                        kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer
                         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml
                         kubectl create namespace argocd || true
                         kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
@@ -161,47 +160,6 @@ pipeline{
                             --set console.service.type=LoadBalancer \
                             --set tls.enabled=false \
                             --set 'console.config.kafka.adminApi.brokers[0]=http://redpanda.redpanda.svc.cluster.local:9644'
-                    """
-                }
-            }
-        }
-
-        stage('Install Kubeflow') {
-            steps {
-                script {
-                    sh """
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
-                        kubectl create namespace kubeflow --dry-run=client -o yaml | kubectl apply -f -
-                        if ! command -v kustomize &> /dev/null; then
-                            rm -f kustomize
-                            curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-                            export PATH=\$PATH:\$(pwd)
-                        fi
-                        git clone https://github.com/kubeflow/manifests.git
-                        cd manifests
-                        find . -name "kustomization.yaml" -type f -exec kustomize edit fix {} \\;
-                        cd contrib/knative/knative-serving
-                        kustomize build . | kubectl apply -f -
-                        cd ../../..
-                        kubectl wait --for=condition=ready pod -l app=webhook -n knative-serving --timeout=300s
-                        MAX_RETRIES=5
-                        RETRY_COUNT=0
-                        while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
-                            if kustomize build example | kubectl apply -f -; then
-                                echo "Kubeflow installation successful"
-                                break
-                            else
-                                RETRY_COUNT=\$((RETRY_COUNT + 1))
-                                echo "Retry \$RETRY_COUNT of \$MAX_RETRIES..."
-                                sleep 30
-                            fi
-                        done
-                        if [ \$RETRY_COUNT -eq \$MAX_RETRIES ]; then
-                            echo "Failed to install Kubeflow after \$MAX_RETRIES attempts"
-                            exit 1
-                        fi
-                        echo "Waiting for Kubeflow components to be ready..."
-                        kubectl wait --for=condition=ready pod -l app=istio-ingressgateway -n istio-system --timeout=300s
                     """
                 }
             }
@@ -264,17 +222,20 @@ pipeline{
             steps {
                 script {
                     sh '''
+                        kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer
+
                         echo "\n==== Ingress NGINX LoadBalancer URL ===="
-                        kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+                        kubectl get svc ingress-nginx-controller -n ingress-nginx -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
 
                         echo "\n==== Grafana LoadBalancer URL ===="
-                        kubectl get svc grafana -n ${MONITORING_NAMESPACE} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+                        kubectl get svc grafana -n monitoring -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
 
                         echo "\n==== Redpanda Console LoadBalancer URL ===="
-                        kubectl get svc redpanda-console -n redpanda -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+                        kubectl get svc redpanda-console -n redpanda -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
 
-                        echo "\n==== Kubeflow Dashboard URL ===="
-                        kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+                        echo "\n==== ArgoCD LoadBalancer URL ===="
+                        kubectl get svc argocd-server -n argocd -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
+
                     '''
                 }
             }

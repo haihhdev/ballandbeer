@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: recommender-api
+  name: recommender
   namespace: argocd
 spec:
   project: default

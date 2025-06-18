@@ -1,2 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ballandbeer
+
 resources:
-  - ../../base
+- ../../base
+- argocd-vars.yaml
+
+patches:
+- target:
+    kind: Deployment
+    name: recommender
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: hao1706/recommender:latest
+    - op: replace
+      path: /spec/template/spec/containers/0/env/0/valueFrom
+      value:
+        configMapKeyRef:
+          name: recommender-vars
+          key: S3_BUCKET_NAME
+
+- target:
+    kind: ServiceAccount
+    name: recommender-sa
+  patch: |-
+    - op: replace
+      path: /metadata/annotations/eks.amazonaws.com~1role-arn
+      value: arn:aws:iam::026764164607:role/recommender-role
+
+configMapGenerator:
+- name: recommender-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=dev
+  - LOG_LEVEL=debug

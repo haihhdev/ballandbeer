@@ -1,6 +1,6 @@
 const vault = require('node-vault')({
     apiVersion: 'v1',
-    endpoint: 'http://127.0.0.1:8200',
+    endpoint: 'http://vault.ballandbeer.svc.cluster.local:8200',
     token: 'root' // Only for dev/test
   });
   

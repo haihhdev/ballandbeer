@@ -15,15 +15,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code and model files
+# Copy application code
 COPY main.py .
-COPY product_data.json .
-COPY user_model/ user_model/
-COPY product_model/ product_model/
 
 # Set environment variables
 ENV PORT=4005
 ENV HOST=0.0.0.0
+ENV AWS_DEFAULT_REGION=ap-southeast-1
 
 # Expose the port
 EXPOSE 4005
