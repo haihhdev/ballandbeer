@@ -44,5 +44,6 @@ coverage/
 .env.production
 
 # Machine learning models
-rcm_fastapi/product_model/
-rcm_fastapi/user_model/
+recommender/product_model/
+recommender/user_model/
+recommender/__pycache__/

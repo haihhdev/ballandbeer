@@ -27,9 +27,24 @@ unique_products = None
 unique_categories = None
 
 def download_from_s3(bucket_name, s3_key, local_path):
-    """Download a file from S3 to local path"""
+    """Download a file or directory from S3 to local path"""
     s3_client = boto3.client('s3')
-    s3_client.download_file(bucket_name, s3_key, local_path)
+    
+    # List all objects with the prefix
+    paginator = s3_client.get_paginator('list_objects_v2')
+    for page in paginator.paginate(Bucket=bucket_name, Prefix=s3_key):
+        if 'Contents' not in page:
+            continue
+            
+        for obj in page['Contents']:
+            # Get the relative path
+            key = obj['Key']
+            # Create the local file path
+            local_file = os.path.join(local_path, os.path.relpath(key, s3_key))
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(local_file), exist_ok=True)
+            # Download the file
+            s3_client.download_file(bucket_name, key, local_file)
 
 def load_models_and_data():
     global user_model, product_model, product_features, unique_products, unique_categories
@@ -39,8 +54,8 @@ def load_models_and_data():
         
         # Download models from S3
         bucket_name = os.getenv('S3_BUCKET_NAME', 'ballandbeer-rcm')
-        download_from_s3(bucket_name, 'models/user_model', os.path.join(temp_dir, 'user_model'))
-        download_from_s3(bucket_name, 'models/product_model', os.path.join(temp_dir, 'product_model'))
+        download_from_s3(bucket_name, 'models/user_model/', os.path.join(temp_dir, 'user_model'))
+        download_from_s3(bucket_name, 'models/product_model/', os.path.join(temp_dir, 'product_model'))
         download_from_s3(bucket_name, 'data/product_data.json', os.path.join(temp_dir, 'product_data.json'))
 
         # Load models
