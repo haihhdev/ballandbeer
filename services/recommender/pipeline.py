@@ -59,7 +59,7 @@ def get_mongodb_config():
             
             # Đọc secret từ Vault
             secret = client.secrets.kv.v2.read_secret_version(
-                path='mongodb',
+                path='rcm-service',
                 mount_point='secret'
             )
             
