@@ -16,11 +16,28 @@ patches:
       path: /spec/template/spec/containers/0/image
       value: hao1706/recommender:latest
     - op: replace
-      path: /spec/template/spec/containers/0/env/0/valueFrom
+      path: /spec/template/spec/containers/0/env
       value:
-        configMapKeyRef:
-          name: recommender-vars
-          key: S3_BUCKET_NAME
+        - name: S3_BUCKET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: recommender-vars
+              key: S3_BUCKET_NAME
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: recommender-vars
+              key: AWS_REGION
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: recommender-vars
+              key: ENVIRONMENT
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: recommender-vars
+              key: LOG_LEVEL
 
 - target:
     kind: ServiceAccount
@@ -32,7 +49,7 @@ patches:
 
 configMapGenerator:
 - name: recommender-config
-  behavior: merge
+  behavior: create
   literals:
   - ENVIRONMENT=dev
   - LOG_LEVEL=debug
