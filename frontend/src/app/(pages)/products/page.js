@@ -1,7 +1,7 @@
 "use client";
 import Product2 from "@/components/product2";
 import CreateProductForm from "@/components/cproduct";
-import MiniChatBot from "@/components/minichatbot";
+import Minichatbot from "@/components/minichatbot";
 import ProductCarousel from "@/components/productrcm";
 import { useEffect, useState } from "react";
 
@@ -31,7 +31,7 @@ export default function Home() {
         </div>
       )}
       <Product2 />
-      <MiniChatBot />
+      <Minichatbot />
     </div>
   );
 }

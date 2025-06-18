@@ -1,12 +1,12 @@
 import ShoppingCart from "@/components/shoppingcart";
-import MiniChatBot from "@/components/minichatbot";
+import Minichatbot from "@/components/minichatbot";
 
 export default function Home() {
   return (
     <div>
       {/* Shopping Cart Section */}
       <ShoppingCart />
-      <MiniChatBot />
+      <Minichatbot />
     </div>
   );
 }

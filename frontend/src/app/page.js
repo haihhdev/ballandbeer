@@ -3,7 +3,7 @@ import Gallery from "@/components/gallery";
 import UserFetcher from "@/components/userFetcher";
 import AboutUs2 from "@/components/aboutus2";
 import AboutUs3 from "@/components/aboutus3";
-import MiniChatBot from "@/components/minichatbot";
+import Minichatbot from "@/components/minichatbot";
 export default function Home() {
   return (
     <div>
@@ -11,7 +11,7 @@ export default function Home() {
       <Gallery />
       <AboutUs2 />
       <AboutUs3 />
-      <MiniChatBot />
+      <Minichatbot />
       <UserFetcher />
     </div>
   );

@@ -1,6 +1,6 @@
 import ProductInfo from "@/components/productinfo";
 import Comment from "@/components/commentsec";
-import MiniChatBot from "@/components/minichatbot";
+import Minichatbot from "@/components/minichatbot";
 
 export default function Home() {
   return (
@@ -8,7 +8,7 @@ export default function Home() {
       <ProductInfo />
       {/* Add other components here if needed */}
       <Comment />
-      <MiniChatBot />
+      <Minichatbot />
     </div>
   );
 }
