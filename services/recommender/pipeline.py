@@ -1,5 +1,3 @@
-# pipeline.py
-
 import pandas as pd
 import tensorflow as tf
 import tensorflow_recommenders as tfrs
@@ -80,7 +78,9 @@ def get_mongodb_config():
 # Lấy thông tin kết nối từ Vault hoặc env
 mongodb_config = get_mongodb_config()
 mongodb_url = mongodb_config['url']
+print(mongodb_url)
 database_name = mongodb_config['database']
+print(database_name)
 
 # ======================
 # STEP 1: KẾT NỐI MONGODB
