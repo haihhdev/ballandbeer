@@ -54,7 +54,7 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: rcm-fastapi
+                name: recommender
                 port:
                   number: 4005
 

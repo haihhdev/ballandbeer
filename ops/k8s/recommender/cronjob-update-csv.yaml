@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recommender-train
+  namespace: ballandbeer
+spec:
+  schedule: "0 6 * * 0"  # 6h sáng Chủ nhật
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: recommender-sa
+          containers:
+          - name: train
+            image: hao1706/recommender:latest
+            command: ["python", "pipeline.py"]
+            env:
+            - name: VAULT_URL
+              value: http://vault:8200
+            - name: VAULT_ROLE
+              value: recommender-role
+            - name: S3_BUCKET
+              value: ballandbeer-rcm
+            - name: AWS_REGION
+              value: ap-southeast-1
+            - name: ENVIRONMENT
+              value: dev
+            - name: LOG_LEVEL
+              value: INFO
+          restartPolicy: OnFailure

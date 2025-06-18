@@ -190,6 +190,8 @@ pipeline{
                             currentBuild.result = 'UNSTABLE'
                         }
                     }
+
+                    sh "kubectl apply -f ops/k8s/recommender/cronjob-update-csv.yaml -n ballandbeer"
                 }
             }
         }
@@ -223,6 +225,7 @@ pipeline{
                 script {
                     sh '''
                         kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer
+                        kubectl exec -it redpanda-0 -n redpanda -- rpk topic create order-topic
 
                         echo "\n==== Ingress NGINX LoadBalancer URL ===="
                         kubectl get svc ingress-nginx-controller -n ingress-nginx -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'

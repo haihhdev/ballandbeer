@@ -12,6 +12,7 @@ import kubernetes
 from kubernetes import client, config
 import base64
 from dotenv import load_dotenv
+import boto3
 
 # Load environment variables from .env file
 load_dotenv()
@@ -237,3 +238,22 @@ model.fit(train_dataset, epochs=10)
 # Lưu user & product model
 model.user_model.save("user_model")
 model.product_model.save("product_model")
+
+def upload_folder_to_s3(local_folder, bucket, s3_folder):
+    s3 = boto3.client('s3')
+    for root, dirs, files in os.walk(local_folder):
+        for file in files:
+            local_path = os.path.join(root, file)
+            relative_path = os.path.relpath(local_path, local_folder)
+            s3_path = os.path.join(s3_folder, relative_path).replace("\\", "/")
+            s3.upload_file(local_path, bucket, s3_path)
+
+def upload_file_to_s3(local_file, bucket, s3_key):
+    s3 = boto3.client('s3')
+    s3.upload_file(local_file, bucket, s3_key)
+
+bucket_name = os.getenv('S3_BUCKET', 'ballandbeer-rcm')
+upload_folder_to_s3('user_model', bucket_name, 'models/user_model')
+upload_folder_to_s3('product_model', bucket_name, 'models/product_model')
+upload_file_to_s3('product_data.json', bucket_name, 'data/product_data.json')
+print("Uploaded to S3")
