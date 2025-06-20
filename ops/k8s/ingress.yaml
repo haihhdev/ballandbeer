@@ -8,6 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
+    - host: www.ballandbeer.com
     - http:
         paths:
           - path: /api/auth()(.*)
