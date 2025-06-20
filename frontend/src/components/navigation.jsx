@@ -48,7 +48,7 @@ export default function Header() {
       {/* Centered Text */}
       <div className="relative z-20 flex flex-col items-center justify-center text-center text-[#f8f7f4] h-full px-4">
         <h1 className="text-5xl  font-bold mb-4">
-          Nền tảng đặt sân & mua sắm thể thao hàng đầu Việt Nam.
+          Nền tảng đặt sân & mua sắm thể thao hàng đầu Việt Nam
         </h1>
         <p className="text-lg md:text-xl mb-6">
           Đặt sân nhanh, mua đồ chất, đốt cháy đam mê bóng đá ngay hôm nay!
