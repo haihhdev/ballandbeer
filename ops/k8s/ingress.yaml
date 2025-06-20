@@ -5,11 +5,17 @@ metadata:
   namespace: ballandbeer
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - ballandbeer.com
+        - www.ballandbeer.com
+      secretName: ballandbeer-tls
   rules:
-    - host: www.ballandbeer.com
-    - http:
+    - host: ballandbeer.com
+      http:
         paths:
           - path: /api/auth()(.*)
             pathType: ImplementationSpecific
@@ -59,6 +65,59 @@ spec:
                 port:
                   number: 4005
 
+          - path: /()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+
+    - host: www.ballandbeer.com
+      http:
+        paths:
+          - path: /api/auth()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: authen
+                port:
+                  number: 4000
+          - path: /api/bookings()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: booking
+                port:
+                  number: 4001
+          - path: /api/orders()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order
+                port:
+                  number: 4002
+          - path: /api/products()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: product
+                port:
+                  number: 4003
+          - path: /api/profile()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: profile
+                port:
+                  number: 4004
+          - path: /recommend()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: recommender
+                port:
+                  number: 4005
           - path: /()(.*)
             pathType: ImplementationSpecific
             backend:

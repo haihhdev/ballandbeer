@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::026764164607:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/6969D3D6F09225385873E03078429F12"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.us-east-1.amazonaws.com/id/6969D3D6F09225385873E03078429F12:sub": "system:serviceaccount:ballandbeer:recommender-sa"
+        }
+      }
+    }
+  ]
+} 
