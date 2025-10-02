@@ -1,49 +1,34 @@
 variable "aws_region" {
-    description = "The region where the infrastructure should be deployed to"
-    type = string
-}
-
-variable "aws_account_id" {
-    description = "AWS Account ID"
-    type = string
-}
-
-variable "backend_jenkins_bucket" {
-    description = "S3 bucket where jenkins terraform state file will be stored"
-    type = string
-}
-
-variable "backend_jenkins_bucket_key" {
-    description = "bucket key for the jenkins terraform state file"
-    type = string
-}
-
-variable "vpc_name" {
-  description = "VPC Name for Jenkins Server VPC"
+  description = "The region where the infrastructure should be deployed to"
   type        = string
 }
+
+variable "project_name" {
+  description = "Project name for resource naming prefix"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (dev, test, prod)"
+  type        = string
+}
+
+
 
 variable "vpc_cidr" {
-  description = "VPC CIDR for Jenkins Server VPC"
+  description = "VPC CIDR block for Jenkins Server VPC"
   type        = string
+  default     = "10.0.0.0/16"
 }
 
 variable "public_subnets" {
-  description = "Subnets CIDR range"
+  description = "List of public subnet CIDR ranges"
   type        = list(string)
+  default     = ["10.0.1.0/24"]
 }
 
 variable "instance_type" {
-  description = "Instance Type"
+  description = "EC2 instance type for Jenkins server (use types with 'g' for Graviton/ARM, e.g., t4g.medium, m6g.large)"
   type        = string
-}
-
-variable "jenkins_security_group" {
-  description = "Instance Type"
-  type        = string
-}
-
-variable "jenkins_ec2_instance" {
-  description = "Instance Type"
-  type        = string
+  default     = "t3.small"
 }
