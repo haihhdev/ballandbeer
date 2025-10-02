@@ -30,5 +30,23 @@ variable "public_subnets" {
 variable "instance_type" {
   description = "EC2 instance type for Jenkins server (use types with 'g' for Graviton/ARM, e.g., t4g.medium, m6g.large)"
   type        = string
-  default     = "t3.small"
+  default     = "t4g.small"
+}
+
+variable "use_spot" {
+  description = "Whether to launch the EC2 instance as a Spot Instance"
+  type        = bool
+  default     = false
+}
+
+variable "spot_allocation_strategy" {
+  description = "Spot allocation strategy (capacity-optimized, lowest-price, etc.)"
+  type        = string
+  default     = "capacity-optimized"
+}
+
+variable "spot_max_price" {
+  description = "Maximum Spot price in USD per hour (empty string or omitted = on-demand price as max limit)"
+  type        = string
+  default     = ""
 }

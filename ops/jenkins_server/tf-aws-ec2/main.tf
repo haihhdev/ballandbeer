@@ -127,6 +127,18 @@ module "ec2_instance" {
   user_data                   = file("../scripts/install_build_tools.sh")
   availability_zone           = data.aws_availability_zones.azs.names[0]
 
+  # Use Spot Instance market options when var.use_spot is true.
+  instance_market_options = var.use_spot ? {
+    market_type = "spot"
+
+    # Use Spot options with lowest-price strategy
+    spot_options = {
+      allocation_strategy = var.spot_allocation_strategy
+      # AWS will use on-demand price as ceiling
+      max_price           = var.spot_max_price
+    }
+  } : null
+
   root_block_device = {
     size                  = 50
     type                  = "gp3"
