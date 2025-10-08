@@ -31,6 +31,9 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Check if account is active
+    if (!user.isActive) return res.status(403).json({ message: "Account has been disabled" });
+
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid password" });
 
@@ -43,6 +46,7 @@ exports.login = async (req, res) => {
         email: user.email,
         username: user.username,
         avatar: user.avatar || "",
+        isAdmin: user.isAdmin || false,
       },
     });
   } catch (err) {
@@ -91,6 +95,10 @@ exports.loginWithGoogle = async (req, res) => {
       });
       await user.save();
     }
+    
+    // Check if account is active
+    if (!user.isActive) return res.status(403).json({ message: "Account has been disabled" });
+    
     const token = generateToken(user._id);
     res.json({
       message: "Login with Google successful",
@@ -100,6 +108,7 @@ exports.loginWithGoogle = async (req, res) => {
         email: user.email,
         username: user.username,
         avatar: user.avatar || "",
+        isAdmin: user.isAdmin || false,
       },
     });
   } catch (err) {
