@@ -9,6 +9,11 @@ const nextConfig = {
         source: '/api/auth/:path*',
         destination: 'http://localhost:4000/api/auth/:path*',
       },
+      // Admin routes - Port 4000
+      {
+        source: '/api/admin/:path*',
+        destination: 'http://localhost:4000/api/admin/:path*',
+      },
       // Booking Service - Port 4001
       {
         source: '/api/bookings/:path*',

@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Toast from "@/components/Toast";
 
 export default function AdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("products");
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
 
   // Products state
   const [products, setProducts] = useState([]);
@@ -25,6 +27,11 @@ export default function AdminPage() {
     stock: "",
     image: "",
   });
+
+  // Show toast notification
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
 
   useEffect(() => {
     // Check if user is admin
@@ -55,19 +62,19 @@ export default function AdminPage() {
   // Load products
   const loadProducts = async () => {
     try {
-      const response = await fetch("http://localhost:5002/api/products");
+      const response = await fetch("/api/products");
       const data = await response.json();
       setProducts(data);
     } catch (error) {
       console.error("Error loading products:", error);
-      alert("Failed to load products");
+      showToast("Failed to load products", "error");
     }
   };
 
   // Load users
   const loadUsers = async () => {
     try {
-      const response = await fetch("http://localhost:5001/api/admin/users", {
+      const response = await fetch("/api/admin/users", {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
@@ -76,7 +83,7 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Error loading users:", error);
-      alert("Failed to load users");
+      showToast("Failed to load users", "error");
     }
   };
 
@@ -103,8 +110,8 @@ export default function AdminPage() {
     e.preventDefault();
     try {
       const url = editingProduct
-        ? `http://localhost:5002/api/products/${editingProduct._id}`
-        : "http://localhost:5002/api/products";
+        ? `/api/products/${editingProduct._id}`
+        : "/api/products";
       
       const method = editingProduct ? "PUT" : "POST";
 
@@ -115,7 +122,7 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        alert(editingProduct ? "Product updated successfully!" : "Product created successfully!");
+        showToast(editingProduct ? "Product updated successfully!" : "Product created successfully!", "success");
         setShowProductForm(false);
         setEditingProduct(null);
         setProductForm({
@@ -129,11 +136,11 @@ export default function AdminPage() {
         loadProducts();
       } else {
         const error = await response.json();
-        alert("Error: " + (error.message || "Failed to save product"));
+        showToast(error.message || "Failed to save product", "error");
       }
     } catch (error) {
       console.error("Error saving product:", error);
-      alert("Failed to save product");
+      showToast("Failed to save product", "error");
     }
   };
 
@@ -155,20 +162,20 @@ export default function AdminPage() {
   const handleDeleteProduct = async (id) => {
     if (confirm("Are you sure you want to delete this product?")) {
       try {
-        const response = await fetch(`http://localhost:5002/api/products/${id}`, {
+        const response = await fetch(`/api/products/${id}`, {
           method: "DELETE",
           headers: getAuthHeaders(),
         });
 
         if (response.ok) {
-          alert("Product deleted successfully!");
+          showToast("Product deleted successfully!", "success");
           loadProducts();
         } else {
-          alert("Failed to delete product");
+          showToast("Failed to delete product", "error");
         }
       } catch (error) {
         console.error("Error deleting product:", error);
-        alert("Failed to delete product");
+        showToast("Failed to delete product", "error");
       }
     }
   };
@@ -177,7 +184,7 @@ export default function AdminPage() {
   const handleToggleUserStatus = async (userId, currentStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:5001/api/admin/users/${userId}/status`,
+        `/api/admin/users/${userId}/status`,
         {
           method: "PATCH",
           headers: getAuthHeaders(),
@@ -187,14 +194,14 @@ export default function AdminPage() {
 
       const data = await response.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message, "success");
         loadUsers();
       } else {
-        alert("Failed to update user status");
+        showToast("Failed to update user status", "error");
       }
     } catch (error) {
       console.error("Error updating user status:", error);
-      alert("Failed to update user status");
+      showToast("Failed to update user status", "error");
     }
   };
 
@@ -202,7 +209,7 @@ export default function AdminPage() {
   const handleToggleAdminStatus = async (userId, currentStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:5001/api/admin/users/${userId}/admin`,
+        `/api/admin/users/${userId}/admin`,
         {
           method: "PATCH",
           headers: getAuthHeaders(),
@@ -212,14 +219,14 @@ export default function AdminPage() {
 
       const data = await response.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message, "success");
         loadUsers();
       } else {
-        alert("Failed to update admin status");
+        showToast("Failed to update admin status", "error");
       }
     } catch (error) {
       console.error("Error updating admin status:", error);
-      alert("Failed to update admin status");
+      showToast("Failed to update admin status", "error");
     }
   };
 
@@ -228,7 +235,7 @@ export default function AdminPage() {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
         const response = await fetch(
-          `http://localhost:5001/api/admin/users/${userId}`,
+          `/api/admin/users/${userId}`,
           {
             method: "DELETE",
             headers: getAuthHeaders(),
@@ -237,14 +244,14 @@ export default function AdminPage() {
 
         const data = await response.json();
         if (data.success) {
-          alert(data.message);
+          showToast(data.message, "success");
           loadUsers();
         } else {
-          alert("Failed to delete user");
+          showToast("Failed to delete user", "error");
         }
       } catch (error) {
         console.error("Error deleting user:", error);
-        alert("Failed to delete user");
+        showToast("Failed to delete user", "error");
       }
     }
   };
@@ -262,139 +269,178 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b">
-        <button
-          className={`px-6 py-3 font-semibold ${
-            activeTab === "products"
-              ? "border-b-2 border-blue-500 text-blue-500"
-              : "text-gray-600"
-          }`}
-          onClick={() => setActiveTab("products")}
-        >
-          Products Management
-        </button>
-        <button
-          className={`px-6 py-3 font-semibold ${
-            activeTab === "users"
-              ? "border-b-2 border-blue-500 text-blue-500"
-              : "text-gray-600"
-          }`}
-          onClick={() => setActiveTab("users")}
-        >
-          Users Management
-        </button>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b-2 border-orange-400">
+        <div className="container mx-auto px-6 py-6">
+          <h1 className="text-4xl font-bold text-gray-800">
+            <span className="text-orange-600">Ball & Beer</span> Admin Dashboard
+          </h1>
+          <p className="text-gray-600 mt-2">Manage your products and users</p>
+        </div>
       </div>
+
+      <div className="container mx-auto px-6 py-8">
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-sm mb-8 p-2 flex gap-2">
+          <button
+            className={`flex-1 px-6 py-3 font-semibold rounded-md transition-all ${
+              activeTab === "products"
+                ? "bg-orange-500 text-white shadow-md"
+                : "text-gray-600 hover:bg-orange-50"
+            }`}
+            onClick={() => setActiveTab("products")}
+          >
+            Products Management
+          </button>
+          <button
+            className={`flex-1 px-6 py-3 font-semibold rounded-md transition-all ${
+              activeTab === "users"
+                ? "bg-orange-500 text-white shadow-md"
+                : "text-gray-600 hover:bg-orange-50"
+            }`}
+            onClick={() => setActiveTab("users")}
+          >
+            Users Management
+          </button>
+        </div>
 
       {/* Products Tab */}
       {activeTab === "products" && (
         <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Products</h2>
-            <button
-              onClick={() => {
-                setShowProductForm(true);
-                setEditingProduct(null);
-                setProductForm({
-                  name: "",
-                  category: "",
-                  price: "",
-                  description: "",
-                  stock: "",
-                  image: "",
-                });
-              }}
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
-            >
-              Add New Product
-            </button>
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Products</h2>
+                <p className="text-gray-600 mt-1">Manage your product catalog</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowProductForm(true);
+                  setEditingProduct(null);
+                  setProductForm({
+                    name: "",
+                    category: "",
+                    price: "",
+                    description: "",
+                    stock: "",
+                    image: "",
+                  });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors shadow-md"
+              >
+                + Add New Product
+              </button>
+            </div>
           </div>
 
           {/* Product Form */}
           {showProductForm && (
-            <div className="bg-gray-100 p-6 rounded-lg mb-6">
-              <h3 className="text-xl font-bold mb-4">
+            <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-2 border-orange-200">
+              <h3 className="text-2xl font-bold mb-6 text-gray-800">
                 {editingProduct ? "Edit Product" : "Create New Product"}
               </h3>
-              <form onSubmit={handleProductSubmit} className="space-y-4">
-                <div>
-                  <label className="block mb-2 font-semibold">Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={productForm.name}
-                    onChange={handleProductFormChange}
-                    required
-                    className="w-full p-2 border rounded"
-                  />
+              <form onSubmit={handleProductSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block mb-2 font-semibold text-gray-700">Product Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={productForm.name}
+                      onChange={handleProductFormChange}
+                      required
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
+                      placeholder="Enter product name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-2 font-semibold text-gray-700">Category</label>
+                    <input
+                      type="text"
+                      name="category"
+                      value={productForm.category}
+                      onChange={handleProductFormChange}
+                      required
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
+                      placeholder="e.g., Equipment, Beverage"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block mb-2 font-semibold">Category</label>
-                  <input
-                    type="text"
-                    name="category"
-                    value={productForm.category}
-                    onChange={handleProductFormChange}
-                    required
-                    className="w-full p-2 border rounded"
-                  />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block mb-2 font-semibold text-gray-700">Price (VND)</label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={productForm.price}
+                      onChange={handleProductFormChange}
+                      required
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-2 font-semibold text-gray-700">Stock Quantity</label>
+                    <input
+                      type="number"
+                      name="stock"
+                      value={productForm.stock}
+                      onChange={handleProductFormChange}
+                      required
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block mb-2 font-semibold">Price</label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={productForm.price}
-                    onChange={handleProductFormChange}
-                    required
-                    className="w-full p-2 border rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-semibold">Stock</label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={productForm.stock}
-                    onChange={handleProductFormChange}
-                    required
-                    className="w-full p-2 border rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-semibold">Description</label>
+                  <label className="block mb-2 font-semibold text-gray-700">Description</label>
                   <textarea
                     name="description"
                     value={productForm.description}
                     onChange={handleProductFormChange}
                     required
                     rows="4"
-                    className="w-full p-2 border rounded"
+                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
+                    placeholder="Describe your product..."
                   ></textarea>
                 </div>
+
                 <div>
-                  <label className="block mb-2 font-semibold">Image</label>
+                  <label className="block mb-2 font-semibold text-gray-700">Product Image</label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
                   />
                   {productForm.image && (
-                    <img
-                      src={productForm.image}
-                      alt="Preview"
-                      className="mt-2 w-32 h-32 object-cover rounded"
-                    />
+                    <div className="mt-4">
+                      <img
+                        src={productForm.image}
+                        alt="Preview"
+                        className="w-40 h-40 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                    </div>
                   )}
                 </div>
-                <div className="flex gap-4">
+
+                <div className="flex gap-4 pt-4">
                   <button
                     type="submit"
-                    className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
+                    className="bg-green-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md"
                   >
                     {editingProduct ? "Update Product" : "Create Product"}
                   </button>
@@ -404,7 +450,7 @@ export default function AdminPage() {
                       setShowProductForm(false);
                       setEditingProduct(null);
                     }}
-                    className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+                    className="bg-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
                   >
                     Cancel
                   </button>
@@ -414,52 +460,74 @@ export default function AdminPage() {
           )}
 
           {/* Products List */}
-          <div className="overflow-x-auto">
-            <table className="w-full bg-white shadow-md rounded">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="p-3 text-left">Image</th>
-                  <th className="p-3 text-left">Name</th>
-                  <th className="p-3 text-left">Category</th>
-                  <th className="p-3 text-left">Price</th>
-                  <th className="p-3 text-left">Stock</th>
-                  <th className="p-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr key={product._id} className="border-t">
-                    <td className="p-3">
-                      {product.image && (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      )}
-                    </td>
-                    <td className="p-3">{product.name}</td>
-                    <td className="p-3">{product.category}</td>
-                    <td className="p-3">${product.price}</td>
-                    <td className="p-3">{product.stock}</td>
-                    <td className="p-3">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded mr-2 hover:bg-yellow-600"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                  <tr>
+                    <th className="p-4 text-left font-semibold">Image</th>
+                    <th className="p-4 text-left font-semibold">Name</th>
+                    <th className="p-4 text-left font-semibold">Category</th>
+                    <th className="p-4 text-left font-semibold">Price</th>
+                    <th className="p-4 text-left font-semibold">Stock</th>
+                    <th className="p-4 text-left font-semibold">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {products.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-gray-500">
+                        No products found. Click "Add New Product" to create one.
+                      </td>
+                    </tr>
+                  ) : (
+                    products.map((product) => (
+                      <tr key={product._id} className="hover:bg-orange-50 transition-colors">
+                        <td className="p-4">
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200"
+                            />
+                          )}
+                        </td>
+                        <td className="p-4 font-medium text-gray-800">{product.name}</td>
+                        <td className="p-4 text-gray-600">{product.category}</td>
+                        <td className="p-4 text-gray-800 font-semibold">${product.price}</td>
+                        <td className="p-4">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            product.stock > 10 
+                              ? "bg-green-100 text-green-800" 
+                              : product.stock > 0 
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}>
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditProduct(product)}
+                              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(product._id)}
+                              className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -467,88 +535,105 @@ export default function AdminPage() {
       {/* Users Tab */}
       {activeTab === "users" && (
         <div>
-          <h2 className="text-2xl font-bold mb-6">Users</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full bg-white shadow-md rounded">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="p-3 text-left">Username</th>
-                  <th className="p-3 text-left">Email</th>
-                  <th className="p-3 text-left">Status</th>
-                  <th className="p-3 text-left">Role</th>
-                  <th className="p-3 text-left">Created At</th>
-                  <th className="p-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user._id} className="border-t">
-                    <td className="p-3">{user.username}</td>
-                    <td className="p-3">{user.email}</td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-1 rounded text-sm ${
-                          user.isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {user.isActive ? "Active" : "Disabled"}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-1 rounded text-sm ${
-                          user.isAdmin
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {user.isAdmin ? "Admin" : "User"}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-3">
-                      <button
-                        onClick={() =>
-                          handleToggleUserStatus(user._id, user.isActive)
-                        }
-                        className={`px-3 py-1 rounded mr-2 text-white ${
-                          user.isActive
-                            ? "bg-orange-500 hover:bg-orange-600"
-                            : "bg-green-500 hover:bg-green-600"
-                        }`}
-                      >
-                        {user.isActive ? "Disable" : "Enable"}
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleToggleAdminStatus(user._id, user.isAdmin)
-                        }
-                        className={`px-3 py-1 rounded mr-2 text-white ${
-                          user.isAdmin
-                            ? "bg-purple-500 hover:bg-purple-600"
-                            : "bg-blue-500 hover:bg-blue-600"
-                        }`}
-                      >
-                        {user.isAdmin ? "Remove Admin" : "Make Admin"}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user._id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Users</h2>
+            <p className="text-gray-600 mt-1">Manage user accounts and permissions</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                  <tr>
+                    <th className="p-4 text-left font-semibold">Username</th>
+                    <th className="p-4 text-left font-semibold">Email</th>
+                    <th className="p-4 text-left font-semibold">Status</th>
+                    <th className="p-4 text-left font-semibold">Role</th>
+                    <th className="p-4 text-left font-semibold">Created At</th>
+                    <th className="p-4 text-left font-semibold">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-gray-500">
+                        No users found.
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map((user) => (
+                      <tr key={user._id} className="hover:bg-orange-50 transition-colors">
+                        <td className="p-4 font-medium text-gray-800">{user.username}</td>
+                        <td className="p-4 text-gray-600">{user.email}</td>
+                        <td className="p-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              user.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {user.isActive ? "Active" : "Disabled"}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              user.isAdmin
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {user.isAdmin ? "Admin" : "User"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600">
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={() =>
+                                handleToggleUserStatus(user._id, user.isActive)
+                              }
+                              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                user.isActive
+                                  ? "bg-orange-500 text-white hover:bg-orange-600"
+                                  : "bg-green-500 text-white hover:bg-green-600"
+                              }`}
+                            >
+                              {user.isActive ? "Disable" : "Enable"}
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleToggleAdminStatus(user._id, user.isAdmin)
+                              }
+                              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                user.isAdmin
+                                  ? "bg-purple-500 text-white hover:bg-purple-600"
+                                  : "bg-blue-500 text-white hover:bg-blue-600"
+                              }`}
+                            >
+                              {user.isAdmin ? "Remove Admin" : "Make Admin"}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user._id)}
+                              className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

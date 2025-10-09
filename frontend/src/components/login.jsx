@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 
-// Firebase config (thay bằng config của bạn)
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCx_VdnaBLNsdAJs0LmN3kqQ0nWEbyxhV0",
   authDomain: "ballandbeer-98153.firebaseapp.com",
@@ -31,11 +31,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Kiểm tra nếu người dùng đã đăng nhập
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      router.push("/"); // Chuyển hướng đến trang chính nếu đã đăng nhập
+      router.push("/");
     }
   }, [router]);
 
@@ -67,17 +66,23 @@ export default function Login() {
         hasId: data.data?._id ? true : false,
         fullData: data.data
       });
+      
+      // Save user data
       if (data.data && data.data._id) {
         console.log("Setting userId in localStorage:", data.data._id);
         localStorage.setItem("userId", data.data._id);
+        localStorage.setItem("userData", JSON.stringify(data.data));
       } else {
         console.log("No userId found in response data");
       }
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
 
-      // Chuyển hướng đến trang chính
-      router.push("/");
+      if (data.data?.isAdmin) {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -90,7 +95,6 @@ export default function Login() {
       const auth = getAuth();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      // Gửi thông tin user lên backend để tạo/lấy user
       const response = await fetch("/api/auth/google", {
         method: "POST",
         headers: {
@@ -110,6 +114,7 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("userId", data.data?._id);
+      localStorage.setItem("userData", JSON.stringify(data.data));
       localStorage.setItem(
         "userProfile",
         JSON.stringify({
@@ -118,7 +123,13 @@ export default function Login() {
           username: data.data?.username || "",
         })
       );
-      router.push("/");
+      
+      // Redirect to admin if admin, otherwise home
+      if (data.data?.isAdmin) {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
     } catch (err) {
       setError("Đăng nhập Google thất bại: " + err.message);
     }
