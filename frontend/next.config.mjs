@@ -33,12 +33,12 @@ const nextConfig = {
         source: '/api/profile/:path*',
         destination: 'http://localhost:4004/api/profile/:path*',
       },
-      // Recommender service is disabled for local development
-      // Order service requires Kafka/Vault - temporarily disabled
+      // Order Service - Port 4002
       {
         source: '/api/orders/:path*',
-        destination: 'http://localhost:3000/api/orders-disabled/:path*', // Will return 404
+        destination: 'http://localhost:4002/api/orders/:path*',
       },
+      // Recommender service is disabled for local development
       {
         source: '/recommend',
         destination: 'http://localhost:3000/api/recommend-disabled', // Will return 404

@@ -14,6 +14,9 @@ export default function AdminPage() {
   const [products, setProducts] = useState([]);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Users state
   const [users, setUsers] = useState([]);
@@ -24,7 +27,7 @@ export default function AdminPage() {
     category: "",
     price: "",
     description: "",
-    stock: "",
+    quantity: "",
     image: "",
   });
 
@@ -64,7 +67,16 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/products");
       const data = await response.json();
-      setProducts(data);
+      
+      // Format products with full image URLs
+      const formattedProducts = data.map((product) => ({
+        ...product,
+        image: product.image 
+          ? `https://raw.githubusercontent.com/haihhdev/ballandbeer-image/refs/heads/main/Ballandbeeritem/${product.image}`
+          : null
+      }));
+      
+      setProducts(formattedProducts);
     } catch (error) {
       console.error("Error loading products:", error);
       showToast("Failed to load products", "error");
@@ -130,7 +142,7 @@ export default function AdminPage() {
           category: "",
           price: "",
           description: "",
-          stock: "",
+          quantity: "",
           image: "",
         });
         loadProducts();
@@ -152,7 +164,7 @@ export default function AdminPage() {
       category: product.category,
       price: product.price,
       description: product.description,
-      stock: product.stock,
+      quantity: product.quantity,
       image: product.image || "",
     });
     setShowProductForm(true);
@@ -332,7 +344,7 @@ export default function AdminPage() {
                     category: "",
                     price: "",
                     description: "",
-                    stock: "",
+                    quantity: "",
                     image: "",
                   });
                   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -340,6 +352,82 @@ export default function AdminPage() {
                 className="bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors shadow-md"
               >
                 + Add New Product
+              </button>
+            </div>
+          </div>
+
+          {/* Category Filter */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex items-center flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("all");
+                  setCurrentPage(1);
+                }}
+                className={`text-[#5c3613] border border-white hover:border-orange-500 rounded-full text-base font-medium px-5 py-2.5 text-center transition-colors ${
+                  selectedCategory === "all"
+                    ? "bg-orange-500 text-white border-2 border-orange-500"
+                    : ""
+                }`}
+              >
+                Tất cả
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("other");
+                  setCurrentPage(1);
+                }}
+                className={`text-[#5c3613] border border-white hover:border-orange-500 rounded-full text-base font-medium px-5 py-2.5 text-center transition-colors ${
+                  selectedCategory === "other"
+                    ? "bg-orange-500 text-white border-2 border-orange-500"
+                    : ""
+                }`}
+              >
+                Đồ ăn & Thức uống
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("jersey");
+                  setCurrentPage(1);
+                }}
+                className={`text-[#5c3613] border border-white hover:border-orange-500 rounded-full text-base font-medium px-5 py-2.5 text-center transition-colors ${
+                  selectedCategory === "jersey"
+                    ? "bg-orange-500 text-white border-2 border-orange-500"
+                    : ""
+                }`}
+              >
+                Quần áo
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("shoes");
+                  setCurrentPage(1);
+                }}
+                className={`text-[#5c3613] border border-white hover:border-orange-500 rounded-full text-base font-medium px-5 py-2.5 text-center transition-colors ${
+                  selectedCategory === "shoes"
+                    ? "bg-orange-500 text-white border-2 border-orange-500"
+                    : ""
+                }`}
+              >
+                Giày
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("accessory");
+                  setCurrentPage(1);
+                }}
+                className={`text-[#5c3613] border border-white hover:border-orange-500 rounded-full text-base font-medium px-5 py-2.5 text-center transition-colors ${
+                  selectedCategory === "accessory"
+                    ? "bg-orange-500 text-white border-2 border-orange-500"
+                    : ""
+                }`}
+              >
+                Phụ kiện
               </button>
             </div>
           </div>
@@ -395,8 +483,8 @@ export default function AdminPage() {
                     <label className="block mb-2 font-semibold text-gray-700">Stock Quantity</label>
                     <input
                       type="number"
-                      name="stock"
-                      value={productForm.stock}
+                      name="quantity"
+                      value={productForm.quantity}
                       onChange={handleProductFormChange}
                       required
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
@@ -474,14 +562,28 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {products.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="p-8 text-center text-gray-500">
-                        No products found. Click "Add New Product" to create one.
-                      </td>
-                    </tr>
-                  ) : (
-                    products.map((product) => (
+                  {(() => {
+                    // Filter products by category
+                    const filteredProducts = selectedCategory === "all" 
+                      ? products 
+                      : products.filter(p => p.category === selectedCategory);
+                    
+                    // Calculate pagination
+                    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+                    
+                    if (filteredProducts.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="6" className="p-8 text-center text-gray-500">
+                            No products found. Click "Add New Product" to create one.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    
+                    return paginatedProducts.map((product) => (
                       <tr key={product._id} className="hover:bg-orange-50 transition-colors">
                         <td className="p-4">
                           {product.image && (
@@ -494,16 +596,16 @@ export default function AdminPage() {
                         </td>
                         <td className="p-4 font-medium text-gray-800">{product.name}</td>
                         <td className="p-4 text-gray-600">{product.category}</td>
-                        <td className="p-4 text-gray-800 font-semibold">${product.price}</td>
+                        <td className="p-4 text-gray-800 font-semibold">{product.price.toLocaleString()} VND</td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            product.stock > 10 
+                            product.quantity > 10 
                               ? "bg-green-100 text-green-800" 
-                              : product.stock > 0 
+                              : product.quantity > 0 
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {product.stock}
+                            {product.quantity}
                           </span>
                         </td>
                         <td className="p-4">
@@ -523,11 +625,68 @@ export default function AdminPage() {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination Controls */}
+            {(() => {
+              const filteredProducts = selectedCategory === "all" 
+                ? products 
+                : products.filter(p => p.category === selectedCategory);
+              const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+              
+              if (totalPages <= 1) return null;
+              
+              return (
+                <div className="p-4 border-t border-gray-200 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        currentPage === 1
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-orange-500 text-white hover:bg-orange-600"
+                      }`}
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                            currentPage === page
+                              ? "bg-orange-500 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        currentPage === totalPages
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-orange-500 text-white hover:bg-orange-600"
+                      }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

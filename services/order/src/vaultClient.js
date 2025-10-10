@@ -1,11 +1,16 @@
+// Support both K8s (vault.ballandbeer.svc.cluster.local) and local docker-compose (vault)
+const vaultEndpoint = process.env.VAULT_ADDR || 'http://vault:8200';
+const vaultToken = process.env.VAULT_TOKEN || 'root';
+
 const vault = require('node-vault')({
     apiVersion: 'v1',
-    endpoint: 'http://vault.ballandbeer.svc.cluster.local:8200',
-    token: 'root' // Only for dev/test
+    endpoint: vaultEndpoint,
+    token: vaultToken
   });
   
   const loadSecrets = async () => {
     try {
+      console.log(`Connecting to Vault at: ${vaultEndpoint}`);
       const res = await vault.read('secret/data/order-service');
       const data = res.data.data;
   
@@ -14,7 +19,7 @@ const vault = require('node-vault')({
       process.env.JWT_SECRET = data.JWT_SECRET;
       process.env.KAFKA_BROKER = data.KAFKA_BROKER;
       
-      console.log('Vault secrets loaded');
+      console.log('Vault secrets loaded successfully');
     } catch (err) {
       console.error('Failed to load secrets from Vault:', err.message);
       process.exit(1);
