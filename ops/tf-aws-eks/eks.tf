@@ -32,7 +32,8 @@ module "eks" {
   kubernetes_version = var.cluster_version
 
   # Cluster endpoint access
-  endpoint_public_access = true
+  endpoint_public_access  = true
+  endpoint_private_access = true
 
   # Adds the current caller identity as an administrator via cluster access entry
   enable_cluster_creator_admin_permissions = true
@@ -41,19 +42,19 @@ module "eks" {
   subnet_ids = module.vpc.private_subnets
 
   # Cluster addons
+  # EKS Addons
   addons = {
-    coredns = {
-      most_recent = true
-    }
-    kube-proxy = {
-      most_recent = true
-    }
+    # VPC-CNI must be installed before compute resources
     vpc-cni = {
-      most_recent = true
+      before_compute = true
     }
-    aws-ebs-csi-driver = {
-      most_recent = true
+    # Pod Identity agent for AWS service access
+    eks-pod-identity-agent = {
+      before_compute = true
     }
+    coredns    = {}
+    kube-proxy = {}
+    # aws-ebs-csi-driver = {}
   }
 
   # EKS Managed Node Groups using new compute_config in v21
@@ -68,7 +69,7 @@ module "eks" {
 
       # Instance configuration
       instance_types = [var.instance_type]
-      capacity_type  = "SPOT"
+      capacity_type  = var.capacity_type
 
       # Use appropriate AMI type based on architecture
       ami_type = local.ami_type

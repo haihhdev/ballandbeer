@@ -61,3 +61,14 @@ variable "node_group_desired_size" {
   type        = number
   default     = 3
 }
+
+variable "capacity_type" {
+  description = "Type of capacity for node group (ON_DEMAND or SPOT)"
+  type        = string
+  default     = "SPOT"
+
+  validation {
+    condition     = contains(["ON_DEMAND", "SPOT"], var.capacity_type)
+    error_message = "capacity_type must be either 'ON_DEMAND' or 'SPOT'."
+  }
+}

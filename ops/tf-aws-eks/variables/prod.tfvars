@@ -9,3 +9,4 @@ cluster_version         = "1.33"
 node_group_min_size     = 3
 node_group_max_size     = 6
 node_group_desired_size = 4
+capacity_type           = "ON_DEMAND"
