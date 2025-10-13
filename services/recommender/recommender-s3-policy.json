@@ -11,8 +11,8 @@
         "s3:GetBucketLocation"
       ],
       "Resource": [
-        "arn:aws:s3:::ballandbeer-rcm",
-        "arn:aws:s3:::ballandbeer-rcm/*"
+        "arn:aws:s3:::bnb-rcm-kltn",
+        "arn:aws:s3:::bnb-rcm-kltn/*"
       ]
     }
   ]

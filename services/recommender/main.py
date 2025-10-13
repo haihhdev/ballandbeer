@@ -29,11 +29,9 @@ unique_categories = None
 def download_from_s3(bucket_name, s3_key, local_path):
     """Download a file or directory from S3 to local path"""
     s3_client = boto3.client('s3')
-    if s3_key.endswith('.json'):  # hoặc kiểm tra là file
-        # Tải file đơn lẻ
+    if s3_key.endswith('.json'):
         s3_client.download_file(bucket_name, s3_key, local_path)
     else:
-        # Tải cả thư mục
         paginator = s3_client.get_paginator('list_objects_v2')
         for page in paginator.paginate(Bucket=bucket_name, Prefix=s3_key):
             if 'Contents' not in page:
@@ -53,7 +51,7 @@ def load_models_and_data():
         temp_dir = tempfile.mkdtemp()
         
         # Download models from S3
-        bucket_name = os.getenv('S3_BUCKET_NAME', 'ballandbeer-rcm')
+        bucket_name = os.getenv('S3_BUCKET_NAME', 'bnb-rcm-kltn')
         download_from_s3(bucket_name, 'models/user_model/', os.path.join(temp_dir, 'user_model'))
         download_from_s3(bucket_name, 'models/product_model/', os.path.join(temp_dir, 'product_model'))
         download_from_s3(bucket_name, 'data/product_data.json', os.path.join(temp_dir, 'product_data.json'))

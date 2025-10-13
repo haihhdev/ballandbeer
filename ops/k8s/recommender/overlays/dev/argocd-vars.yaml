@@ -4,7 +4,7 @@ metadata:
   name: recommender-vars
   namespace: ballandbeer
 data:
-  AWS_REGION: "us-east-1"
-  S3_BUCKET_NAME: "ballandbeer-rcm"
+  AWS_REGION: "ap-southeast-1"
+  S3_BUCKET_NAME: "bnb-rcm-kltn"
   ENVIRONMENT: "dev"
   LOG_LEVEL: "debug" 

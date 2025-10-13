@@ -41,7 +41,7 @@ def get_vault_token():
             print(f"Error getting token from Kubernetes: {e}")
             return None
     else:
-        # Local development - sử dụng token từ env
+        # Local development
         return os.getenv('VAULT_TOKEN')
 
 def get_mongodb_config():
@@ -252,7 +252,7 @@ def upload_file_to_s3(local_file, bucket, s3_key):
     s3 = boto3.client('s3')
     s3.upload_file(local_file, bucket, s3_key)
 
-bucket_name = os.getenv('S3_BUCKET', 'ballandbeer-rcm')
+bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
 upload_folder_to_s3('user_model', bucket_name, 'models/user_model')
 upload_folder_to_s3('product_model', bucket_name, 'models/product_model')
 upload_file_to_s3('product_data.json', bucket_name, 'data/product_data.json')
