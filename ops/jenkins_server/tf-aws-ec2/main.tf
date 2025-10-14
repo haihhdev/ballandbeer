@@ -1,35 +1,57 @@
 # We'll be using publicly available modules for creating different services instead of resources
 # https://registry.terraform.io/browse/modules?provider=aws
 
+# Local variables for architecture detection and naming
+locals {
+  # Detect if instance type contains 'g' (Graviton/ARM instances)
+  is_graviton = length(regexall("g", var.instance_type)) > 0
+
+  # Select appropriate AMI based on architecture
+  ami_id = local.is_graviton ? data.aws_ami.amazon_linux_arm.id : data.aws_ami.amazon_linux_x86.id
+
+  # Common tags for all resources
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+
+  # Resource name prefix
+  name_prefix = "${var.project_name}-${var.environment}"
+}
+
 # Creating a VPC
 module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 6.4"
 
-  name = var.vpc_name
+  name = "${local.name_prefix}-vpc"
   cidr = var.vpc_cidr
 
-  azs            = data.aws_availability_zones.azs.names
-  public_subnets = var.public_subnets
+  azs                     = data.aws_availability_zones.azs.names
+  public_subnets          = var.public_subnets
   map_public_ip_on_launch = true
 
   enable_dns_hostnames = true
 
-  tags = {
-    Name        = var.vpc_name
-    Terraform   = "true"
-    Environment = "dev"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-vpc"
+    }
+  )
 
   public_subnet_tags = {
-    Name = "jenkins-subnet"
+    Name = "${local.name_prefix}-public-subnet"
   }
 }
 
-# SG
+# Security Group
 module "sg" {
-  source = "terraform-aws-modules/security-group/aws"
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 5.0"
 
-  name        = var.jenkins_security_group
+  name        = "${local.name_prefix}-jenkins-sg"
   description = "Security Group for Jenkins Server"
   vpc_id      = module.vpc.vpc_id
 
@@ -38,7 +60,7 @@ module "sg" {
       from_port   = 8080
       to_port     = 8080
       protocol    = "tcp"
-      description = "JenkinsPort"
+      description = "Jenkins Web UI"
       cidr_blocks = "0.0.0.0/0"
     },
     {
@@ -66,7 +88,7 @@ module "sg" {
       from_port   = 9000
       to_port     = 9000
       protocol    = "tcp"
-      description = "SonarQubePort"
+      description = "SonarQube"
       cidr_blocks = "0.0.0.0/0"
     }
   ]
@@ -80,20 +102,24 @@ module "sg" {
     }
   ]
 
-  tags = {
-    Name = "jenkins-sg"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-jenkins-sg"
+    }
+  )
 }
 
-# EC2
+# EC2 Instance for Jenkins
 module "ec2_instance" {
-  source = "terraform-aws-modules/ec2-instance/aws"
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "~> 6.1"
 
-  name = var.jenkins_ec2_instance
+  name = "${local.name_prefix}-jenkins-server"
 
   instance_type               = var.instance_type
-  ami                         = "ami-0e8a34246278c21e4"
-  key_name                    = "ballandbeerkp"
+  ami                         = local.ami_id
+  key_name                    = "${var.project_name}kp"
   monitoring                  = true
   vpc_security_group_ids      = [module.sg.security_group_id]
   subnet_id                   = module.vpc.public_subnets[0]
@@ -101,16 +127,31 @@ module "ec2_instance" {
   user_data                   = file("../scripts/install_build_tools.sh")
   availability_zone           = data.aws_availability_zones.azs.names[0]
 
-  root_block_device = [
-    {
-      volume_size = 50
-      volume_type = "gp2"
-    }
-  ]
+  # Use Spot Instance market options when var.use_spot is true.
+  instance_market_options = var.use_spot ? {
+    market_type = "spot"
 
-  tags = {
-    Name        = "Jenkins-Server-ballandbeer"
-    Terraform   = "true"
-    Environment = "dev"
+    # Use Spot options with lowest-price strategy
+    spot_options = {
+      allocation_strategy = var.spot_allocation_strategy
+      # AWS will use on-demand price as ceiling
+      max_price           = var.spot_max_price
+    }
+  } : null
+
+  root_block_device = {
+    size                  = 50
+    type                  = "gp3"
+    delete_on_termination = true
+    encrypted             = true
   }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name         = "${local.name_prefix}-jenkins-server"
+      Architecture = local.is_graviton ? "ARM64" : "x86_64"
+      AMI          = local.ami_id
+    }
+  )
 }

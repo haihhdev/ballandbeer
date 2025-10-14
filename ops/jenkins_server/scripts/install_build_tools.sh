@@ -2,6 +2,27 @@
 
 set -e
 
+# Detect architecture
+ARCH=$(uname -m)
+case $ARCH in
+  x86_64)
+    AWS_ARCH="x86_64"
+    KUBECTL_ARCH="amd64"
+    SNYK_ARCH="linux"
+    ;;
+  aarch64)
+    AWS_ARCH="aarch64"
+    KUBECTL_ARCH="arm64"
+    SNYK_ARCH="linux-arm64"
+    ;;
+  *)
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+    ;;
+esac
+
+echo "=== Detected Architecture: $ARCH ==="
+
 echo "=== Installing Jenkins ==="
 sudo yum install -y wget
 sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat/jenkins.repo
@@ -31,8 +52,8 @@ docker run -d \
   -p 9000:9000 \
   sonarqube:lts-community
 
-echo "=== Installing AWS CLI ==="
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+echo "=== Installing AWS CLI (${AWS_ARCH}) ==="
+curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o "awscliv2.zip"
 sudo yum install -y unzip
 unzip awscliv2.zip
 sudo ./aws/install
@@ -42,8 +63,9 @@ sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
 sudo yum -y install terraform
 
-echo "=== Installing kubectl ==="
-curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.23.6/bin/linux/amd64/kubectl
+echo "=== Installing kubectl (${KUBECTL_ARCH}) ==="
+KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl"
 chmod +x ./kubectl
 sudo mv ./kubectl /usr/local/bin/kubectl
 
@@ -71,12 +93,12 @@ unzip sonar-scanner-cli-${SONAR_VERSION}-linux.zip
 sudo mv sonar-scanner-${SONAR_VERSION}-linux /opt/sonar-scanner
 sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
 
-echo "=== Installing Snyk CLI (binary) ==="
+echo "=== Installing Snyk CLI (${SNYK_ARCH}) ==="
 sudo yum install -y jq curl
 SNYK_VERSION=$(curl -s https://api.github.com/repos/snyk/cli/releases/latest | jq -r '.tag_name')
-curl -Lo snyk-linux https://github.com/snyk/cli/releases/download/${SNYK_VERSION}/snyk-linux
-chmod +x snyk-linux
-sudo mv snyk-linux /usr/local/bin/snyk
+curl -Lo snyk https://github.com/snyk/cli/releases/download/${SNYK_VERSION}/snyk-${SNYK_ARCH}
+chmod +x snyk
+sudo mv snyk /usr/local/bin/snyk
 
 echo "=== Verifying Installation ==="
 java -version
