@@ -38,10 +38,10 @@ const nextConfig = {
         source: '/api/orders/:path*',
         destination: 'http://localhost:4002/api/orders/:path*',
       },
-      // Recommender service is disabled for local development
+      // Recommender Service - Port 4005
       {
         source: '/recommend',
-        destination: 'http://localhost:3000/api/recommend-disabled', // Will return 404
+        destination: 'http://localhost:4005/recommend',
       },
     ];
   },

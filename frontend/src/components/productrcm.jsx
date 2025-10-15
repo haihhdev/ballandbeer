@@ -78,6 +78,11 @@ export default function ProductCarousel() {
     fetchProducts();
   }, []);
 
+  const handleProductClick = (e, productId) => {
+    e.stopPropagation(); // Prevent event bubbling
+    router.push(`/productinfo/${productId}`);
+  };
+
   const settings = {
     dots: false,
     infinite: true,
@@ -125,8 +130,7 @@ export default function ProductCarousel() {
             {products.map((product, idx) => (
               <div
                 key={product.id || idx}
-                className="p-3 h-full cursor-pointer"
-                onClick={() => router.push(`/productinfo/${product.id}`)}
+                className="p-3 h-full"
               >
                 <div className="bg-white rounded-2xl border border-[#f0962e] shadow flex flex-col justify-between items-center h-full min-h-[420px]">
                   <div className="w-full flex justify-center items-center p-4 min-h-[260px]">
@@ -137,7 +141,10 @@ export default function ProductCarousel() {
                     />
                   </div>
                   <div className="px-4 pb-4 w-full flex flex-col flex-grow">
-                    <h2 className="font-bold text-lg text-[#5c3613] mb-2 min-h-[3.5rem] break-words">
+                    <h2 
+                      className="font-bold text-lg text-[#5c3613] mb-2 min-h-[3.5rem] break-words cursor-pointer hover:text-[#f0962e] transition-colors"
+                      onClick={(e) => handleProductClick(e, product.id)}
+                    >
                       {product.name}
                     </h2>
                     {/* Giá sản phẩm với hiệu ứng discount */}

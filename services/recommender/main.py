@@ -51,10 +51,20 @@ def load_models_and_data():
         temp_dir = tempfile.mkdtemp()
         
         # Download models from S3
-        bucket_name = os.getenv('S3_BUCKET_NAME', 'bnb-rcm-kltn')
+        bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
+        print(f"Loading models from S3 bucket: {bucket_name}")
+        
+        print("Downloading user_model...")
         download_from_s3(bucket_name, 'models/user_model/', os.path.join(temp_dir, 'user_model'))
+        
+        print("Downloading product_model...")
         download_from_s3(bucket_name, 'models/product_model/', os.path.join(temp_dir, 'product_model'))
+        
+        print("Downloading product_data.json...")
         download_from_s3(bucket_name, 'data/product_data.json', os.path.join(temp_dir, 'product_data.json'))
+        
+        print("Downloading model_metadata.json...")
+        download_from_s3(bucket_name, 'data/model_metadata.json', os.path.join(temp_dir, 'model_metadata.json'))
 
         # Load models
         user_model = tf.keras.models.load_model(os.path.join(temp_dir, 'user_model'))
@@ -63,9 +73,16 @@ def load_models_and_data():
         # Load product features
         with open(os.path.join(temp_dir, 'product_data.json'), "r") as f:
             product_features = json.load(f)
-
-        unique_products = list(product_features.keys())
+            
+        # Load model metadata to get exact vocabulary used during training
+        with open(os.path.join(temp_dir, 'model_metadata.json'), "r") as f:
+            metadata = json.load(f)
+            
+        # Use the exact product order from training
+        unique_products = metadata["unique_products"]
         unique_categories = [product_features[p]["category"] for p in unique_products]
+        
+        print(f"Models loaded successfully! Found {len(unique_products)} products")
 
         # Clean up temporary directory
         shutil.rmtree(temp_dir)
@@ -85,7 +102,10 @@ class RecommendRequest(BaseModel):
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
     try:
+        print(f"Received recommendation request for user_id: {req.user_id}, k: {req.k}")
+        
         if user_model is None or product_model is None:
+            print("Models not loaded, loading now...")
             load_models_and_data()
             
         user_embedding = user_model(tf.constant([req.user_id]))
@@ -96,6 +116,8 @@ def recommend(req: RecommendRequest):
         scores = tf.matmul(user_embedding, product_embeddings, transpose_b=True)
         top_k = tf.math.top_k(scores, k=req.k)
         recommended = [unique_products[i] for i in top_k.indices[0].numpy()]
+        
+        print(f"Recommended products: {recommended}")
         
         return {
             "recommendations": [
@@ -109,7 +131,9 @@ def recommend(req: RecommendRequest):
         }
     except Exception as e:
         print(f"Error in recommendation: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to generate recommendations")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate recommendations: {str(e)}")
 
 @app.get("/health")
 def health_check():
