@@ -3,18 +3,20 @@ const mongoose = require('mongoose');
 const cors = require("cors");
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 dotenv.config();
 const app = express();
 
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 const mongoUri = process.env.MONGO_URI;
 

@@ -41,7 +41,7 @@ def get_vault_token():
             print(f"Error getting token from Kubernetes: {e}")
             return None
     else:
-        # Local development - sử dụng token từ env
+        # Local development
         return os.getenv('VAULT_TOKEN')
 
 def get_mongodb_config():
@@ -89,13 +89,34 @@ client = MongoClient(mongodb_url)
 db = client[database_name]
 
 # Lấy orders (transaction)
-orders = pd.DataFrame(list(db.orders.find({}, {
+orders_raw = list(db.orders.find({}, {
     "userId": 1,
     "updatedAt": 1,
     "products": 1,
     "status": 1
-})))
-orders["userId"] = orders["userId"].astype(str)  # Convert ObjectId to string
+}))
+
+print(f"Found {len(orders_raw)} orders")
+if len(orders_raw) > 0:
+    print(f"Sample order keys: {orders_raw[0].keys()}")
+
+if len(orders_raw) == 0:
+    print("ERROR: No orders found in database. Please ensure you have order data.")
+    exit(1)
+
+orders = pd.DataFrame(orders_raw)
+
+# Check if userId exists, try common field name variations
+if "userId" in orders.columns:
+    orders["userId"] = orders["userId"].astype(str)
+elif "user_id" in orders.columns:
+    orders["userId"] = orders["user_id"].astype(str)
+elif "customerId" in orders.columns:
+    orders["userId"] = orders["customerId"].astype(str)
+else:
+    print(f"ERROR: userId field not found. Available columns: {orders.columns.tolist()}")
+    print(f"Sample order: {orders_raw[0]}")
+    exit(1)
 
 # Lấy products
 products_df = pd.DataFrame(list(db.products.find({}, {
@@ -148,15 +169,30 @@ user_lookup = tf.keras.layers.StringLookup(vocabulary=unique_users)
 product_lookup = tf.keras.layers.StringLookup(vocabulary=unique_products)
 category_lookup = tf.keras.layers.StringLookup(vocabulary=unique_categories)
 
+# IMPORTANT: Only save product features for products that were in training data
 product_features = {}
 for _, row in products_df.iterrows():
-    product_features[row["product_id"]] = {
-        "category": row["category"],
-        "name": row["name"]
-    }
+    pid = row["product_id"]
+    # Only include products that are in the training data
+    if pid in unique_products:
+        product_features[pid] = {
+            "category": row["category"],
+            "name": row["name"]
+        }
+
+print(f"Saving {len(product_features)} products to product_data.json (from {len(products_df)} total products)")
 
 with open("product_data.json", "w") as f:
     json.dump(product_features, f)
+    
+# Also save the vocabulary for exact reconstruction
+metadata = {
+    "unique_users": unique_users.tolist(),
+    "unique_products": unique_products.tolist(),
+    "unique_categories": unique_categories.tolist()
+}
+with open("model_metadata.json", "w") as f:
+    json.dump(metadata, f)
 
 train_data = {
     "user_id": df_final["user_id"].values,
@@ -252,8 +288,9 @@ def upload_file_to_s3(local_file, bucket, s3_key):
     s3 = boto3.client('s3')
     s3.upload_file(local_file, bucket, s3_key)
 
-bucket_name = os.getenv('S3_BUCKET', 'ballandbeer-rcm')
+bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
 upload_folder_to_s3('user_model', bucket_name, 'models/user_model')
 upload_folder_to_s3('product_model', bucket_name, 'models/product_model')
 upload_file_to_s3('product_data.json', bucket_name, 'data/product_data.json')
+upload_file_to_s3('model_metadata.json', bucket_name, 'data/model_metadata.json')
 print("Uploaded to S3")

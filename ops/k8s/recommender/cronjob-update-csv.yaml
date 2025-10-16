@@ -16,7 +16,7 @@ spec:
             command: ["python", "pipeline.py"]
             env:
             - name: MONGODB_URL
-              value: "mongodb+srv://haohaidevops:haohaidevops@cluster0.bdekimc.mongodb.net/"
+              value: "mongodb+srv://haohaidevops:haohaidevops@cluster0.lazj3fi.mongodb.net/"
             - name: MONGODB_DATABASE
               value: "BallandBeerDB"
             - name: VAULT_TOKEN
@@ -26,7 +26,7 @@ spec:
             - name: VAULT_ROLE
               value: recommender-role
             - name: S3_BUCKET
-              value: ballandbeer-rcm
+              value: bnb-rcm-kltn
             - name: AWS_REGION
               value: ap-southeast-1
             - name: ENVIRONMENT

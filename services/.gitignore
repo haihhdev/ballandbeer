@@ -47,3 +47,9 @@ coverage/
 recommender/product_model/
 recommender/user_model/
 recommender/__pycache__/
+recommender/product_data.json
+recommender/model_metadata.json
+
+# Local development notes
+NOTES.md
+**/NOTES.md
