@@ -1,0 +1,59 @@
+autoDiscovery:
+  clusterName: ballandbeer-dev-eks
+  enabled: true
+  tags:
+  - k8s.io/cluster-autoscaler/enabled
+  - k8s.io/cluster-autoscaler/{{ .Values.autoDiscovery.clusterName }}
+
+awsRegion: ap-southeast-1
+
+rbac:
+  create: true
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ""
+    create: true
+
+extraArgs:
+  logtostderr: true
+  stderrthreshold: info
+  v: 4
+  skip-nodes-with-local-storage: false
+  expander: least-waste
+  balance-similar-node-groups: true
+  skip-nodes-with-system-pods: false
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 300Mi
+  requests:
+    cpu: 100m
+    memory: 300Mi
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations: []
+
+affinity: {}
+
+image:
+  repository: registry.k8s.io/autoscaling/cluster-autoscaler
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+podAnnotations: {}
+
+podLabels: {}
+
+priorityClassName: ""
+
+cloudProvider: aws
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0

@@ -52,3 +52,13 @@ output "ami_type" {
   description = "AMI type used for EKS nodes"
   value       = local.ami_type
 }
+
+output "cluster_autoscaler_role_arn" {
+  description = "ARN of IAM role for Cluster Autoscaler service account"
+  value       = aws_iam_role.cluster_autoscaler.arn
+}
+
+output "oidc_provider_arn" {
+  description = "ARN of the OIDC Provider for EKS"
+  value       = local.oidc_provider_arn
+}

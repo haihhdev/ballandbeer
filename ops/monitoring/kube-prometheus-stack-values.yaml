@@ -1,0 +1,123 @@
+nameOverride: ""
+fullnameOverride: ""
+
+# Prometheus Operator - manages Prometheus instances via CRDs (ServiceMonitor, PodMonitor, PrometheusRule)
+prometheusOperator:
+  enabled: true
+  
+# Prometheus - time-series database for storing metrics
+prometheus:
+  enabled: true
+  prometheusSpec:
+    retention: 7d
+    retentionSize: "10GB"
+    
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    
+    storageSpec: {}
+    
+    # Allow Prometheus to discover all ServiceMonitors without label restrictions
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    
+    additionalScrapeConfigs: []
+
+# Alertmanager - handles alert notifications (disabled for this setup)
+alertmanager:
+  enabled: false
+
+# Grafana - visualization and dashboarding
+grafana:
+  enabled: true
+  
+  # Admin password - uses random generated password
+  # To get password: kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+  
+  # Port-forward: kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+  service:
+    type: ClusterIP
+    port: 80
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  persistence:
+    enabled: false
+  
+  # Pre-configured dashboards - main feature of kube-prometheus-stack
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: Asia/Bangkok
+  
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/"
+    analytics:
+      check_for_updates: true
+  
+  # Sidecar automatically configures Prometheus datasource - no manual config needed
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+
+# Node Exporter - collects OS-level metrics from each node (CPU, RAM, disk, network)
+nodeExporter:
+  enabled: true
+
+# Kube State Metrics - collects Kubernetes resource metrics (deployments, pods, nodes status)
+kubeStateMetrics:
+  enabled: true
+
+# Resource limits for Node Exporter pods
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Recording rules pre-aggregate frequently used queries to improve dashboard performance
+defaultRules:
+  create: true
+  rules:
+    alertmanager: false
+    etcd: false
+    configReloaders: false
+    general: false
+    k8s: false
+    kubeApiserverAvailability: false
+    kubeApiserverSlos: false
+    kubelet: false
+    kubeProxy: false
+    kubePrometheusGeneral: false
+    kubePrometheusNodeRecording: true
+    kubernetesApps: false
+    kubernetesResources: false
+    kubernetesStorage: false
+    kubernetesSystem: false
+    kubeScheduler: false
+    kubeStateMetrics: false
+    network: false
+    node: false
+    nodeExporterAlerting: false
+    nodeExporterRecording: true
+    prometheus: false
+    prometheusOperator: false
