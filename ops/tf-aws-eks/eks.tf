@@ -104,6 +104,10 @@ module "eks" {
         {
           Name         = "${local.name_prefix}-eks-node"
           Architecture = local.is_graviton ? "ARM64" : "x86_64"
+
+          # Tags for Cluster Autoscaler discovery
+          "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
+          "k8s.io/cluster-autoscaler/enabled"               = "true"
         }
       )
     }
@@ -113,6 +117,55 @@ module "eks" {
     local.common_tags,
     {
       Name = local.cluster_name
+    }
+  )
+}
+
+# IAM Policy for Cluster Autoscaler
+# Required for the Cluster Autoscaler to scale node groups up and down
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name        = "${local.cluster_name}-cluster-autoscaler"
+  description = "IAM policy for Cluster Autoscaler to manage node group scaling"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeTags",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplateVersions",
+          "ec2:GetInstanceTypesFromInstanceRequirements",
+          "eks:DescribeNodegroup"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.cluster_name}-cluster-autoscaler-policy"
     }
   )
 }

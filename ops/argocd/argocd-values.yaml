@@ -1,0 +1,76 @@
+# ArgoCD Helm Chart Values
+# Documentation: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+
+# Controller - reconciles application state
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Server - API and UI
+server:
+  service:
+    type: LoadBalancer
+  
+  extraArgs:
+    - --insecure
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Repo Server - manages repository connections
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+# ApplicationSet Controller - manages ApplicationSets
+applicationSet:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Notifications - for webhooks and alerts
+notifications:
+  enabled: false
+
+# Dex - SSO/OAuth integration
+dex:
+  enabled: false
+
+# Redis - caching layer
+redis:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Configs
+configs:
+  secret:
+    createSecret: true
+    
+# Get admin password:
+# kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
