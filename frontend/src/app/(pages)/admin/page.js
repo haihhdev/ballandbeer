@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Toast from "@/components/Toast";
 
 export default function AdminPage() {
@@ -52,7 +53,7 @@ export default function AdminPage() {
       router.push("/login");
     }
     setLoading(false);
-  }, [router]);
+  }, [router, loadProducts, loadUsers]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
@@ -62,8 +63,8 @@ export default function AdminPage() {
     };
   };
 
-  // Load products
-  const loadProducts = async () => {
+  // Load products - wrapped with useCallback to fix dependency warning
+  const loadProducts = useCallback(async () => {
     try {
       const response = await fetch("/api/products");
       const data = await response.json();
@@ -81,10 +82,10 @@ export default function AdminPage() {
       console.error("Error loading products:", error);
       showToast("Failed to load products", "error");
     }
-  };
+  }, []);
 
-  // Load users
-  const loadUsers = async () => {
+  // Load users - wrapped with useCallback to fix dependency warning
+  const loadUsers = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/users", {
         headers: getAuthHeaders(),
@@ -97,7 +98,7 @@ export default function AdminPage() {
       console.error("Error loading users:", error);
       showToast("Failed to load users", "error");
     }
-  };
+  }, []);
 
   // Handle product form change
   const handleProductFormChange = (e) => {
@@ -515,11 +516,12 @@ export default function AdminPage() {
                     className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors"
                   />
                   {productForm.image && (
-                    <div className="mt-4">
-                      <img
+                    <div className="mt-4 relative w-40 h-40">
+                      <Image
                         src={productForm.image}
                         alt="Preview"
-                        className="w-40 h-40 object-cover rounded-lg border-2 border-gray-200"
+                        fill
+                        className="object-cover rounded-lg border-2 border-gray-200"
                       />
                     </div>
                   )}
@@ -577,7 +579,7 @@ export default function AdminPage() {
                       return (
                         <tr>
                           <td colSpan="6" className="p-8 text-center text-gray-500">
-                            No products found. Click "Add New Product" to create one.
+                            No products found. Click &quot;Add New Product&quot; to create one.
                           </td>
                         </tr>
                       );
@@ -587,11 +589,14 @@ export default function AdminPage() {
                       <tr key={product._id} className="hover:bg-orange-50 transition-colors">
                         <td className="p-4">
                           {product.image && (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200"
-                            />
+                            <div className="relative w-16 h-16">
+                              <Image
+                                src={product.image}
+                                alt={product.name}
+                                fill
+                                className="object-cover rounded-lg border-2 border-gray-200"
+                              />
+                            </div>
                           )}
                         </td>
                         <td className="p-4 font-medium text-gray-800">{product.name}</td>

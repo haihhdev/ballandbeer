@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-COPY .env.local.build .env.local
+COPY .env.local .env.local
 RUN npm run build
 
 # Stage 3: Run production server with standalone output

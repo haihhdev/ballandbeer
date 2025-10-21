@@ -1,0 +1,49 @@
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment and config
+.env
+.env.local
+
+# Data files not needed in container
+product_data.json
+*.json
+!model_metadata.json
+
+# Documentation
+*.md
+README*
+
+# Git
+.git/
+.gitignore
+
+# Vault and Kubernetes configs
+rcm-policy.hcl
+recommender-s3-policy.json
+*.hcl
+*.yaml
+*.yml
+
+# Logs
+*.log

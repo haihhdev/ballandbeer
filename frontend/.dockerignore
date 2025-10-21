@@ -16,7 +16,6 @@ coverage
 .nyc_output
 
 # Environment files (except .env.local.build which is explicitly copied)
-.env*.local
 !.env.local.build
 .env.development
 .env.test
