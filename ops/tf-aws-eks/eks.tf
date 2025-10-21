@@ -54,7 +54,11 @@ module "eks" {
     }
     coredns    = {}
     kube-proxy = {}
-    # aws-ebs-csi-driver = {}
+    # EBS CSI Driver for persistent volume support
+    aws-ebs-csi-driver = {
+      most_recent              = true
+      service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
+    }
   }
 
   # EKS Managed Node Groups using new compute_config in v21
