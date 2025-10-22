@@ -1,0 +1,10 @@
+kubernetes==29.0.0
+prometheus-api-client==0.5.5
+boto3==1.34.144
+pandas==2.2.2
+numpy==1.26.4
+requests==2.32.3
+python-dateutil==2.9.0
+workalendar==17.0.0
+schedule==1.2.2
+pytz==2024.1

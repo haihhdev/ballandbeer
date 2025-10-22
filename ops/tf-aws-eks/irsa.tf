@@ -1,12 +1,53 @@
-# EKS module already creates OIDC provider, we just reference it
-data "aws_iam_openid_connect_provider" "eks_oidc" {
-  url = module.eks.cluster_oidc_issuer_url
+locals {
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider     = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
 }
 
-locals {
-  # Use the OIDC provider created by EKS module or existing one
-  oidc_provider_arn = data.aws_iam_openid_connect_provider.eks_oidc.arn
-  oidc_provider     = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name        = "${local.cluster_name}-cluster-autoscaler"
+  description = "IAM policy for Cluster Autoscaler to manage node group scaling"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeTags",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplateVersions",
+          "ec2:GetInstanceTypesFromInstanceRequirements",
+          "eks:DescribeNodegroup"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.cluster_name}-cluster-autoscaler-policy"
+    }
+  )
 }
 
 resource "aws_iam_role" "cluster_autoscaler" {
@@ -44,7 +85,6 @@ resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
   policy_arn = aws_iam_policy.cluster_autoscaler.arn
 }
 
-# IAM Role for EBS CSI Driver
 resource "aws_iam_role" "ebs_csi_driver" {
   name = "${local.cluster_name}-ebs-csi-driver-role"
 
@@ -75,13 +115,11 @@ resource "aws_iam_role" "ebs_csi_driver" {
   )
 }
 
-# Attach AWS managed policy for EBS CSI Driver
 resource "aws_iam_role_policy_attachment" "ebs_csi_driver" {
   role       = aws_iam_role.ebs_csi_driver.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
-# IAM Role for Recommender Service (S3 Access)
 resource "aws_iam_role" "recommender" {
   name = "${local.cluster_name}-recommender-role"
 
@@ -112,7 +150,6 @@ resource "aws_iam_role" "recommender" {
   )
 }
 
-# IAM Policy for Recommender Service S3 Access
 resource "aws_iam_policy" "recommender_s3" {
   name        = "${local.cluster_name}-recommender-s3-policy"
   description = "Policy for Recommender service to access S3 bucket"
@@ -141,4 +178,34 @@ resource "aws_iam_policy" "recommender_s3" {
 resource "aws_iam_role_policy_attachment" "recommender_s3" {
   role       = aws_iam_role.recommender.name
   policy_arn = aws_iam_policy.recommender_s3.arn
+}
+
+resource "aws_iam_policy" "collector_s3" {
+  name        = "${local.cluster_name}-collector-s3-policy"
+  description = "Policy for Collector service to access metrics S3 bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::ballandbeer-metrics",
+          "arn:aws:s3:::ballandbeer-metrics/*"
+        ]
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "collector_s3" {
+  role       = aws_iam_role.recommender.name
+  policy_arn = aws_iam_policy.collector_s3.arn
 }

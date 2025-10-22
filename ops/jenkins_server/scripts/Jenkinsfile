@@ -162,15 +162,12 @@ pipeline{
             steps {
                 script {
                     sh """
-                        echo "Installing K6 Operator for load testing..."
-                        kubectl create namespace k6-operator-system --dry-run=client -o yaml | kubectl apply -f -
+                        echo "Installing K6 Operator for load testing using bundle manifest..."
                         
-                        helm install k6-operator grafana/k6-operator \
-                            --namespace k6-operator-system \
-                            --wait --timeout 5m
+                        curl -s https://raw.githubusercontent.com/grafana/k6-operator/main/bundle.yaml | kubectl apply -f -
                         
-                        echo "Waiting for K6 Operator to be ready..."
-                        kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=k6-operator" \
+                        echo "Waiting for K6 Operator controller manager to be ready..."
+                        kubectl wait --for=condition=ready pod -l "control-plane=controller-manager" \
                             -n k6-operator-system --timeout=120s || true
                         
                         echo "K6 Operator installed successfully"
