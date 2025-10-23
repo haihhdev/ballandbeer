@@ -58,7 +58,16 @@ output "cluster_autoscaler_role_arn" {
   value       = aws_iam_role.cluster_autoscaler.arn
 }
 
+output "ebs_csi_driver_role_arn" {
+  description = "ARN of IAM role for EBS CSI Driver service account"
+  value       = aws_iam_role.ebs_csi_driver.arn
+}
+
 output "oidc_provider_arn" {
   description = "ARN of the OIDC Provider for EKS"
   value       = local.oidc_provider_arn
+}
+output "recommender_role_arn" {
+  description = "ARN of IAM role for Recommender service account"
+  value       = aws_iam_role.recommender.arn
 }

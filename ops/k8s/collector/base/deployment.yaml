@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  labels:
+    app: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      serviceAccountName: collector-sa
+      containers:
+      - name: collector
+        image: hao1706/collector:latest
+        imagePullPolicy: Always
+        env:
+        - name: PROMETHEUS_URL
+          value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+        - name: S3_BUCKET
+          value: "ballandbeer-metrics"
+        - name: S3_REGION
+          value: "ap-southeast-1"
+        - name: COLLECTION_INTERVAL
+          value: "30"
+        - name: NAMESPACE
+          value: "ballandbeer"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        emptyDir: {}
