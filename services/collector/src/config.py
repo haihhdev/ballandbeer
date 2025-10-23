@@ -45,5 +45,7 @@ CSV_COLUMNS = [
     'ram_limit',
     'queue_length',
     'error_rate',
-    'pod_restart_count'
+    'pod_restart_count',
+    'node_cpu_pressure_flag',
+    'node_memory_pressure_flag'
 ]

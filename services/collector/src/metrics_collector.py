@@ -184,6 +184,68 @@ class MetricsCollector:
         
         return float(mem_str)
     
+    def collect_node_cpu_pressure(self, service: str) -> int:
+        """Check if any node running this service's pods has CPU pressure"""
+        try:
+            # Get pods for this service
+            pods = self.k8s_core.list_namespaced_pod(
+                namespace=config.NAMESPACE,
+                label_selector=f"app={service}"
+            )
+            
+            if not pods.items:
+                return 0
+            
+            # Get unique node names where pods are running
+            node_names = set()
+            for pod in pods.items:
+                if pod.spec.node_name:
+                    node_names.add(pod.spec.node_name)
+            
+            # Check CPU pressure for these nodes
+            for node_name in node_names:
+                query = f'kube_node_status_condition{{node="{node_name}", condition="CPUPressure", status="true"}} == 1'
+                result = self.prom.custom_query(query=query)
+                
+                if result and len(result) > 0:
+                    return 1  # At least one node has CPU pressure
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Error collecting node CPU pressure for {service}: {e}")
+            return 0
+    
+    def collect_node_memory_pressure(self, service: str) -> int:
+        """Check if any node running this service's pods has memory pressure"""
+        try:
+            # Get pods for this service
+            pods = self.k8s_core.list_namespaced_pod(
+                namespace=config.NAMESPACE,
+                label_selector=f"app={service}"
+            )
+            
+            if not pods.items:
+                return 0
+            
+            # Get unique node names where pods are running
+            node_names = set()
+            for pod in pods.items:
+                if pod.spec.node_name:
+                    node_names.add(pod.spec.node_name)
+            
+            # Check memory pressure for these nodes
+            for node_name in node_names:
+                query = f'kube_node_status_condition{{node="{node_name}", condition="MemoryPressure", status="true"}} == 1'
+                result = self.prom.custom_query(query=query)
+                
+                if result and len(result) > 0:
+                    return 1  # At least one node has memory pressure
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Error collecting node memory pressure for {service}: {e}")
+            return 0
+    
     def collect_all_metrics(self, service: str) -> Dict:
         logger.info(f"Collecting metrics for service: {service}")
         
@@ -197,7 +259,9 @@ class MetricsCollector:
             'replica_count': self.collect_replica_count(service),
             'error_rate': self.collect_error_rate(service),
             'queue_length': self.collect_queue_length(service),
-            'pod_restart_count': self.collect_pod_restart_count(service)
+            'pod_restart_count': self.collect_pod_restart_count(service),
+            'node_cpu_pressure_flag': self.collect_node_cpu_pressure(service),
+            'node_memory_pressure_flag': self.collect_node_memory_pressure(service)
         }
         
         resources = self.collect_resource_requests_limits(service)
