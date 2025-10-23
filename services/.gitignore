@@ -53,3 +53,6 @@ recommender/model_metadata.json
 # Local development notes
 NOTES.md
 **/NOTES.md
+
+#Config files
+setup.sh

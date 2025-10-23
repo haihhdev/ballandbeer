@@ -32,12 +32,13 @@ exports.login = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Check if account is active
-    if (!user.isActive) return res.status(403).json({ message: "Account has been disabled" });
+    if (!user.isActive)
+      return res.status(403).json({ message: "Account has been disabled" });
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid password" });
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     res.json({
       message: "Login successful",
       token,
@@ -95,11 +96,12 @@ exports.loginWithGoogle = async (req, res) => {
       });
       await user.save();
     }
-    
+
     // Check if account is active
-    if (!user.isActive) return res.status(403).json({ message: "Account has been disabled" });
-    
-    const token = generateToken(user._id);
+    if (!user.isActive)
+      return res.status(403).json({ message: "Account has been disabled" });
+
+    const token = generateToken(user);
     res.json({
       message: "Login with Google successful",
       token,

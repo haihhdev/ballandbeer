@@ -1,0 +1,36 @@
+services:
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: redpanda-product
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://localhost:9095
+    ports:
+      - 9095:9092 # Kafka API
+      - 9647:9644 # Admin API
+    networks:
+      - app-network
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault-product
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - 8203:8200
+    networks:
+      - app-network
+    command: vault server -dev -dev-root-token-id=root
+
+networks:
+  app-network:
+    driver: bridge
