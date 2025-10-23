@@ -2,6 +2,16 @@
 const nextConfig = {
   output: 'standalone',
   
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+        pathname: '/haihhdev/ballandbeer-image/**',
+      },
+    ],
+  },
+  
   async rewrites() {
     return [
       // Auth Service - Port 4000

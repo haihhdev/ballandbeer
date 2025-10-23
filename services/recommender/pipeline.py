@@ -16,21 +16,21 @@ import boto3
 load_dotenv()
 
 # ======================
-# STEP 0: LẤY THÔNG TIN TỪ VAULT
+# STEP 0: GET CONFIG FROM VAULT
 # ======================
 def get_vault_token():
-    # Kiểm tra xem có đang chạy trong Kubernetes không
+    # Check if running inside Kubernetes cluster
     if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/token'):
         try:
-            # Load kube config từ service account
+            # Load kube config from service account
             config.load_incluster_config()
             k8s_client = client.CoreV1Api()
             
-            # Lấy service account token
+            # Get service account token
             with open('/var/run/secrets/kubernetes.io/serviceaccount/token', 'r') as f:
                 jwt = f.read()
             
-            # Kết nối với Vault và login bằng Kubernetes auth
+            # Connect to Vault and login with Kubernetes auth
             vault_client = hvac.Client(url=os.getenv('VAULT_URL', 'http://vault:8200'))
             vault_client.auth.kubernetes.login(
                 role=os.getenv('VAULT_ROLE', 'default'),
@@ -41,7 +41,7 @@ def get_vault_token():
             print(f"Error getting token from Kubernetes: {e}")
             return None
     else:
-        # Local development
+        # Local development mode
         return os.getenv('VAULT_TOKEN')
 
 def get_mongodb_config():
@@ -55,7 +55,7 @@ def get_mongodb_config():
                 token=vault_token
             )
             
-            # Đọc secret từ Vault
+            # Read secret from Vault
             secret = client.secrets.kv.v2.read_secret_version(
                 path='rcm-service',
                 mount_point='secret'
@@ -75,7 +75,7 @@ def get_mongodb_config():
         'database': os.getenv('MONGODB_DATABASE')
     }
 
-# Lấy thông tin kết nối từ Vault hoặc env
+# Get connection info from Vault or environment
 mongodb_config = get_mongodb_config()
 mongodb_url = mongodb_config['url']
 print(mongodb_url)
@@ -83,12 +83,12 @@ database_name = mongodb_config['database']
 print(database_name)
 
 # ======================
-# STEP 1: KẾT NỐI MONGODB
+# STEP 1: CONNECT TO MONGODB
 # ======================
 client = MongoClient(mongodb_url)
 db = client[database_name]
 
-# Lấy orders (transaction)
+# Fetch orders data
 orders_raw = list(db.orders.find({}, {
     "userId": 1,
     "updatedAt": 1,
@@ -118,7 +118,7 @@ else:
     print(f"Sample order: {orders_raw[0]}")
     exit(1)
 
-# Lấy products
+# Fetch products data
 products_df = pd.DataFrame(list(db.products.find({}, {
     "_id": 1,
     "category": 1,
@@ -128,9 +128,9 @@ products_df["_id"] = products_df["_id"].astype(str)
 products_df["category"] = products_df["category"].fillna("unknown").str.lower()
 products_df = products_df.rename(columns={"_id": "product_id"})
 
-# ===============================
-# STEP 2: FORMAT LẠI TRANSACTIONS
-# ===============================
+# ======================
+# STEP 2: FORMAT TRANSACTIONS
+# ======================
 records = []
 for _, row in orders.iterrows():
     if str(row.get("status")).strip().lower() != "complete":
@@ -148,9 +148,9 @@ for _, row in orders.iterrows():
 
 transactions_df = pd.DataFrame(records)
 
-# ===============================
-# STEP 3: TIỀN XỬ LÝ DỮ LIỆU TRAIN
-# ===============================
+# ======================
+# STEP 3: PREPROCESS TRAINING DATA
+# ======================
 products_df["product_id"] = products_df["product_id"].str.lower().str.strip()
 transactions_df["product_id"] = transactions_df["product_id"].str.lower().str.strip()
 df_merged = transactions_df.merge(products_df, how="left", on="product_id")
@@ -158,9 +158,9 @@ df_merged["category"] = df_merged["category"].fillna("unknown")
 
 df_final = df_merged[["user_id", "product_id", "category"]].dropna()
 
-# ===============================
-# STEP 4: CHUẨN BỊ TF.DATASET
-# ===============================
+# ======================
+# STEP 4: PREPARE TF.DATASET
+# ======================
 unique_users = df_final["user_id"].unique()
 unique_products = df_final["product_id"].unique()
 unique_categories = df_final["category"].unique()
@@ -169,11 +169,10 @@ user_lookup = tf.keras.layers.StringLookup(vocabulary=unique_users)
 product_lookup = tf.keras.layers.StringLookup(vocabulary=unique_products)
 category_lookup = tf.keras.layers.StringLookup(vocabulary=unique_categories)
 
-# IMPORTANT: Only save product features for products that were in training data
+# Save product features only for products in training data
 product_features = {}
 for _, row in products_df.iterrows():
     pid = row["product_id"]
-    # Only include products that are in the training data
     if pid in unique_products:
         product_features[pid] = {
             "category": row["category"],
@@ -185,7 +184,7 @@ print(f"Saving {len(product_features)} products to product_data.json (from {len(
 with open("product_data.json", "w") as f:
     json.dump(product_features, f)
     
-# Also save the vocabulary for exact reconstruction
+# Save vocabulary for exact reconstruction
 metadata = {
     "unique_users": unique_users.tolist(),
     "unique_products": unique_products.tolist(),
@@ -203,9 +202,9 @@ train_data = {
 train_dataset = tf.data.Dataset.from_tensor_slices(train_data)
 train_dataset = train_dataset.shuffle(100_000).batch(128)
 
-# ===============================
-# STEP 5: MÔ HÌNH GỢI Ý
-# ===============================
+# ======================
+# STEP 5: BUILD RECOMMENDATION MODEL
+# ======================
 class ProductModel(tf.keras.Model):
     def __init__(self):
         super().__init__()
@@ -264,16 +263,16 @@ class RecommenderModel(tfrs.Model):
         )
         return self.task(user_embeddings, product_embeddings)
 
-# ===============================
-# STEP 6: HUẤN LUYỆN VÀ LƯU MODEL
-# ===============================
+# ======================
+# STEP 6: TRAIN AND SAVE MODEL
+# ======================
 model = RecommenderModel()
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
 model.fit(train_dataset, epochs=10)
 
-# Lưu user & product model
-model.user_model.save("user_model")
-model.product_model.save("product_model")
+# Save models in Keras 3 native format
+model.user_model.save("user_model.keras")
+model.product_model.save("product_model.keras")
 
 def upload_folder_to_s3(local_folder, bucket, s3_folder):
     s3 = boto3.client('s3')
@@ -289,8 +288,9 @@ def upload_file_to_s3(local_file, bucket, s3_key):
     s3.upload_file(local_file, bucket, s3_key)
 
 bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
-upload_folder_to_s3('user_model', bucket_name, 'models/user_model')
-upload_folder_to_s3('product_model', bucket_name, 'models/product_model')
+# Upload single .keras files to S3
+upload_file_to_s3('user_model.keras', bucket_name, 'models/user_model.keras')
+upload_file_to_s3('product_model.keras', bucket_name, 'models/product_model.keras')
 upload_file_to_s3('product_data.json', bucket_name, 'data/product_data.json')
 upload_file_to_s3('model_metadata.json', bucket_name, 'data/model_metadata.json')
 print("Uploaded to S3")

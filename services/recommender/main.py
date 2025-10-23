@@ -13,7 +13,7 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,22 +27,9 @@ unique_products = None
 unique_categories = None
 
 def download_from_s3(bucket_name, s3_key, local_path):
-    """Download a file or directory from S3 to local path"""
+    """Download a file from S3 to local path"""
     s3_client = boto3.client('s3')
-    if s3_key.endswith('.json'):
-        s3_client.download_file(bucket_name, s3_key, local_path)
-    else:
-        paginator = s3_client.get_paginator('list_objects_v2')
-        for page in paginator.paginate(Bucket=bucket_name, Prefix=s3_key):
-            if 'Contents' not in page:
-                continue
-            for obj in page['Contents']:
-                key = obj['Key']
-                if key.endswith('/'):
-                    continue  # bỏ qua folder marker
-                local_file = os.path.join(local_path, os.path.relpath(key, s3_key))
-                os.makedirs(os.path.dirname(local_file), exist_ok=True)
-                s3_client.download_file(bucket_name, key, local_file)
+    s3_client.download_file(bucket_name, s3_key, local_path)
 
 def load_models_and_data():
     global user_model, product_model, product_features, unique_products, unique_categories
@@ -55,10 +42,10 @@ def load_models_and_data():
         print(f"Loading models from S3 bucket: {bucket_name}")
         
         print("Downloading user_model...")
-        download_from_s3(bucket_name, 'models/user_model/', os.path.join(temp_dir, 'user_model'))
+        download_from_s3(bucket_name, 'models/user_model.keras', os.path.join(temp_dir, 'user_model.keras'))
         
         print("Downloading product_model...")
-        download_from_s3(bucket_name, 'models/product_model/', os.path.join(temp_dir, 'product_model'))
+        download_from_s3(bucket_name, 'models/product_model.keras', os.path.join(temp_dir, 'product_model.keras'))
         
         print("Downloading product_data.json...")
         download_from_s3(bucket_name, 'data/product_data.json', os.path.join(temp_dir, 'product_data.json'))
@@ -66,9 +53,9 @@ def load_models_and_data():
         print("Downloading model_metadata.json...")
         download_from_s3(bucket_name, 'data/model_metadata.json', os.path.join(temp_dir, 'model_metadata.json'))
 
-        # Load models
-        user_model = tf.keras.models.load_model(os.path.join(temp_dir, 'user_model'))
-        product_model = tf.keras.models.load_model(os.path.join(temp_dir, 'product_model'))
+        # Load models in Keras 3 native format
+        user_model = tf.keras.models.load_model(os.path.join(temp_dir, 'user_model.keras'))
+        product_model = tf.keras.models.load_model(os.path.join(temp_dir, 'product_model.keras'))
 
         # Load product features
         with open(os.path.join(temp_dir, 'product_data.json'), "r") as f:
@@ -108,12 +95,19 @@ def recommend(req: RecommendRequest):
             print("Models not loaded, loading now...")
             load_models_and_data()
             
+        # Generate user embedding
         user_embedding = user_model(tf.constant([req.user_id]))
+        
+        # Generate product embeddings
         product_embeddings = product_model(
             tf.constant(unique_products),
             tf.constant(unique_categories)
         )
+        
+        # Calculate similarity scores
         scores = tf.matmul(user_embedding, product_embeddings, transpose_b=True)
+        
+        # Get top k recommendations
         top_k = tf.math.top_k(scores, k=req.k)
         recommended = [unique_products[i] for i in top_k.indices[0].numpy()]
         
