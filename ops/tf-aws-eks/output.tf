@@ -71,3 +71,8 @@ output "recommender_role_arn" {
   description = "ARN of IAM role for Recommender service account"
   value       = aws_iam_role.recommender.arn
 }
+
+output "collector_role_arn" {
+  description = "ARN of IAM role for Collector service account"
+  value       = aws_iam_role.collector.arn
+}

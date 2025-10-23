@@ -180,6 +180,36 @@ resource "aws_iam_role_policy_attachment" "recommender_s3" {
   policy_arn = aws_iam_policy.recommender_s3.arn
 }
 
+resource "aws_iam_role" "collector" {
+  name = "${local.cluster_name}-collector-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = local.oidc_provider_arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${local.oidc_provider}:sub" = "system:serviceaccount:ballandbeer:collector-sa"
+            "${local.oidc_provider}:aud" = "sts.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.cluster_name}-collector-role"
+    }
+  )
+}
+
 resource "aws_iam_policy" "collector_s3" {
   name        = "${local.cluster_name}-collector-s3-policy"
   description = "Policy for Collector service to access metrics S3 bucket"
@@ -192,7 +222,8 @@ resource "aws_iam_policy" "collector_s3" {
         Action = [
           "s3:GetObject",
           "s3:PutObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:CreateBucket"
         ]
         Resource = [
           "arn:aws:s3:::ballandbeer-metrics",
@@ -206,6 +237,6 @@ resource "aws_iam_policy" "collector_s3" {
 }
 
 resource "aws_iam_role_policy_attachment" "collector_s3" {
-  role       = aws_iam_role.recommender.name
+  role       = aws_iam_role.collector.name
   policy_arn = aws_iam_policy.collector_s3.arn
 }

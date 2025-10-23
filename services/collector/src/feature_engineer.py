@@ -2,7 +2,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 import numpy as np
-from workalendar.asia import Vietnam
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -12,7 +11,13 @@ class FeatureEngineer:
     def __init__(self):
         self.history_buffer = {}
         self.max_buffer_size = 10
-        self.calendar = Vietnam()
+        # Vietnam holidays (major ones) - can be extended
+        self.vietnam_holidays = [
+            (1, 1),   # New Year
+            (4, 30),  # Reunification Day
+            (5, 1),   # Labor Day
+            (9, 2),   # National Day
+        ]
         self.timezone = pytz.timezone('Asia/Ho_Chi_Minh')
     
     def add_to_history(self, service: str, metrics: Dict):
@@ -52,7 +57,8 @@ class FeatureEngineer:
     def extract_time_features(self, timestamp: datetime) -> Dict:
         local_time = timestamp.astimezone(self.timezone)
         
-        is_holiday = self.calendar.is_holiday(local_time.date())
+        # Check if date is a major holiday
+        is_holiday = (local_time.month, local_time.day) in self.vietnam_holidays
         
         day_of_week = local_time.weekday()
         is_weekend = day_of_week >= 5

@@ -33,35 +33,17 @@ export default function AdminPage() {
   });
 
   // Show toast notification
-  const showToast = (message, type = "success") => {
+  const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
-  };
+  }, []);
 
-  useEffect(() => {
-    // Check if user is admin
-    const userData = localStorage.getItem("userData");
-    if (userData) {
-      const user = JSON.parse(userData);
-      if (user.isAdmin) {
-        setIsAdmin(true);
-        loadProducts();
-        loadUsers();
-      } else {
-        router.push("/");
-      }
-    } else {
-      router.push("/login");
-    }
-    setLoading(false);
-  }, [router, loadProducts, loadUsers]);
-
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem("token");
     return {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     };
-  };
+  }, []);
 
   // Load products - wrapped with useCallback to fix dependency warning
   const loadProducts = useCallback(async () => {
@@ -82,7 +64,7 @@ export default function AdminPage() {
       console.error("Error loading products:", error);
       showToast("Failed to load products", "error");
     }
-  }, []);
+  }, [showToast]);
 
   // Load users - wrapped with useCallback to fix dependency warning
   const loadUsers = useCallback(async () => {
@@ -98,7 +80,25 @@ export default function AdminPage() {
       console.error("Error loading users:", error);
       showToast("Failed to load users", "error");
     }
-  }, []);
+  }, [getAuthHeaders, showToast]);
+
+  useEffect(() => {
+    // Check if user is admin
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user.isAdmin) {
+        setIsAdmin(true);
+        loadProducts();
+        loadUsers();
+      } else {
+        router.push("/");
+      }
+    } else {
+      router.push("/login");
+    }
+    setLoading(false);
+  }, [router, loadProducts, loadUsers]);
 
   // Handle product form change
   const handleProductFormChange = (e) => {

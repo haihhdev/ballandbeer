@@ -29,23 +29,34 @@ class MetricsCollector:
         return 0.0
     
     def collect_ram_usage(self, service: str) -> Optional[float]:
-        query = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) / sum(container_spec_memory_limit_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) * 100'
-        result = self.prom.custom_query(query=query)
+        # Try with limits first
+        query_with_limit = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) / sum(container_spec_memory_limit_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) * 100'
+        result = self.prom.custom_query(query=query_with_limit)
+        
+        if result and len(result) > 0 and result[0]['value'][1] != 'NaN':
+            return float(result[0]['value'][1])
+        
+        # Fallback: return absolute memory usage in MB
+        query_absolute = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) / 1024 / 1024'
+        result = self.prom.custom_query(query=query_absolute)
         
         if result and len(result) > 0:
             return float(result[0]['value'][1])
         return 0.0
     
     def collect_request_rate(self, service: str) -> float:
-        query = f'sum(rate(nginx_ingress_controller_requests{{service="{service}", namespace="{config.NAMESPACE}"}}[1m]))'
+        # Try with ingress label (NGINX Ingress Controller uses ingress name)
+        query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress"}}[1m]))'
         result = self.prom.custom_query(query=query)
         
         if result and len(result) > 0:
-            return float(result[0]['value'][1])
+            # This gives total requests for all services, we'll divide by number of services as approximation
+            total_rate = float(result[0]['value'][1])
+            return total_rate / len(config.SERVICES) if total_rate > 0 else 0.0
         return 0.0
     
     def collect_response_time(self, service: str) -> float:
-        query = f'histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{{service="{service}", namespace="{config.NAMESPACE}"}}[5m])) by (le)) * 1000'
+        query = f'histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress"}}[5m])) by (le)) * 1000'
         result = self.prom.custom_query(query=query)
         
         if result and len(result) > 0:
@@ -53,8 +64,8 @@ class MetricsCollector:
         return 0.0
     
     def collect_error_rate(self, service: str) -> float:
-        total_query = f'sum(rate(nginx_ingress_controller_requests{{service="{service}", namespace="{config.NAMESPACE}"}}[5m]))'
-        error_query = f'sum(rate(nginx_ingress_controller_requests{{service="{service}", namespace="{config.NAMESPACE}", status=~"5.."}}[5m]))'
+        total_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress"}}[5m]))'
+        error_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress", status=~"5.."}}[5m]))'
         
         total_result = self.prom.custom_query(query=total_query)
         error_result = self.prom.custom_query(query=error_query)
@@ -67,7 +78,8 @@ class MetricsCollector:
         return 0.0
     
     def collect_queue_length(self, service: str) -> int:
-        query = f'nginx_ingress_controller_nginx_process_connections{{service="{service}", namespace="{config.NAMESPACE}", state="active"}}'
+        # Get active connections from NGINX Ingress Controller
+        query = f'nginx_ingress_controller_nginx_process_connections{{namespace="ingress-nginx", state="active"}}'
         result = self.prom.custom_query(query=query)
         
         if result and len(result) > 0:

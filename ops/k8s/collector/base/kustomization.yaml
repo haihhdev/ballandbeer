@@ -5,10 +5,12 @@ namespace: ballandbeer
 
 resources:
 - serviceaccount.yaml
+- rbac.yaml
 - deployment.yaml
 - service.yaml
 
-commonLabels:
-  app.kubernetes.io/name: collector
-  app.kubernetes.io/component: metrics-collector
-  app.kubernetes.io/part-of: ballandbeer
+labels:
+- pairs:
+    app.kubernetes.io/name: collector
+    app.kubernetes.io/component: metrics-collector
+    app.kubernetes.io/part-of: ballandbeer

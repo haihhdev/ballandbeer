@@ -36,7 +36,7 @@ class S3Uploader:
             return False
     
     def generate_s3_key(self, date: datetime) -> str:
-        return f"metrics/{date.strftime('%Y/%m/%d')}/metrics_{date.strftime('%Y%m%d')}.csv"
+        return f"metrics/{date.strftime('%Y/%m')}/metrics_{date.strftime('%Y%m%d')}.csv"
     
     def check_bucket_exists(self) -> bool:
         try:

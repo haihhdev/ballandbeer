@@ -191,6 +191,18 @@ pipeline{
                             --for=condition=ready pod \
                             --selector=app.kubernetes.io/component=controller \
                             --timeout=120s || true
+                        
+                        echo "Configuring NGINX Ingress Controller with metrics enabled..."
+                        kubectl apply -f ops/k8s/infra/base/nginx-ingress-configmap.yaml
+                        
+                        echo "Restarting NGINX Ingress Controller to apply config..."
+                        kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
+                        
+                        echo "Waiting for Ingress Controller to be ready after restart..."
+                        kubectl wait --namespace ingress-nginx \
+                            --for=condition=ready pod \
+                            --selector=app.kubernetes.io/component=controller \
+                            --timeout=120s || true
                     '''
                 }
             }
@@ -306,7 +318,8 @@ pipeline{
                         'profile',
                         'frontend',
                         'recommender',
-                        'infra'
+                        'infra',
+                        'collector'
                     ]
 
                     for (svc in apps) {
