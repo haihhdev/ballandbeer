@@ -7,12 +7,22 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Check login status on component mount
+  // Check login status on component mount and when login status changes
   useEffect(() => {
-    const loggedInStatus = localStorage.getItem("isLoggedIn");
-    if (loggedInStatus === "true") {
-      setIsLoggedIn(true);
-    }
+    const checkLoginStatus = () => {
+      const loggedInStatus = localStorage.getItem("isLoggedIn");
+      setIsLoggedIn(loggedInStatus === "true");
+    };
+
+    // Check on mount
+    checkLoginStatus();
+
+    // Listen for login status changes
+    window.addEventListener("loginStatusChanged", checkLoginStatus);
+    
+    return () => {
+      window.removeEventListener("loginStatusChanged", checkLoginStatus);
+    };
   }, []);
 
   // Add scroll event listener
@@ -30,6 +40,15 @@ export default function Header() {
     setIsLoggedIn(false);
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("userProfile");
+    localStorage.removeItem("pendingOrderId");
+    localStorage.setItem("cartCount", "0");
+    
+    // Trigger events to update other components
+    window.dispatchEvent(new Event("loginStatusChanged"));
+    window.dispatchEvent(new Event("cartCountUpdated"));
   };
 
   return (
@@ -186,7 +205,7 @@ export default function Header() {
                   href="/"
                   className={`block p-4 bg-transparent relative ${
                     isScrolled
-                      ? "text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:w-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 after:w-full after:left-0"
+                      ? "text-[#f09627] after:content-[''] after:absolute after:bottom-0 after:h-0.5 after:bg-[#f09627] after:transition-all after:duration-300 after:w-full after:left-0"
                       : "text-[#f8f7f4] hover:bg-gray-50/30 transition-all duration-200"
                   }`}
                 >

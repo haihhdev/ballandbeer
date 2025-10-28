@@ -1,8 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation"; // Import useRouter and usePathname
-import Portal from "./Portal";
 
 export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false); // For "Vi" dropdown
@@ -17,28 +16,45 @@ export default function Header() {
   const router = useRouter(); // Initialize router
   const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
+  const profileDropdownRef = useRef(null);
+  const languageDropdownRef = useRef(null);
 
-  // Check login status on component mount
+  // Check login status on component mount and when login status changes
   useEffect(() => {
-    const loggedInStatus = localStorage.getItem("isLoggedIn");
-    if (loggedInStatus === "true") {
-      setIsLoggedIn(true);
-      // Fetch user info ngay khi login thành công
-      const userId = localStorage.getItem("userId");
-      if (userId) {
-        fetch(`/api/profile/id/${userId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data && data.data) {
-              setUserProfile({
-                avatar: data.data.avatar || "",
-                email: data.data.email || "",
-                fullname: data.data.fullname || "",
-              });
-            }
-          });
+    const checkLoginStatus = () => {
+      const loggedInStatus = localStorage.getItem("isLoggedIn");
+      if (loggedInStatus === "true") {
+        setIsLoggedIn(true);
+        // Fetch user info
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+          fetch(`/api/profile/id/${userId}`)
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.data) {
+                setUserProfile({
+                  avatar: data.data.avatar || "",
+                  email: data.data.email || "",
+                  fullname: data.data.fullname || "",
+                });
+              }
+            })
+            .catch((err) => console.error("Error fetching user profile:", err));
+        }
+      } else {
+        setIsLoggedIn(false);
       }
-    }
+    };
+
+    // Check on mount
+    checkLoginStatus();
+
+    // Listen for login status changes
+    window.addEventListener("loginStatusChanged", checkLoginStatus);
+    
+    return () => {
+      window.removeEventListener("loginStatusChanged", checkLoginStatus);
+    };
   }, []);
 
   // Fetch user info khi mở dropdown (nếu muốn luôn cập nhật mới)
@@ -85,11 +101,75 @@ export default function Header() {
     };
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    if (profileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profileDropdownOpen]);
+
+  // Close dropdown when scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      if (profileDropdownOpen) {
+        setProfileDropdownOpen(false);
+      }
+      if (dropdownOpen) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (profileDropdownOpen || dropdownOpen) {
+      window.addEventListener("scroll", handleScroll);
+    }
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [profileDropdownOpen, dropdownOpen]);
+
+  // Close language dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
   const handleLogout = () => {
-    setIsLoggedIn(false); // Update state to reflect logout
-    localStorage.removeItem("isLoggedIn"); // Remove login status
-    localStorage.removeItem("token"); // Remove token if stored
-    router.push("/"); // Redirect to the homepage
+    setIsLoggedIn(false);
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("userProfile");
+    localStorage.removeItem("pendingOrderId");
+    localStorage.setItem("cartCount", "0"); // Reset cart count
+    
+    // Trigger events to update other components
+    window.dispatchEvent(new Event("loginStatusChanged"));
+    window.dispatchEvent(new Event("cartCountUpdated"));
+    
+    router.push("/");
   };
 
   return (
@@ -110,7 +190,7 @@ export default function Header() {
           </a>
           <div className="flex items-center md:order-2 space-x-3 rtl:space-x-reverse">
             {isLoggedIn ? (
-              <div className="relative flex items-center space-x-4 rtl:space-x-reverse z-[9999]">
+              <div ref={profileDropdownRef} className="relative flex items-center space-x-4 rtl:space-x-reverse z-[9999]">
                 {/* Cart Button */}
                 <Link href="/shoppingcart">
                   <button className="relative flex items-center object-cover justify-center w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 shadow-md">
@@ -139,72 +219,70 @@ export default function Header() {
 
                 {/* Profile Dropdown Menu */}
                 {profileDropdownOpen && (
-                  <Portal>
-                    <div className="fixed top-[5.5rem] right-30 w-64 bg-white rounded-lg shadow-lg z-[99999]">
-                      <div className="p-4 border-b border-gray-200">
-                        <h3 className="text-sm font-semibold text-[#5c3613]">
-                          {userProfile.fullname || "Họ và Tên"}
-                        </h3>
-                        <span className="text-xs text-[#5c3613]">
-                          {userProfile.email || "j97@gmail.com"}
-                        </span>
-                      </div>
-                      <ul className="py-2">
-                        <li>
-                          <a
-                            href="/profile"
-                            className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
-                          >
-                            <img
-                              src="/images/avt.svg"
-                              alt="My Profile"
-                              className="w-4 h-4 mr-2"
-                            />
-                            Tài khoản của tôi
-                          </a>
-                        </li>
-                        <li>
-                          <a
-                            href="#"
-                            className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
-                          >
-                            <img
-                              src="/images/setting.svg"
-                              alt="Settings"
-                              className="w-4 h-4 mr-2"
-                            />
-                            Cài đặt
-                          </a>
-                        </li>
-                        <li>
-                          <a
-                            href="#"
-                            className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
-                          >
-                            <img
-                              src="/images/help.svg"
-                              alt="Help"
-                              className="w-4 h-4 mr-2"
-                            />
-                            Trợ giúp
-                          </a>
-                        </li>
-                        <li>
-                          <button
-                            onClick={handleLogout}
-                            className="flex items-center px-4 py-2 text-sm text-red-800 hover:bg-gray-100 w-full text-left"
-                          >
-                            <img
-                              src="/images/logout.svg"
-                              alt="Logout"
-                              className="w-4 h-4 mr-2"
-                            />
-                            Đăng xuất
-                          </button>
-                        </li>
-                      </ul>
+                  <div className="absolute top-16 right-0 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-[99999]" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-4 border-b border-gray-200">
+                      <h3 className="text-sm font-semibold text-[#5c3613]">
+                        {userProfile.fullname || "Họ và Tên"}
+                      </h3>
+                      <span className="text-xs text-[#5c3613]">
+                        {userProfile.email || "j97@gmail.com"}
+                      </span>
                     </div>
-                  </Portal>
+                    <ul className="py-2">
+                      <li>
+                        <a
+                          href="/profile"
+                          className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
+                        >
+                          <img
+                            src="/images/avt.svg"
+                            alt="My Profile"
+                            className="w-4 h-4 mr-2"
+                          />
+                          Tài khoản của tôi
+                        </a>
+                      </li>
+                      <li>
+                        <a
+                          href="#"
+                          className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
+                        >
+                          <img
+                            src="/images/setting.svg"
+                            alt="Settings"
+                            className="w-4 h-4 mr-2"
+                          />
+                          Cài đặt
+                        </a>
+                      </li>
+                      <li>
+                        <a
+                          href="#"
+                          className="flex items-center px-4 py-2 text-sm text-[#5c3613] hover:bg-gray-100"
+                        >
+                          <img
+                            src="/images/help.svg"
+                            alt="Help"
+                            className="w-4 h-4 mr-2"
+                          />
+                          Trợ giúp
+                        </a>
+                      </li>
+                      <li>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center px-4 py-2 text-sm text-red-800 hover:bg-gray-100 w-full text-left"
+                        >
+                          <img
+                            src="/images/logout.svg"
+                            alt="Logout"
+                            className="w-4 h-4 mr-2"
+                          />
+                          Đăng xuất
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
                 )}
               </div>
             ) : (
@@ -232,7 +310,7 @@ export default function Header() {
           >
             <ul className="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50/50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-transparent">
               {/* Language Dropdown */}
-              <li className="relative">
+              <li ref={languageDropdownRef} className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center space-x-2 p-4 rounded-sm bg-transparent md:text-[#5c3613] hover:bg-gray-50/30"
@@ -245,7 +323,7 @@ export default function Header() {
                   <span>Vi🔻</span>
                 </button>
                 {dropdownOpen && (
-                  <ul className="absolute left-0 mt-2 w-40 bg-white border border-gray-100 rounded-lg shadow-lg">
+                  <ul className="absolute left-0 mt-2 w-40 bg-white border border-gray-100 rounded-lg shadow-lg z-50">
                     <li>
                       <a
                         href="/option1"

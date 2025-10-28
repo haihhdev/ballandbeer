@@ -24,7 +24,7 @@ export default function ProductCarousel() {
           },
           body: JSON.stringify({
             user_id: userId,
-            k: 5,
+            k: 10,
           }),
         });
 
@@ -53,10 +53,15 @@ export default function ProductCarousel() {
         const formattedProducts = productDetails.map((item, idx) => {
           let salePercent = 0;
           if (idx === 0) salePercent = 50;
-          else if (idx === 1) salePercent = 40;
-          else if (idx === 2) salePercent = 30;
-          else if (idx === 3) salePercent = 20;
-          else if (idx === 4) salePercent = 10;
+          else if (idx === 1) salePercent = 45;
+          else if (idx === 2) salePercent = 40;
+          else if (idx === 3) salePercent = 35;
+          else if (idx === 4) salePercent = 30;
+          else if (idx === 5) salePercent = 25;
+          else if (idx === 6) salePercent = 20;
+          else if (idx === 7) salePercent = 15;
+          else if (idx === 8) salePercent = 10;
+          else if (idx === 9) salePercent = 5;
           return {
             id: item._id,
             name: item.name,
@@ -87,12 +92,18 @@ export default function ProductCarousel() {
     dots: false,
     infinite: true,
     speed: 800,
-    slidesToShow: 3,
+    slidesToShow: 4,
     slidesToScroll: 1,
     autoplay: true,
     autoplaySpeed: 2000,
     arrows: false,
     responsive: [
+      {
+        breakpoint: 1280,
+        settings: {
+          slidesToShow: 3,
+        },
+      },
       {
         breakpoint: 1024,
         settings: {

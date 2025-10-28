@@ -78,6 +78,9 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
 
+      // Trigger custom event to update navigation
+      window.dispatchEvent(new Event("loginStatusChanged"));
+
       if (data.data?.isAdmin) {
         router.push("/admin");
       } else {
@@ -123,6 +126,9 @@ export default function Login() {
           username: data.data?.username || "",
         })
       );
+      
+      // Trigger custom event to update navigation
+      window.dispatchEvent(new Event("loginStatusChanged"));
       
       // Redirect to admin if admin, otherwise home
       if (data.data?.isAdmin) {
