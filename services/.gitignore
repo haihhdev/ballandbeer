@@ -44,11 +44,15 @@ coverage/
 .env.production
 
 # Machine learning models
-recommender/product_model/
-recommender/user_model/
 recommender/__pycache__/
 recommender/product_data.json
 recommender/model_metadata.json
+recommender/recommendation_data.json
+recommender/*.keras
+recommender/user_model.keras
+recommender/product_model.keras
+
+build-and-push.sh
 
 build-and-push.sh
 

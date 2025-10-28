@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+data:
+  enable-opentelemetry: "false"
+  enable-real-ip: "false"
+  # Enable metrics endpoint
+  enable-metrics: "true"
+  # Additional performance settings
+  use-gzip: "true"
+  gzip-level: "5"
+  # Security headers
+  hide-headers: "Server,X-Powered-By"
