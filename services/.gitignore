@@ -54,6 +54,8 @@ recommender/product_model.keras
 
 build-and-push.sh
 
+build-and-push.sh
+
 # Local development notes
 NOTES.md
 **/NOTES.md
