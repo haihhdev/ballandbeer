@@ -65,10 +65,8 @@ class FeatureEngineer:
         
         return {
             'is_holiday': 1 if is_holiday else 0,
-            'day_of_week': day_of_week,
             'hour_of_day': local_time.hour,
             'is_weekend': 1 if is_weekend else 0,
-            'month_of_year': local_time.month
         }
     
     def enrich_metrics(self, service: str, metrics: Dict) -> Dict:
