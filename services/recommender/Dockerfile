@@ -17,17 +17,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Run as non-root user for security - create user first
-RUN useradd -m -u 1000 appuser
-
-# Copy only necessary Python packages from builder to appuser home
-COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+# Copy only necessary Python packages from builder
+COPY --from=builder /root/.local /root/.local
 
 # Copy application code
-COPY --chown=appuser:appuser pipeline.py main.py ./
+COPY pipeline.py main.py ./
 
 # Update PATH to include user-installed packages
-ENV PATH=/home/appuser/.local/bin:$PATH
+ENV PATH=/root/.local/bin:$PATH
 
 # Set environment variables
 ENV PORT=4005 \
@@ -39,7 +36,9 @@ ENV PORT=4005 \
 # Expose port
 EXPOSE 4005
 
-# Switch to non-root user
+# Run as non-root user for security
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
 USER appuser
 
 # Command to run the application

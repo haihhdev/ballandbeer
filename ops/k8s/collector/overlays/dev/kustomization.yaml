@@ -6,7 +6,5 @@ namespace: ballandbeer
 resources:
 - ../../base
 
-labels:
-  - pairs:
-      environment: dev
-    includeSelectors: false
+commonLabels:
+  environment: dev

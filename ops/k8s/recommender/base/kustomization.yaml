@@ -6,8 +6,6 @@ resources:
   - service.yaml
   - serviceaccount.yaml
 
-labels:
-  - pairs:
-      app.kubernetes.io/name: recommender
-      app.kubernetes.io/part-of: ballandbeer
-    includeSelectors: true
+commonLabels:
+  app.kubernetes.io/name: recommender
+  app.kubernetes.io/part-of: ballandbeer
