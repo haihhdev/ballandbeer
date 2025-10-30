@@ -19,7 +19,7 @@ spec:
         ports:
         - containerPort: 4005
         env:
-        - name: S3_BUCKET_NAME
+        - name: S3_BUCKET
           value: "your-models-bucket"  # This will be overridden in overlays
         resources:
           requests:
