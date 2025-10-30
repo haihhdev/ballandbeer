@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: recommender
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: recommender

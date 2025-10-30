@@ -45,7 +45,7 @@ patches:
   patch: |-
     - op: replace
       path: /metadata/annotations/eks.amazonaws.com~1role-arn
-      value: arn:aws:iam::026764164607:role/recommender-role
+      value: arn:aws:iam::259959202589:role/ballandbeer-dev-eks-recommender-role
 
 configMapGenerator:
 - name: recommender-config
