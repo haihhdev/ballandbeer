@@ -6,6 +6,5 @@ namespace: ballandbeer
 resources:
 - ../../base
 
-labels:
-- pairs:
-    environment: dev
+commonLabels:
+  environment: dev

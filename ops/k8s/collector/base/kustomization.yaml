@@ -9,8 +9,7 @@ resources:
 - deployment.yaml
 - service.yaml
 
-labels:
-- pairs:
-    app.kubernetes.io/name: collector
-    app.kubernetes.io/component: metrics-collector
-    app.kubernetes.io/part-of: ballandbeer
+commonLabels:
+  app.kubernetes.io/name: collector
+  app.kubernetes.io/component: metrics-collector
+  app.kubernetes.io/part-of: ballandbeer
