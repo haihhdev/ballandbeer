@@ -1,2 +1,4 @@
+namespace: ballandbeer
+
 resources:
   - ../../base
