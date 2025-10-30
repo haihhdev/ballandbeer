@@ -31,3 +31,7 @@ spec:
           value: "http://profile.ballandbeer.svc.cluster.local:4004"
         - name: RECOMMENDER_SERVICE_URL
           value: "http://recommender.ballandbeer.svc.cluster.local:4005"
+        - name: VAULT_ADDR
+          value: "http://vault.ballandbeer.svc.cluster.local:8200"
+        - name: VAULT_TOKEN
+          value: "root"

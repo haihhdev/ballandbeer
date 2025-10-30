@@ -16,5 +16,10 @@ spec:
       - name: order
         image: hao1706/order:latest
         imagePullPolicy: Always
+        env:
+        - name: VAULT_ADDR
+          value: "http://vault.ballandbeer.svc.cluster.local:8200"
+        - name: VAULT_TOKEN
+          value: "root"
         ports:
         - containerPort: 4002
