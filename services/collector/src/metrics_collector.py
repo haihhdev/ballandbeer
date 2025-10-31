@@ -36,12 +36,21 @@ class MetricsCollector:
         if result and len(result) > 0 and result[0]['value'][1] != 'NaN':
             return float(result[0]['value'][1])
         
-        # Fallback: return absolute memory usage in MB
-        query_absolute = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) / 1024 / 1024'
-        result = self.prom.custom_query(query=query_absolute)
+        # Fallback: Calculate percentage manually using memory working set and limit from resources
+        query_memory = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}})'
+        query_limit = f'sum(container_spec_memory_limit_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}})'
         
-        if result and len(result) > 0:
-            return float(result[0]['value'][1])
+        memory_result = self.prom.custom_query(query=query_memory)
+        limit_result = self.prom.custom_query(query=query_limit)
+        
+        if (memory_result and len(memory_result) > 0 and 
+            limit_result and len(limit_result) > 0):
+            memory_bytes = float(memory_result[0]['value'][1])
+            limit_bytes = float(limit_result[0]['value'][1])
+            
+            if limit_bytes > 0:
+                return (memory_bytes / limit_bytes) * 100
+        
         return 0.0
     
     def collect_request_rate(self, service: str) -> float:
