@@ -9,5 +9,5 @@ spec:
     configMap:
       name: k6-weekday-script
       file: weekday-traffic.js
-  arguments: --env BASE_URL=http://a43ce391b804649f29cf7bdb577aae04-ab0fa264e6b6c2da.elb.ap-southeast-1.amazonaws.com
+  arguments: --env BASE_URL=
   cleanup: post

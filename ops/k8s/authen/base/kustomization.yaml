@@ -6,6 +6,7 @@ resources:
   - service.yaml
 
 labels:
-- pairs:
+- includeSelectors: true
+  pairs:
     app.kubernetes.io/name: authen
     app.kubernetes.io/part-of: ballandbeer

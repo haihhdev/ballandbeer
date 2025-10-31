@@ -7,6 +7,7 @@ resources:
   - ../../base
 
 labels:
-- pairs:
+- includeSelectors: true
+  pairs:
     environment: dev
     app.kubernetes.io/managed-by: argocd

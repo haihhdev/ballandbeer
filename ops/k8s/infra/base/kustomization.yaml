@@ -8,7 +8,8 @@ resources:
   - nginx-ingress-servicemonitor.yaml
 
 labels:
-- pairs:
+- includeSelectors: true
+  pairs:
     app.kubernetes.io/name: infra
     app.kubernetes.io/component: infrastructure
     app.kubernetes.io/part-of: ballandbeer

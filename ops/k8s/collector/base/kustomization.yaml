@@ -10,7 +10,8 @@ resources:
 - service.yaml
 
 labels:
-- pairs:
+- includeSelectors: true
+  pairs:
     app.kubernetes.io/name: collector
     app.kubernetes.io/component: metrics-collector
     app.kubernetes.io/part-of: ballandbeer
