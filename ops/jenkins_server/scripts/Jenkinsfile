@@ -333,8 +333,6 @@ pipeline{
                             currentBuild.result = 'UNSTABLE'
                         }
                     }
-
-                    sh "kubectl apply -f ops/k8s/recommender/cronjob-update-csv.yaml -n ballandbeer"
                 }
             }
         }

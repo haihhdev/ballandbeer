@@ -7,6 +7,11 @@ resources:
 - ../../base
 - argocd-vars.yaml
 
+labels:
+- pairs:
+    environment: dev
+    app.kubernetes.io/managed-by: argocd
+
 patches:
 - target:
     kind: Deployment

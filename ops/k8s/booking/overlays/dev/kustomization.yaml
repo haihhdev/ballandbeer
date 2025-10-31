@@ -1,2 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ballandbeer
+
 resources:
-  - ../../base 
+  - ../../base
+
+labels:
+- pairs:
+    environment: dev
+    app.kubernetes.io/managed-by: argocd

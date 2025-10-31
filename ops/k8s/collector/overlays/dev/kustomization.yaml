@@ -6,5 +6,7 @@ namespace: ballandbeer
 resources:
 - ../../base
 
-commonLabels:
-  environment: dev
+labels:
+- pairs:
+    environment: dev
+    app.kubernetes.io/managed-by: argocd

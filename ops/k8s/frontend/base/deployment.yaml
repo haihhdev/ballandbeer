@@ -35,3 +35,10 @@ spec:
           value: "http://vault.ballandbeer.svc.cluster.local:8200"
         - name: VAULT_TOKEN
           value: "root"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
