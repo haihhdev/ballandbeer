@@ -1,16 +1,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: k6-weekend-job
+  name: k6-weekday-job
   namespace: ballandbeer
 spec:
-  backoffLimit: 0
+  backoffLimit: 0 # Do not retry on failure, as K6 tests are long-running
   template:
     metadata:
       labels:
-        app: k6-weekend
+        app: k6-weekday
       annotations:
-        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false" # Prevent eviction by cluster autoscaler
     spec:
       restartPolicy: Never
       containers:
@@ -21,19 +21,12 @@ spec:
           - run
           - --env
           - BASE_URL=
-          - /scripts/weekend-traffic.js
+          - /scripts/weekday-traffic.js
         volumeMounts:
         - name: k6-script
           mountPath: /scripts
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
       volumes:
       - name: k6-script
         configMap:
-          name: k6-weekend-script
+          name: k6-weekday-script
 

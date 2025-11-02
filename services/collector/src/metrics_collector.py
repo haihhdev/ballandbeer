@@ -55,7 +55,6 @@ class MetricsCollector:
     
     def collect_request_rate(self, service: str) -> float:
         # Query NGINX Ingress metrics for ballandbeer namespace traffic
-        # Use exported_namespace since metrics are in ingress-nginx namespace
         query = f'sum(rate(nginx_ingress_controller_requests{{exported_namespace="{config.NAMESPACE}"}}[1m]))'
         result = self.prom.custom_query(query=query)
         
