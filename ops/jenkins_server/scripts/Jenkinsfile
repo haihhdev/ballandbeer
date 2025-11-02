@@ -84,7 +84,7 @@ pipeline{
 
         stage('Get Cluster Name') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -101,7 +101,7 @@ pipeline{
 
         stage('Update Kubeconfig') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -115,7 +115,7 @@ pipeline{
 
         stage('Setup Helm Repositories') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -135,7 +135,7 @@ pipeline{
 
         stage('Install kube-prometheus-stack') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -157,7 +157,7 @@ pipeline{
 
         stage('Install K6 Operator') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -178,7 +178,7 @@ pipeline{
 
         stage('Install Infrastructure Prerequisites') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -210,7 +210,7 @@ pipeline{
 
         stage('Install Cluster Autoscaler') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -235,7 +235,7 @@ pipeline{
 
         stage('Install Metrics Server') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -253,7 +253,7 @@ pipeline{
 
         stage('Install ArgoCD') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -275,7 +275,7 @@ pipeline{
 
         stage('Install Redpanda & Console') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -306,7 +306,7 @@ pipeline{
 
         stage('Deploy ArgoCD Applications') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {
@@ -337,9 +337,39 @@ pipeline{
             }
         }
 
+        stage('Add GitHub Webhook') {
+            when {
+                expression { return params.action == 'apply'}
+            }
+            steps {
+                script {
+                    def jenkinsUrl = "http://your-jenkins-url"
+                    def webhookUrl = "${jenkinsUrl}/github-webhook/"
+                    
+                    echo "Setting up GitHub webhook..."
+                    sh """
+                        curl -X POST \
+                        -H "Authorization: token ${GITHUB_TOKEN}" \
+                        -H "Accept: application/vnd.github.v3+json" \
+                        https://api.github.com/repos/haihhdev/ballandbeer/hooks \
+                        -d '{
+                            "name": "web",
+                            "active": true,
+                            "events": ["push", "pull_request"],
+                            "config": {
+                                "url": "${webhookUrl}",
+                                "content_type": "json",
+                                "insecure_ssl": "0"
+                            }
+                        }' || echo "Webhook may already exist or failed to create"
+                    """
+                }
+            }
+        }
+
         stage('Show LoadBalancer URLs') {
             when {
-                expression { return params.action == 'apply' || params.action == 'create' }
+                expression { return params.action == 'apply'}
             }
             steps {
                 script {

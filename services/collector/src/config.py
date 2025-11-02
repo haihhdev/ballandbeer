@@ -35,7 +35,6 @@ CSV_COLUMNS = [
     'response_time_ms',
     'replica_count',
     'is_holiday',
-    'hour_of_day',
     'is_weekend',
     'cpu_request',
     'cpu_limit',

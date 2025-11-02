@@ -43,6 +43,16 @@ coverage/
 .env.test
 .env.production
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
 # Machine learning models
 recommender/__pycache__/
 recommender/product_data.json
@@ -51,6 +61,19 @@ recommender/recommendation_data.json
 recommender/*.keras
 recommender/user_model.keras
 recommender/product_model.keras
+
+# ML Autoscaler - Generated files and data
+ml-autoscaler/__pycache__/
+ml-autoscaler/training/__pycache__/
+ml-autoscaler/metrics/
+ml-autoscaler/models/
+ml-autoscaler/plots/
+ml-autoscaler/evaluation/
+ml-autoscaler/training/comparison_results/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
 
 build-and-push.sh
 
