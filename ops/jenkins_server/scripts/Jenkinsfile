@@ -325,6 +325,36 @@ pipeline{
             }
         }
 
+        stage('Setup K6 Load Test Scripts') {
+            when {
+                expression { return params.action == 'apply'}
+            }
+            steps {
+                script {
+                    sh '''
+                        echo "Setting up K6 load test ConfigMaps..."
+                        
+                        # Create ConfigMap for weekday traffic script
+                        kubectl create configmap k6-weekday-script \
+                            -n ballandbeer \
+                            --from-file=weekday-traffic.js=services/collector/k6/weekday-traffic.js \
+                            --dry-run=client -o yaml | kubectl apply -f -
+                        
+                        # Create ConfigMap for weekend traffic script
+                        kubectl create configmap k6-weekend-script \
+                            -n ballandbeer \
+                            --from-file=weekend-traffic.js=services/collector/k6/weekend-traffic.js \
+                            --dry-run=client -o yaml | kubectl apply -f -
+                        
+                        echo "K6 ConfigMaps created successfully"
+                        echo "To run K6 tests manually:"
+                        echo "  - Weekday: kubectl apply -f services/collector/k6/k6-weekday-test.yaml"
+                        echo "  - Weekend: kubectl apply -f services/collector/k6/k6-weekend-job.yaml"
+                    '''
+                }
+            }
+        }
+
         stage('Add GitHub Webhook') {
             when {
                 expression { return params.action == 'apply'}

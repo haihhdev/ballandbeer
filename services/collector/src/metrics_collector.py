@@ -54,20 +54,25 @@ class MetricsCollector:
         return 0.0
     
     def collect_request_rate(self, service: str) -> float:
-        # Query NGINX Ingress metrics without filtering by ingress name
-        # This captures all traffic going through NGINX Ingress in the namespace
-        query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}"}}[1m]))'
+        # Query NGINX Ingress metrics for ballandbeer namespace traffic
+        # Use exported_namespace since metrics are in ingress-nginx namespace
+        query = f'sum(rate(nginx_ingress_controller_requests{{exported_namespace="{config.NAMESPACE}"}}[1m]))'
         result = self.prom.custom_query(query=query)
+        
+        logger.info(f"Request rate query result for {service}: {result}")
         
         if result and len(result) > 0:
             # This gives total requests for all services, we'll divide by number of services as approximation
             total_rate = float(result[0]['value'][1])
-            return total_rate / len(config.SERVICES) if total_rate > 0 else 0.0
+            per_service_rate = total_rate / len(config.SERVICES) if total_rate > 0 else 0.0
+            logger.info(f"Total rate: {total_rate}, Per service: {per_service_rate}, Services count: {len(config.SERVICES)}")
+            return per_service_rate
+        logger.warning(f"No request rate data found for {service}")
         return 0.0
     
     def collect_response_time(self, service: str) -> float:
-        # Query response time without filtering by ingress name
-        query = f'histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{{namespace="{config.NAMESPACE}"}}[5m])) by (le)) * 1000'
+        # Query response time for ballandbeer namespace traffic
+        query = f'histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{{exported_namespace="{config.NAMESPACE}"}}[5m])) by (le)) * 1000'
         result = self.prom.custom_query(query=query)
         
         if result and len(result) > 0:
@@ -75,9 +80,9 @@ class MetricsCollector:
         return 0.0
     
     def collect_error_rate(self, service: str) -> float:
-        # Query error rate without filtering by ingress name
-        total_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}"}}[5m]))'
-        error_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", status=~"5.."}}[5m]))'
+        # Query error rate for ballandbeer namespace traffic
+        total_query = f'sum(rate(nginx_ingress_controller_requests{{exported_namespace="{config.NAMESPACE}"}}[5m]))'
+        error_query = f'sum(rate(nginx_ingress_controller_requests{{exported_namespace="{config.NAMESPACE}", status=~"5.."}}[5m]))'
         
         total_result = self.prom.custom_query(query=total_query)
         error_result = self.prom.custom_query(query=error_query)
