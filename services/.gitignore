@@ -74,14 +74,10 @@ ml-autoscaler/training/comparison_results/
 # Jupyter notebooks
 .ipynb_checkpoints/
 *.ipynb
-
-build-and-push.sh
-
 build-and-push.sh
 
 # Local development notes
 NOTES.md
-**/NOTES.md
 
 #Config files
-setup.sh
+setup-vault-secrets.sh

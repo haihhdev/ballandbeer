@@ -1,11 +1,21 @@
-require("dotenv").config();
+require("dotenv").config({ path: "/vault/secrets/env" });
 const app = require("./app");
 const connectDB = require("./config/db");
+const loadSecrets = require("./vaultClient");
 
-const PORT = process.env.PORT;
+const start = async () => {
+  await loadSecrets();
 
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Booking Service is running on port ${PORT}`);
-  });
-});
+  try {
+    await connectDB();
+    const port = process.env.PORT || 4001;
+    app.listen(port, () => {
+      console.log(`Booking Service is running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  }
+};
+
+start();

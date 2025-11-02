@@ -1,38 +1,40 @@
-const express = require('express');
-const mongoose = require('mongoose');
+require("dotenv").config({ path: "/vault/secrets/env" });
+const express = require("express");
+const mongoose = require("mongoose");
 const cors = require("cors");
-const dotenv = require('dotenv');
-const authRoutes = require('./routes/authRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+const loadSecrets = require("./vaultClient");
+const authRoutes = require("./routes/authRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
-dotenv.config();
 const app = express();
 
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 
-const mongoUri = process.env.MONGO_URI;
+const start = async () => {
+  await loadSecrets();
 
-if (!mongoUri) {
-  console.error('Error: MONGO_URI is not defined in the .env file');
-  process.exit(1);
-}
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("Connected to MongoDB Atlas");
 
-mongoose.connect(mongoUri)
-  .then(() => {
-    console.log('Connected to MongoDB Atlas');
-    app.listen(process.env.PORT, () => {
-      console.log(`Auth service running on port ${process.env.PORT}`);
+    const port = process.env.PORT || 4000;
+    app.listen(port, () => {
+      console.log(`Auth service running on port ${port}`);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to MongoDB Atlas:', err);
+  } catch (err) {
+    console.error("Failed to start server:", err);
     process.exit(1);
-  });
+  }
+};
+
+start();

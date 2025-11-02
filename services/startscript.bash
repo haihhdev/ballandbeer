@@ -93,12 +93,9 @@ start_node_service() {
         npm install > "../logs/${service}-install.log" 2>&1
     fi
     
-    # Start the service with env vars if needed
-    if [ "$service" = "order" ]; then
-        VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=root npm start > "../logs/${service}.log" 2>&1 &
-    else
-        npm start > "../logs/${service}.log" 2>&1 &
-    fi
+    # Start the service with Vault env vars
+    # All services need VAULT_ADDR=http://localhost:8200 when running locally (not in Docker)
+    VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=root npm start > "../logs/${service}.log" 2>&1 &
     
     local pid=$!
     PIDS+=($pid)
