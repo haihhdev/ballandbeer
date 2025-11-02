@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-weekend-job
+  namespace: ballandbeer
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: k6-weekend
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: k6
+        image: grafana/k6:latest
+        command:
+          - k6
+          - run
+          - --env
+          - BASE_URL=http://abe8cceb29e654b56b9eb12a76fbbcc9-21361dded6e92752.elb.ap-southeast-1.amazonaws.com
+          - /scripts/weekend-traffic.js
+        volumeMounts:
+        - name: k6-script
+          mountPath: /scripts
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      volumes:
+      - name: k6-script
+        configMap:
+          name: k6-weekend-script
+

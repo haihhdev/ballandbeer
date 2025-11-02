@@ -1,0 +1,14 @@
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: k6-weekend-test
+  namespace: ballandbeer
+spec:
+  parallelism: 1
+  script:
+    configMap:
+      name: k6-weekend-script
+      file: weekend-traffic.js
+  arguments: --env BASE_URL=http://abe8cceb29e654b56b9eb12a76fbbcc9-21361dded6e92752.elb.ap-southeast-1.amazonaws.com
+  cleanup: post
+

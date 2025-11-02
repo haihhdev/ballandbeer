@@ -24,6 +24,7 @@ metadata:
   namespace: ingress-nginx
   labels:
     app: nginx-ingress
+    release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:

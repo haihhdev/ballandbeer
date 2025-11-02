@@ -6,8 +6,8 @@ pipeline{
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION = "ap-southeast-1"
         
-        // EKS Configuration - Will be dynamically retrieved from Terraform
-        CLUSTER_NAME = ""  // Will be set from Terraform output
+        // EKS Configuration
+        CLUSTER_NAME = "ballandbeer-dev-eks"
         
         // Repository Configuration
         REPO_URL = "https://github.com/haihhdev/ballandbeer.git"
@@ -44,8 +44,7 @@ pipeline{
                         echo "Cleaning up LoadBalancer services before cluster destroy..."
                         
                         # Update kubeconfig
-                        CLUSTER_NAME=\$(terraform -chdir=${TERRAFORM_DIR} output -raw cluster_name 2>/dev/null || echo "${CLUSTER_NAME}")
-                        aws eks update-kubeconfig --name "\$CLUSTER_NAME" --region ${AWS_DEFAULT_REGION} || true
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION} || true
                         
                         # Delete LoadBalancer services to trigger AWS ELB cleanup
                         kubectl delete svc argocd-server -n argocd --ignore-not-found=true || true
@@ -73,7 +72,7 @@ pipeline{
             steps {
                 script {
                     dir("${TERRAFORM_DIR}"){
-                        sh 'terraform init'
+                        sh 'terraform init -reconfigure'
                         sh 'terraform validate'
                         sh "terraform plan -var-file=${TF_VARS_FILE}"
                         sh "terraform $action -var-file=${TF_VARS_FILE} -auto-approve" 
@@ -82,32 +81,15 @@ pipeline{
             }
         }
 
-        stage('Get Cluster Name') {
-            when {
-                expression { return params.action == 'apply'}
-            }
-            steps {
-                script {
-                    dir("${TERRAFORM_DIR}"){
-                        env.CLUSTER_NAME = sh(
-                            script: 'terraform output -raw cluster_name',
-                            returnStdout: true
-                        ).trim()
-                        echo "Cluster Name: ${env.CLUSTER_NAME}"
-                    }
-                }
-            }
-        }
-
         stage('Update Kubeconfig') {
             when {
-                expression { return params.action == 'apply'}
+                expression { return params.action == 'apply' }
             }
             steps {
                 script {
                     sh """
-                        echo "Updating kubeconfig for cluster: ${env.CLUSTER_NAME}"
-                        aws eks update-kubeconfig --name ${env.CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+                        echo "Updating kubeconfig for cluster: ${CLUSTER_NAME}"
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
                     """
                 }
             }
@@ -143,7 +125,7 @@ pipeline{
                         kubectl create namespace ${MONITORING_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         
                         echo "Installing kube-prometheus-stack..."
-                        helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+                        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
                             --namespace ${MONITORING_NAMESPACE} \
                             -f ops/monitoring/kube-prometheus-stack-values.yaml
                         
@@ -183,6 +165,9 @@ pipeline{
             steps {
                 script {
                     sh '''
+                        echo "Creating application namespace..."
+                        kubectl create namespace ballandbeer --dry-run=client -o yaml | kubectl apply -f -
+                        
                         echo "Installing NGINX Ingress Controller..."
                         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml
                         
@@ -193,7 +178,10 @@ pipeline{
                             --timeout=120s || true
                         
                         echo "Configuring NGINX Ingress Controller with metrics enabled..."
-                        kubectl apply -f ops/k8s/infra/base/nginx-ingress-configmap.yaml
+                        kubectl apply -f ops/monitoring/nginx-ingress-configmap.yaml
+                        
+                        echo "Setting up NGINX Ingress ServiceMonitor for Prometheus..."
+                        kubectl apply -f ops/monitoring/nginx-ingress-servicemonitor.yaml
                         
                         echo "Restarting NGINX Ingress Controller to apply config..."
                         kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
@@ -220,7 +208,7 @@ pipeline{
                         echo "Cluster Autoscaler IAM Role ARN: \${CA_ROLE_ARN}"
                         
                         echo "Installing Cluster Autoscaler..."
-                        helm install cluster-autoscaler autoscaler/cluster-autoscaler \
+                        helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
                             --namespace kube-system \
                             -f ops/k8s/infra/cluster-autoscaler-values.yaml \
                             --set rbac.serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"="\${CA_ROLE_ARN}"
@@ -261,7 +249,7 @@ pipeline{
                         kubectl create namespace ${ARGOCD_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         
                         echo "Installing ArgoCD..."
-                        helm install argocd argo/argo-cd \
+                        helm upgrade --install argocd argo/argo-cd \
                             --namespace ${ARGOCD_NAMESPACE} \
                             -f ${ARGOCD_VALUES_FILE}
                         
@@ -283,7 +271,7 @@ pipeline{
                         kubectl create namespace redpanda --dry-run=client -o yaml | kubectl apply -f -
                         
                         echo "Installing Redpanda..."
-                        helm install redpanda redpanda/redpanda \
+                        helm upgrade --install redpanda redpanda/redpanda \
                             --namespace redpanda \
                             --set statefulset.replicas=1 \
                             --set storage.persistentVolume.storageClass=gp3 \
@@ -293,12 +281,12 @@ pipeline{
                             --set auth.sasl.enabled=false \
                             --set tls.enabled=false
                         
-                        echo "Waiting for Redpanda to be ready..."
-                        kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=redpanda" \
+                        echo "Waiting for Redpanda StatefulSet pod to be ready..."
+                        kubectl wait --for=condition=ready pod/redpanda-0 \
                             -n redpanda --timeout=300s
                         
                         echo "Creating order-topic..."
-                        kubectl exec -n redpanda redpanda-0 -- rpk topic create order-topic --brokers=localhost:9093
+                        kubectl exec -n redpanda redpanda-0 -- rpk topic create order-topic --brokers=localhost:9093 || echo "Topic may already exist"
                     """
                 }
             }

@@ -4,8 +4,6 @@ kind: Kustomization
 resources:
   - vault-deployment.yaml
   - vault-service.yaml
-  - nginx-ingress-configmap.yaml
-  - nginx-ingress-servicemonitor.yaml
 
 labels:
 - includeSelectors: true

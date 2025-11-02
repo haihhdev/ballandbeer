@@ -54,8 +54,9 @@ class MetricsCollector:
         return 0.0
     
     def collect_request_rate(self, service: str) -> float:
-        # Try with ingress label (NGINX Ingress Controller uses ingress name)
-        query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress"}}[1m]))'
+        # Query NGINX Ingress metrics without filtering by ingress name
+        # This captures all traffic going through NGINX Ingress in the namespace
+        query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}"}}[1m]))'
         result = self.prom.custom_query(query=query)
         
         if result and len(result) > 0:
@@ -65,7 +66,8 @@ class MetricsCollector:
         return 0.0
     
     def collect_response_time(self, service: str) -> float:
-        query = f'histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress"}}[5m])) by (le)) * 1000'
+        # Query response time without filtering by ingress name
+        query = f'histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{{namespace="{config.NAMESPACE}"}}[5m])) by (le)) * 1000'
         result = self.prom.custom_query(query=query)
         
         if result and len(result) > 0:
@@ -73,8 +75,9 @@ class MetricsCollector:
         return 0.0
     
     def collect_error_rate(self, service: str) -> float:
-        total_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress"}}[5m]))'
-        error_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", ingress="ballandbeer-ingress", status=~"5.."}}[5m]))'
+        # Query error rate without filtering by ingress name
+        total_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}"}}[5m]))'
+        error_query = f'sum(rate(nginx_ingress_controller_requests{{namespace="{config.NAMESPACE}", status=~"5.."}}[5m]))'
         
         total_result = self.prom.custom_query(query=total_query)
         error_result = self.prom.custom_query(query=error_query)
