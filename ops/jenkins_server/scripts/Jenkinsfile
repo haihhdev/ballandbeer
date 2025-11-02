@@ -4,10 +4,10 @@ pipeline{
         // AWS Credentials
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-        AWS_DEFAULT_REGION = "us-east-1"
+        AWS_DEFAULT_REGION = "ap-southeast-1"
         
-        // EKS Configuration
-        CLUSTER_NAME = "EKS-Cluster-ballandbeer"
+        // EKS Configuration - Will be dynamically retrieved from Terraform
+        CLUSTER_NAME = ""  // Will be set from Terraform output
         
         // Repository Configuration
         REPO_URL = "https://github.com/haihhdev/ballandbeer.git"
@@ -58,6 +58,7 @@ pipeline{
                         
                         # Uninstall Helm releases to ensure clean deletion
                         helm uninstall cluster-autoscaler -n kube-system || true
+                        helm uninstall k6-operator -n k6-operator-system || true
                         helm uninstall argocd -n argocd || true
                         helm uninstall redpanda -n redpanda || true
                         helm uninstall kube-prometheus-stack -n monitoring || true
@@ -81,27 +82,70 @@ pipeline{
             }
         }
 
-        stage('Install kube-prometheus-stack') {
+        stage('Get Cluster Name') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
+            steps {
+                script {
+                    dir("${TERRAFORM_DIR}"){
+                        env.CLUSTER_NAME = sh(
+                            script: 'terraform output -raw cluster_name',
+                            returnStdout: true
+                        ).trim()
+                        echo "Cluster Name: ${env.CLUSTER_NAME}"
+                    }
+                }
+            }
+        }
+
+        stage('Update Kubeconfig') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh """
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
+                        echo "Updating kubeconfig for cluster: ${env.CLUSTER_NAME}"
+                        aws eks update-kubeconfig --name ${env.CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+                    """
+                }
+            }
+        }
+
+        stage('Setup Helm Repositories') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
+            steps {
+                script {
+                    sh '''
+                        echo "Adding Helm repositories..."
+                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+                        helm repo add argo https://argoproj.github.io/argo-helm || true
+                        helm repo add autoscaler https://kubernetes.github.io/autoscaler || true
+                        helm repo add redpanda https://charts.redpanda.com || true
+                        helm repo add grafana https://grafana.github.io/helm-charts || true
+                        helm repo update
+                        echo "Helm repositories added successfully"
+                    '''
+                }
+            }
+        }
+
+        stage('Install kube-prometheus-stack') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
+            steps {
+                script {
+                    sh """
                         kubectl create namespace ${MONITORING_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         
-                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
-                        helm repo update
-                        
-                        if helm list -n ${MONITORING_NAMESPACE} | grep -q kube-prometheus-stack; then
-                            echo "kube-prometheus-stack already installed. Upgrading..."
-                            helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-                                --namespace ${MONITORING_NAMESPACE} \
-                                -f ops/monitoring/kube-prometheus-stack-values.yaml
-                        else
-                            echo "Installing kube-prometheus-stack..."
-                            helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-                                --namespace ${MONITORING_NAMESPACE} \
-                                -f ops/monitoring/kube-prometheus-stack-values.yaml
-                        fi
+                        echo "Installing kube-prometheus-stack..."
+                        helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+                            --namespace ${MONITORING_NAMESPACE} \
+                            -f ops/monitoring/kube-prometheus-stack-values.yaml
                         
                         echo "Waiting for Grafana to be ready..."
                         kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=grafana" \
@@ -111,17 +155,50 @@ pipeline{
             }
         }
 
+        stage('Install K6 Operator') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
+            steps {
+                script {
+                    sh """
+                        echo "Installing K6 Operator for load testing using bundle manifest..."
+                        
+                        curl -s https://raw.githubusercontent.com/grafana/k6-operator/main/bundle.yaml | kubectl apply -f -
+                        
+                        echo "Waiting for K6 Operator controller manager to be ready..."
+                        kubectl wait --for=condition=ready pod -l "control-plane=controller-manager" \
+                            -n k6-operator-system --timeout=120s || true
+                        
+                        echo "K6 Operator installed successfully"
+                    """
+                }
+            }
+        }
+
         stage('Install Infrastructure Prerequisites') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh '''
-                        echo "Installing AWS EBS CSI Driver..."
-                        kubectl apply -k "github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/ecr/?ref=release-1.30"
-                        
                         echo "Installing NGINX Ingress Controller..."
                         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml
                         
                         echo "Waiting for Ingress Controller to be ready..."
+                        kubectl wait --namespace ingress-nginx \
+                            --for=condition=ready pod \
+                            --selector=app.kubernetes.io/component=controller \
+                            --timeout=120s || true
+                        
+                        echo "Configuring NGINX Ingress Controller with metrics enabled..."
+                        kubectl apply -f ops/k8s/infra/base/nginx-ingress-configmap.yaml
+                        
+                        echo "Restarting NGINX Ingress Controller to apply config..."
+                        kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
+                        
+                        echo "Waiting for Ingress Controller to be ready after restart..."
                         kubectl wait --namespace ingress-nginx \
                             --for=condition=ready pod \
                             --selector=app.kubernetes.io/component=controller \
@@ -132,6 +209,9 @@ pipeline{
         }
 
         stage('Install Cluster Autoscaler') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh """
@@ -140,22 +220,10 @@ pipeline{
                         echo "Cluster Autoscaler IAM Role ARN: \${CA_ROLE_ARN}"
                         
                         echo "Installing Cluster Autoscaler..."
-                        helm repo add autoscaler https://kubernetes.github.io/autoscaler || true
-                        helm repo update
-                        
-                        if helm list -n kube-system | grep -q cluster-autoscaler; then
-                            echo "Cluster Autoscaler already installed. Upgrading..."
-                            helm upgrade cluster-autoscaler autoscaler/cluster-autoscaler \
-                                --namespace kube-system \
-                                -f ops/k8s/infra/cluster-autoscaler-values.yaml \
-                                --set rbac.serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"="\${CA_ROLE_ARN}"
-                        else
-                            echo "Installing Cluster Autoscaler..."
-                            helm install cluster-autoscaler autoscaler/cluster-autoscaler \
-                                --namespace kube-system \
-                                -f ops/k8s/infra/cluster-autoscaler-values.yaml \
-                                --set rbac.serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"="\${CA_ROLE_ARN}"
-                        fi
+                        helm install cluster-autoscaler autoscaler/cluster-autoscaler \
+                            --namespace kube-system \
+                            -f ops/k8s/infra/cluster-autoscaler-values.yaml \
+                            --set rbac.serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"="\${CA_ROLE_ARN}"
                         
                         echo "Waiting for Cluster Autoscaler to be ready..."
                         kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=aws-cluster-autoscaler" \
@@ -166,6 +234,9 @@ pipeline{
         }
 
         stage('Install Metrics Server') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh '''
@@ -181,25 +252,18 @@ pipeline{
         }
 
         stage('Install ArgoCD') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh """
                         kubectl create namespace ${ARGOCD_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         
-                        helm repo add argo https://argoproj.github.io/argo-helm || true
-                        helm repo update
-                        
-                        if helm list -n ${ARGOCD_NAMESPACE} | grep -q argocd; then
-                            echo "ArgoCD already installed. Upgrading..."
-                            helm upgrade argocd argo/argo-cd \
-                                --namespace ${ARGOCD_NAMESPACE} \
-                                -f ${ARGOCD_VALUES_FILE}
-                        else
-                            echo "Installing ArgoCD..."
-                            helm install argocd argo/argo-cd \
-                                --namespace ${ARGOCD_NAMESPACE} \
-                                -f ${ARGOCD_VALUES_FILE}
-                        fi
+                        echo "Installing ArgoCD..."
+                        helm install argocd argo/argo-cd \
+                            --namespace ${ARGOCD_NAMESPACE} \
+                            -f ${ARGOCD_VALUES_FILE}
                         
                         echo "Waiting for ArgoCD server to be ready..."
                         kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=argocd-server" \
@@ -210,26 +274,40 @@ pipeline{
         }
 
         stage('Install Redpanda & Console') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh """
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME}
                         kubectl create namespace redpanda --dry-run=client -o yaml | kubectl apply -f -
-                        helm repo add redpanda https://charts.redpanda.com || true
-                        helm repo update
-                        helm upgrade --install redpanda redpanda/redpanda \
+                        
+                        echo "Installing Redpanda..."
+                        helm install redpanda redpanda/redpanda \
                             --namespace redpanda \
                             --set statefulset.replicas=1 \
+                            --set storage.persistentVolume.storageClass=gp3 \
+                            --set storage.persistentVolume.size=50Gi \
                             --set console.enabled=true \
                             --set console.service.type=LoadBalancer \
-                            --set tls.enabled=false \
-                            --set 'console.config.kafka.adminApi.brokers[0]=http://redpanda.redpanda.svc.cluster.local:9644'
+                            --set auth.sasl.enabled=false \
+                            --set tls.enabled=false
+                        
+                        echo "Waiting for Redpanda to be ready..."
+                        kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=redpanda" \
+                            -n redpanda --timeout=300s
+                        
+                        echo "Creating order-topic..."
+                        kubectl exec -n redpanda redpanda-0 -- rpk topic create order-topic --brokers=localhost:9093
                     """
                 }
             }
         }
 
         stage('Deploy ArgoCD Applications') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     def apps = [
@@ -240,7 +318,8 @@ pipeline{
                         'profile',
                         'frontend',
                         'recommender',
-                        'infra'
+                        'infra',
+                        'collector'
                     ]
 
                     for (svc in apps) {
@@ -254,42 +333,18 @@ pipeline{
                             currentBuild.result = 'UNSTABLE'
                         }
                     }
-
-                    sh "kubectl apply -f ops/k8s/recommender/cronjob-update-csv.yaml -n ballandbeer"
-                }
-            }
-        }
-
-        stage('Add GitHub Webhook') {
-            steps {
-                script {
-                    def webhookUrl = "http://jenkins_url/github-webhook/"
-                    sh """
-                        curl -X POST \
-                        -H "Authorization: token ${GITHUB_TOKEN}" \
-                        -H "Accept: application/vnd.github.v3+json" \
-                        https://api.github.com/repos/haihhdev/ballandbeer/hooks \
-                        -d '{
-                        "name": "web",
-                        "active": true,
-                        "events": ["push", "pull_request"],
-                        "config": {
-                            "url": "${webhookUrl}",
-                            "content_type": "json",
-                            "insecure_ssl": "0"
-                        }
-                        }'
-                    """
                 }
             }
         }
 
         stage('Show LoadBalancer URLs') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'create' }
+            }
             steps {
                 script {
                     sh '''
                         kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer
-                        kubectl exec -it redpanda-0 -n redpanda -- rpk topic create order-topic
 
                         echo "\n=========================================="
                         echo "GRAFANA ACCESS"
@@ -323,7 +378,6 @@ pipeline{
                         echo "=========================================="
                         kubectl get svc redpanda-console -n redpanda -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
                         echo ""
-
                     '''
                 }
             }

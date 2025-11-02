@@ -38,46 +38,41 @@ module "eks" {
   # Adds the current caller identity as an administrator via cluster access entry
   enable_cluster_creator_admin_permissions = true
 
+  # Enable OIDC provider for IRSA
+  enable_irsa = true
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  # Cluster addons
   # EKS Addons
   addons = {
-    # VPC-CNI must be installed before compute resources
     vpc-cni = {
       before_compute = true
     }
-    # Pod Identity agent for AWS service access
     eks-pod-identity-agent = {
       before_compute = true
     }
-    coredns    = {}
-    kube-proxy = {}
-    # aws-ebs-csi-driver = {}
+    coredns = {
+    }
+    kube-proxy = {
+    }
   }
 
-  # EKS Managed Node Groups using new compute_config in v21
+  # EKS Managed Node Groups
   eks_managed_node_groups = {
     main = {
       name = "${local.name_prefix}-node-group"
 
-      # Scaling configuration
       min_size     = var.node_group_min_size
       max_size     = var.node_group_max_size
       desired_size = var.node_group_desired_size
 
-      # Instance configuration
       instance_types = [var.instance_type]
       capacity_type  = var.capacity_type
+      ami_type       = local.ami_type
 
-      # Use appropriate AMI type based on architecture
-      ami_type = local.ami_type
-
-      # IAM role
       iam_role_use_name_prefix = false
 
-      # Block device mappings
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
@@ -92,7 +87,6 @@ module "eks" {
         }
       }
 
-      # Labels for node groups
       labels = {
         architecture = local.is_graviton ? "arm64" : "amd64"
         environment  = var.environment
@@ -102,10 +96,8 @@ module "eks" {
       tags = merge(
         local.common_tags,
         {
-          Name         = "${local.name_prefix}-eks-node"
-          Architecture = local.is_graviton ? "ARM64" : "x86_64"
-
-          # Tags for Cluster Autoscaler discovery
+          Name                                              = "${local.name_prefix}-eks-node"
+          Architecture                                      = local.is_graviton ? "ARM64" : "x86_64"
           "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
           "k8s.io/cluster-autoscaler/enabled"               = "true"
         }
@@ -121,51 +113,19 @@ module "eks" {
   )
 }
 
-# IAM Policy for Cluster Autoscaler
-# Required for the Cluster Autoscaler to scale node groups up and down
-resource "aws_iam_policy" "cluster_autoscaler" {
-  name        = "${local.cluster_name}-cluster-autoscaler"
-  description = "IAM policy for Cluster Autoscaler to manage node group scaling"
+resource "aws_eks_addon" "ebs_csi_driver" {
+  cluster_name             = module.eks.cluster_name
+  addon_name               = "aws-ebs-csi-driver"
+  addon_version            = data.aws_eks_addon_version.ebs_csi.version
+  service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "autoscaling:DescribeAutoScalingGroups",
-          "autoscaling:DescribeAutoScalingInstances",
-          "autoscaling:DescribeLaunchConfigurations",
-          "autoscaling:DescribeScalingActivities",
-          "autoscaling:DescribeTags",
-          "ec2:DescribeImages",
-          "ec2:DescribeInstanceTypes",
-          "ec2:DescribeLaunchTemplateVersions",
-          "ec2:GetInstanceTypesFromInstanceRequirements",
-          "eks:DescribeNodegroup"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "autoscaling:SetDesiredCapacity",
-          "autoscaling:TerminateInstanceInAutoScalingGroup"
-        ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
-          }
-        }
-      }
-    ]
-  })
+  depends_on = [
+    module.eks.eks_managed_node_groups
+  ]
+}
 
-  tags = merge(
-    local.common_tags,
-    {
-      Name = "${local.cluster_name}-cluster-autoscaler-policy"
-    }
-  )
+data "aws_eks_addon_version" "ebs_csi" {
+  addon_name         = "aws-ebs-csi-driver"
+  kubernetes_version = var.cluster_version
+  most_recent        = true
 }

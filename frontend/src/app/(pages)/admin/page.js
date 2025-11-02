@@ -38,26 +38,6 @@ export default function AdminPage() {
     setToast({ message, type });
   };
 
-  useEffect(() => {
-    // Check if user is admin
-    const userData = localStorage.getItem("userData");
-    if (userData) {
-      const user = JSON.parse(userData);
-      if (user.isAdmin) {
-        setIsAdmin(true);
-        loadProducts();
-        loadUsers();
-        loadOrders();
-        loadOrderStatistics();
-      } else {
-        router.push("/");
-      }
-    } else {
-      router.push("/login");
-    }
-    setLoading(false);
-  }, [router]);
-
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
@@ -102,6 +82,58 @@ export default function AdminPage() {
       showToast("Failed to load users", "error");
     }
   };
+
+  // Load orders
+  const loadOrders = async () => {
+    try {
+      const response = await fetch("/api/admin/orders", {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOrders(data.data);
+      }
+    } catch (error) {
+      console.error("Error loading orders:", error);
+      showToast("Failed to load orders", "error");
+    }
+  };
+
+  // Load order statistics
+  const loadOrderStatistics = async () => {
+    try {
+      const response = await fetch("/api/admin/orders/statistics", {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOrderStatistics(data.data);
+      }
+    } catch (error) {
+      console.error("Error loading order statistics:", error);
+      showToast("Failed to load order statistics", "error");
+    }
+  };
+
+  useEffect(() => {
+    // Check if user is admin
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user.isAdmin) {
+        setIsAdmin(true);
+        loadProducts();
+        loadUsers();
+        loadOrders();
+        loadOrderStatistics();
+      } else {
+        router.push("/");
+      }
+    } else {
+      router.push("/login");
+    }
+    setLoading(false);
+  }, [router]);
 
   // Handle product form change
   const handleProductFormChange = (e) => {
@@ -198,37 +230,6 @@ export default function AdminPage() {
         console.error("Error deleting product:", error);
         showToast("Failed to delete product", "error");
       }
-    }
-  };
-  // Load orders
-  const loadOrders = async () => {
-    try {
-      const response = await fetch("/api/admin/orders", {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setOrders(data.data);
-      }
-    } catch (error) {
-      console.error("Error loading orders:", error);
-      showToast("Failed to load orders", "error");
-    }
-  };
-
-  // Load order statistics
-  const loadOrderStatistics = async () => {
-    try {
-      const response = await fetch("/api/admin/orders/statistics", {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setOrderStatistics(data.data);
-      }
-    } catch (error) {
-      console.error("Error loading order statistics:", error);
-      showToast("Failed to load order statistics", "error");
     }
   };
 

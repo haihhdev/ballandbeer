@@ -18,3 +18,27 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
+        env:
+        - name: AUTH_SERVICE_URL
+          value: "http://authen.ballandbeer.svc.cluster.local:4000"
+        - name: BOOKING_SERVICE_URL
+          value: "http://booking.ballandbeer.svc.cluster.local:4001"
+        - name: ORDER_SERVICE_URL
+          value: "http://order.ballandbeer.svc.cluster.local:4002"
+        - name: PRODUCT_SERVICE_URL
+          value: "http://product.ballandbeer.svc.cluster.local:4003"
+        - name: PROFILE_SERVICE_URL
+          value: "http://profile.ballandbeer.svc.cluster.local:4004"
+        - name: RECOMMENDER_SERVICE_URL
+          value: "http://recommender.ballandbeer.svc.cluster.local:4005"
+        - name: VAULT_ADDR
+          value: "http://vault.ballandbeer.svc.cluster.local:8200"
+        - name: VAULT_TOKEN
+          value: "root"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

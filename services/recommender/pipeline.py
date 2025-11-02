@@ -1,47 +1,36 @@
 import pandas as pd
-import tensorflow as tf
-import tensorflow_recommenders as tfrs
-from pymongo import MongoClient
 import numpy as np
+import tensorflow as tf
+import keras
+from keras import layers
 import json
 import os
+from pymongo import MongoClient
+from dotenv import load_dotenv
+import boto3
 import hvac
 import kubernetes
 from kubernetes import client, config
-import base64
-from dotenv import load_dotenv
-import boto3
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # ======================
-# STEP 0: LẤY THÔNG TIN TỪ VAULT
+# STEP 0: GET CONFIG FROM VAULT
 # ======================
 def get_vault_token():
-    # Kiểm tra xem có đang chạy trong Kubernetes không
     if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/token'):
         try:
-            # Load kube config từ service account
             config.load_incluster_config()
-            k8s_client = client.CoreV1Api()
-            
-            # Lấy service account token
             with open('/var/run/secrets/kubernetes.io/serviceaccount/token', 'r') as f:
                 jwt = f.read()
-            
-            # Kết nối với Vault và login bằng Kubernetes auth
             vault_client = hvac.Client(url=os.getenv('VAULT_URL', 'http://vault:8200'))
-            vault_client.auth.kubernetes.login(
-                role=os.getenv('VAULT_ROLE', 'default'),
-                jwt=jwt
-            )
+            vault_client.auth.kubernetes.login(role=os.getenv('VAULT_ROLE', 'default'), jwt=jwt)
             return vault_client.token
         except Exception as e:
             print(f"Error getting token from Kubernetes: {e}")
             return None
     else:
-        # Local development
         return os.getenv('VAULT_TOKEN')
 
 def get_mongodb_config():
@@ -50,17 +39,8 @@ def get_mongodb_config():
         vault_token = get_vault_token()
         
         if vault_token:
-            client = hvac.Client(
-                url=vault_url,
-                token=vault_token
-            )
-            
-            # Đọc secret từ Vault
-            secret = client.secrets.kv.v2.read_secret_version(
-                path='rcm-service',
-                mount_point='secret'
-            )
-            
+            client_vault = hvac.Client(url=vault_url, token=vault_token)
+            secret = client_vault.secrets.kv.v2.read_secret_version(path='rcm-service', mount_point='secret')
             return {
                 'url': secret['data']['data']['MONGODB_URL'],
                 'database': secret['data']['data']['MONGODB_DATABASE']
@@ -69,228 +49,193 @@ def get_mongodb_config():
         print(f"Error getting config from Vault: {e}")
         print("Falling back to environment variables...")
         
-    # Fallback to environment variables
     return {
         'url': os.getenv('MONGODB_URL'),
         'database': os.getenv('MONGODB_DATABASE')
     }
 
-# Lấy thông tin kết nối từ Vault hoặc env
 mongodb_config = get_mongodb_config()
 mongodb_url = mongodb_config['url']
-print(mongodb_url)
 database_name = mongodb_config['database']
-print(database_name)
+print(f"Connecting to database: {database_name}")
 
 # ======================
-# STEP 1: KẾT NỐI MONGODB
+# STEP 1: CONNECT TO MONGODB
 # ======================
 client = MongoClient(mongodb_url)
 db = client[database_name]
 
-# Lấy orders (transaction)
-orders_raw = list(db.orders.find({}, {
-    "userId": 1,
-    "updatedAt": 1,
-    "products": 1,
-    "status": 1
-}))
-
+# Fetch orders
+orders_raw = list(db.orders.find({}, {"userId": 1, "updatedAt": 1, "products": 1, "status": 1}))
 print(f"Found {len(orders_raw)} orders")
-if len(orders_raw) > 0:
-    print(f"Sample order keys: {orders_raw[0].keys()}")
 
 if len(orders_raw) == 0:
-    print("ERROR: No orders found in database. Please ensure you have order data.")
+    print("ERROR: No orders found in database.")
     exit(1)
 
 orders = pd.DataFrame(orders_raw)
-
-# Check if userId exists, try common field name variations
 if "userId" in orders.columns:
     orders["userId"] = orders["userId"].astype(str)
-elif "user_id" in orders.columns:
-    orders["userId"] = orders["user_id"].astype(str)
-elif "customerId" in orders.columns:
-    orders["userId"] = orders["customerId"].astype(str)
 else:
-    print(f"ERROR: userId field not found. Available columns: {orders.columns.tolist()}")
-    print(f"Sample order: {orders_raw[0]}")
+    print("ERROR: userId field not found")
     exit(1)
 
-# Lấy products
-products_df = pd.DataFrame(list(db.products.find({}, {
-    "_id": 1,
-    "category": 1,
-    "name": 1
-})))
-products_df["_id"] = products_df["_id"].astype(str)
-products_df["category"] = products_df["category"].fillna("unknown").str.lower()
-products_df = products_df.rename(columns={"_id": "product_id"})
+# Fetch ALL products from database
+all_products = list(db.products.find({}, {"_id": 1, "category": 1, "name": 1}))
+print(f"Found {len(all_products)} total products in database")
 
-# ===============================
-# STEP 2: FORMAT LẠI TRANSACTIONS
-# ===============================
+products_df = pd.DataFrame(all_products)
+products_df["_id"] = products_df["_id"].astype(str)
+products_df["category"] = products_df["category"].fillna("other").str.lower()
+products_df = products_df.rename(columns={"_id": "product_id"})
+products_df["product_id"] = products_df["product_id"].str.lower().str.strip()
+
+# ======================
+# STEP 2: BUILD TRANSACTIONS
+# ======================
 records = []
 for _, row in orders.iterrows():
     if str(row.get("status")).strip().lower() != "complete":
         continue
     user_id = row["userId"]
-    created_at = row["updatedAt"]
     for item in row.get("products", []):
         product_id = item.get("productId")
         if pd.notna(product_id):
-            records.append({
-                "user_id": user_id,
-                "product_id": str(product_id),
-                "timestamp": created_at
-            })
+            records.append({"user_id": user_id, "product_id": str(product_id).lower().strip()})
 
 transactions_df = pd.DataFrame(records)
+print(f"Found {len(transactions_df)} transactions")
 
-# ===============================
-# STEP 3: TIỀN XỬ LÝ DỮ LIỆU TRAIN
-# ===============================
-products_df["product_id"] = products_df["product_id"].str.lower().str.strip()
-transactions_df["product_id"] = transactions_df["product_id"].str.lower().str.strip()
-df_merged = transactions_df.merge(products_df, how="left", on="product_id")
-df_merged["category"] = df_merged["category"].fillna("unknown")
+# ======================
+# STEP 3: PREPARE DATA FOR DEEP LEARNING
+# ======================
+unique_users = transactions_df["user_id"].unique().tolist()
+unique_products = products_df["product_id"].tolist()
 
-df_final = df_merged[["user_id", "product_id", "category"]].dropna()
+print(f"Found {len(unique_users)} unique users")
+print(f"Found {len(unique_products)} products total (all from database)")
 
-# ===============================
-# STEP 4: CHUẨN BỊ TF.DATASET
-# ===============================
-unique_users = df_final["user_id"].unique()
-unique_products = df_final["product_id"].unique()
-unique_categories = df_final["category"].unique()
+# Track user purchase history with counts
+from collections import defaultdict
+user_products = defaultdict(set)
+user_product_counts = defaultdict(lambda: defaultdict(int))
+product_popularity = defaultdict(int)
 
-user_lookup = tf.keras.layers.StringLookup(vocabulary=unique_users)
-product_lookup = tf.keras.layers.StringLookup(vocabulary=unique_products)
-category_lookup = tf.keras.layers.StringLookup(vocabulary=unique_categories)
+for _, row in transactions_df.iterrows():
+    user_products[row["user_id"]].add(row["product_id"])
+    user_product_counts[row["user_id"]][row["product_id"]] += 1
+    product_popularity[row["product_id"]] += 1
 
-# IMPORTANT: Only save product features for products that were in training data
+# Get popular products (sorted by purchase count)
+popular_products = sorted(product_popularity.items(), key=lambda x: x[1], reverse=True)
+popular_products = [p[0] for p in popular_products[:50]]  # Top 50
+
+# Create mappings
+user_to_idx = {user: idx for idx, user in enumerate(unique_users)}
+product_to_idx = {product: idx for idx, product in enumerate(unique_products)}
+
+# Prepare training data
+user_indices = transactions_df["user_id"].map(user_to_idx).values
+product_indices = transactions_df["product_id"].map(product_to_idx).values
+
+# ======================
+# STEP 4: BUILD DEEP LEARNING MODEL
+# ======================
+embedding_dim = 32
+
+# User tower
+user_input = layers.Input(shape=(1,), name='user_input')
+user_embedding = layers.Embedding(len(unique_users), embedding_dim, name='user_embedding')(user_input)
+user_vec = layers.Flatten()(user_embedding)
+user_vec = layers.Dense(32, activation='relu')(user_vec)
+
+# Product tower
+product_input = layers.Input(shape=(1,), name='product_input')
+product_embedding = layers.Embedding(len(unique_products), embedding_dim, name='product_embedding')(product_input)
+product_vec = layers.Flatten()(product_embedding)
+product_vec = layers.Dense(32, activation='relu')(product_vec)
+
+# Compute dot product (similarity)
+dot_product = layers.Dot(axes=1)([user_vec, product_vec])
+output = layers.Dense(1, activation='sigmoid')(dot_product)
+
+# Build model
+model = keras.Model(inputs=[user_input, product_input], outputs=output)
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+print("\nModel architecture:")
+model.summary()
+
+# ======================
+# STEP 5: TRAIN MODEL
+# ======================
+print("\nTraining model...")
+# Create positive samples (actual purchases)
+labels = np.ones(len(user_indices))
+
+# Train
+history = model.fit(
+    [user_indices, product_indices],
+    labels,
+    epochs=10,
+    batch_size=32,
+    verbose=1
+)
+
+print(f"Training completed. Final loss: {history.history['loss'][-1]:.4f}")
+
+# ======================
+# STEP 6: SAVE MODEL
+# ======================
+print("\nSaving model...")
+model.save('recommender_model.keras')
+
+# Save metadata
 product_features = {}
 for _, row in products_df.iterrows():
     pid = row["product_id"]
-    # Only include products that are in the training data
-    if pid in unique_products:
-        product_features[pid] = {
-            "category": row["category"],
-            "name": row["name"]
-        }
+    product_features[pid] = {
+        "category": row["category"],
+        "name": row["name"]
+    }
 
-print(f"Saving {len(product_features)} products to product_data.json (from {len(products_df)} total products)")
-
-with open("product_data.json", "w") as f:
-    json.dump(product_features, f)
-    
-# Also save the vocabulary for exact reconstruction
 metadata = {
-    "unique_users": unique_users.tolist(),
-    "unique_products": unique_products.tolist(),
-    "unique_categories": unique_categories.tolist()
+    "unique_users": unique_users,
+    "unique_products": unique_products,
+    "product_features": product_features,
+    "user_to_idx": user_to_idx,
+    "product_to_idx": product_to_idx,
+    "embedding_dim": embedding_dim
 }
+
 with open("model_metadata.json", "w") as f:
     json.dump(metadata, f)
 
-train_data = {
-    "user_id": df_final["user_id"].values,
-    "product_id": df_final["product_id"].values,
-    "category": df_final["category"].values
+# Save user purchase history for filtering in recommendations
+recommendation_data = {
+    "user_products": {user: list(prods) for user, prods in user_products.items()},
+    "user_product_counts": {user: dict(counts) for user, counts in user_product_counts.items()},
+    "product_features": product_features,
+    "popular_products": popular_products
 }
 
-train_dataset = tf.data.Dataset.from_tensor_slices(train_data)
-train_dataset = train_dataset.shuffle(100_000).batch(128)
+with open("recommendation_data.json", "w") as f:
+    json.dump(recommendation_data, f)
 
-# ===============================
-# STEP 5: MÔ HÌNH GỢI Ý
-# ===============================
-class ProductModel(tf.keras.Model):
-    def __init__(self):
-        super().__init__()
-        self.product_embedding = tf.keras.Sequential([
-            product_lookup,
-            tf.keras.layers.Embedding(len(unique_products)+1, 32)
-        ])
-        self.category_embedding = tf.keras.Sequential([
-            category_lookup,
-            tf.keras.layers.Embedding(len(unique_categories)+1, 16)
-        ])
-        self.dense = tf.keras.layers.Dense(32)
+print(f"Saved metadata for {len(unique_users)} users and {len(unique_products)} products")
 
-    def call(self, product_id, category):
-        return self.dense(
-            tf.concat([
-                self.product_embedding(product_id),
-                self.category_embedding(category)
-            ], axis=1)
-        )
-
-class UserModel(tf.keras.Model):
-    def __init__(self):
-        super().__init__()
-        self.user_embedding = tf.keras.Sequential([
-            user_lookup,
-            tf.keras.layers.Embedding(len(unique_users)+1, 32)
-        ])
-        self.dense = tf.keras.layers.Dense(32)
-
-    def call(self, user_id):
-        return self.dense(self.user_embedding(user_id))
-
-class RecommenderModel(tfrs.Model):
-    def __init__(self):
-        super().__init__()
-        self.user_model = UserModel()
-        self.product_model = ProductModel()
-        candidate_dataset = tf.data.Dataset.from_tensor_slices({
-            "product_id": unique_products,
-            "category": [product_features[pid]["category"] for pid in unique_products]
-        }).batch(128)
-        self.task = tfrs.tasks.Retrieval(
-            metrics=tfrs.metrics.FactorizedTopK(
-                candidates=candidate_dataset.map(
-                    lambda x: self.product_model(x["product_id"], x["category"])
-                )
-            )
-        )
-
-    def compute_loss(self, features, training=False):
-        user_embeddings = self.user_model(features["user_id"])
-        product_embeddings = self.product_model(
-            features["product_id"],
-            features["category"]
-        )
-        return self.task(user_embeddings, product_embeddings)
-
-# ===============================
-# STEP 6: HUẤN LUYỆN VÀ LƯU MODEL
-# ===============================
-model = RecommenderModel()
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
-model.fit(train_dataset, epochs=10)
-
-# Lưu user & product model
-model.user_model.save("user_model")
-model.product_model.save("product_model")
-
-def upload_folder_to_s3(local_folder, bucket, s3_folder):
-    s3 = boto3.client('s3')
-    for root, dirs, files in os.walk(local_folder):
-        for file in files:
-            local_path = os.path.join(root, file)
-            relative_path = os.path.relpath(local_path, local_folder)
-            s3_path = os.path.join(s3_folder, relative_path).replace("\\", "/")
-            s3.upload_file(local_path, bucket, s3_path)
-
+# ======================
+# STEP 7: UPLOAD TO S3
+# ======================
 def upload_file_to_s3(local_file, bucket, s3_key):
     s3 = boto3.client('s3')
     s3.upload_file(local_file, bucket, s3_key)
+    print(f"Uploaded {local_file} to s3://{bucket}/{s3_key}")
 
 bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
-upload_folder_to_s3('user_model', bucket_name, 'models/user_model')
-upload_folder_to_s3('product_model', bucket_name, 'models/product_model')
-upload_file_to_s3('product_data.json', bucket_name, 'data/product_data.json')
-upload_file_to_s3('model_metadata.json', bucket_name, 'data/model_metadata.json')
-print("Uploaded to S3")
+print(f"\nUploading to S3 bucket: {bucket_name}")
+upload_file_to_s3('recommender_model.keras', bucket_name, 'models/recommender_model.keras')
+upload_file_to_s3('model_metadata.json', bucket_name, 'models/model_metadata.json')
+upload_file_to_s3('recommendation_data.json', bucket_name, 'data/recommendation_data.json')
+
+print("\nPipeline completed successfully!")

@@ -27,7 +27,9 @@ export default function ShoppingCart() {
 
       if (!pendingOrder) {
         setCartItems([]);
-        localStorage.removeItem("pendingOrderId"); // Xóa nếu không có order pending
+        localStorage.removeItem("pendingOrderId");
+        localStorage.setItem("cartCount", "0");
+        window.dispatchEvent(new Event("cartCountUpdated"));
         return;
       }
       localStorage.setItem("pendingOrderId", pendingOrder._id); // Lưu orderId vào localStorage
@@ -35,6 +37,14 @@ export default function ShoppingCart() {
       // Lấy toàn bộ sản phẩm để map productId sang thông tin chi tiết
       const productsRes = await fetch("/api/products");
       const productsData = await productsRes.json();
+
+      // Check if pending order has products
+      if (!pendingOrder.products || pendingOrder.products.length === 0) {
+        setCartItems([]);
+        localStorage.setItem("cartCount", "0");
+        window.dispatchEvent(new Event("cartCountUpdated"));
+        return;
+      }
 
       // Map productId sang thông tin sản phẩm
       const cartWithDetails = pendingOrder.products.map((item) => {
@@ -51,7 +61,7 @@ export default function ShoppingCart() {
       });
 
       setCartItems(cartWithDetails);
-      localStorage.setItem("cartCount", cartWithDetails.length);
+      localStorage.setItem("cartCount", cartWithDetails.length.toString());
       window.dispatchEvent(new Event("cartCountUpdated"));
     };
 
@@ -106,6 +116,13 @@ export default function ShoppingCart() {
       body: JSON.stringify({ products: updatedProducts, status: "pending" }),
     });
     // Cập nhật lại cartItems
+    if (updatedProducts.length === 0) {
+      setCartItems([]);
+      localStorage.setItem("cartCount", "0");
+      window.dispatchEvent(new Event("cartCountUpdated"));
+      return;
+    }
+
     const productsRes = await fetch("/api/products");
     const productsData = await productsRes.json();
     const cartWithDetails = updatedProducts.map((item) => {
@@ -121,7 +138,7 @@ export default function ShoppingCart() {
       };
     });
     setCartItems(cartWithDetails);
-    localStorage.setItem("cartCount", cartWithDetails.length);
+    localStorage.setItem("cartCount", cartWithDetails.length.toString());
     window.dispatchEvent(new Event("cartCountUpdated"));
   };
 

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: recommender
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: recommender
@@ -21,10 +21,14 @@ spec:
         env:
         - name: S3_BUCKET_NAME
           value: "your-models-bucket"  # This will be overridden in overlays
+        - name: VAULT_URL
+          value: "http://vault.ballandbeer.svc.cluster.local:8200"
+        - name: VAULT_TOKEN
+          value: "root"
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "384Mi"
+            cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "768Mi"
             cpu: "500m"
