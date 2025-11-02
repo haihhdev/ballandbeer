@@ -59,3 +59,6 @@ build-and-push.sh
 # Local development notes
 NOTES.md
 **/NOTES.md
+
+#Config files
+setup.sh

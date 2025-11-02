@@ -1,10 +1,12 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
+  const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: 'Access Denied: No token provided' });
+    return res
+      .status(401)
+      .json({ message: "Access Denied: No token provided" });
   }
 
   try {
@@ -12,8 +14,17 @@ const verifyToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ message: 'Invalid token' });
+    return res.status(403).json({ message: "Invalid token" });
   }
 };
 
-module.exports = verifyToken;
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res
+      .status(403)
+      .json({ message: "Access Denied: Admin privileges required" });
+  }
+  next();
+};
+
+module.exports = { verifyToken, requireAdmin };
