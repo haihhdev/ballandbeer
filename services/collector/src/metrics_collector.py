@@ -29,8 +29,7 @@ class MetricsCollector:
         return 0.0
     
     def collect_ram_usage(self, service: str) -> Optional[float]:
-        # Try with limits first
-        query_with_limit = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) / sum(container_spec_memory_limit_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) * 100'
+        query_with_limit = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}}) / sum(kube_pod_container_resource_limits{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}", resource="memory"}}) * 100'
         result = self.prom.custom_query(query=query_with_limit)
         
         if result and len(result) > 0 and result[0]['value'][1] != 'NaN':
@@ -38,7 +37,7 @@ class MetricsCollector:
         
         # Fallback: Calculate percentage manually using memory working set and limit from resources
         query_memory = f'sum(container_memory_working_set_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}})'
-        query_limit = f'sum(container_spec_memory_limit_bytes{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}"}})'
+        query_limit = f'sum(kube_pod_container_resource_limits{{namespace="{config.NAMESPACE}", pod=~"{service}-.*", container="{service}", resource="memory"}})'
         
         memory_result = self.prom.custom_query(query=query_memory)
         limit_result = self.prom.custom_query(query=query_limit)
