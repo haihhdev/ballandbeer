@@ -6,6 +6,13 @@ const errorRate = new Rate('errors');
 
 const BASE_URL = __ENV.BASE_URL || 'http://ingress-nginx-controller.ingress-nginx.svc.cluster.local';
 
+// Common headers for all requests to match Ingress routing rules
+const commonHeaders = {
+  'Host': 'ballandbeer.com',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+};
+
 export const options = {
   scenarios: {
     morning_light: {
@@ -58,6 +65,31 @@ export const options = {
       gracefulStop: '30s',
       exec: 'peakBooking',
     },
+    
+    // Frontend browsing - Users browsing website pages throughout the day
+    frontend_browsing: {
+      executor: 'ramping-vus',
+      startTime: '0m',
+      stages: [
+        { duration: '5m', target: 5 },    // Morning: light browsing
+        { duration: '55m', target: 10 },  
+        { duration: '10m', target: 15 },  // Midday: moderate
+        { duration: '170m', target: 20 },
+        { duration: '10m', target: 15 },
+        { duration: '15m', target: 25 },  // Afternoon: busy
+        { duration: '165m', target: 30 },
+        { duration: '10m', target: 25 },
+        { duration: '20m', target: 40 },  // Evening: peak browsing
+        { duration: '60m', target: 60 },
+        { duration: '60m', target: 70 },
+        { duration: '60m', target: 50 },
+        { duration: '20m', target: 30 },
+        { duration: '20m', target: 15 },
+        { duration: '20m', target: 5 },
+      ],
+      gracefulStop: '30s',
+      exec: 'browseFrontendPages',
+    },
   },
   thresholds: {
     'http_req_duration': ['p(95)<2000'],
@@ -66,7 +98,10 @@ export const options = {
 };
 
 export function lightBrowsing() {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { 
+    ...commonHeaders,
+    'Content-Type': 'application/json' 
+  };
   
   http.get(`${BASE_URL}/`, { headers });
   sleep(5);
@@ -82,7 +117,10 @@ export function lightBrowsing() {
 }
 
 export function moderateActivity() {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { 
+    ...commonHeaders,
+    'Content-Type': 'application/json' 
+  };
   
   const action = Math.random();
   
@@ -134,7 +172,10 @@ export function moderateActivity() {
 }
 
 export function busyActivity() {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { 
+    ...commonHeaders,
+    'Content-Type': 'application/json' 
+  };
   
   const action = Math.random();
   
@@ -245,7 +286,10 @@ export function busyActivity() {
 }
 
 export function peakBooking() {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { 
+    ...commonHeaders,
+    'Content-Type': 'application/json' 
+  };
   
   const email = `evening${Math.floor(Math.random() * 5000)}@example.com`;
   const password = 'password123';
@@ -332,5 +376,61 @@ export function peakBooking() {
     }
   } else {
     errorRate.add(1);
+  }
+}
+
+// Browse frontend pages to generate frontend metrics
+export function browseFrontendPages() {
+  const scenarios = Math.random();
+  
+  const pageHeaders = {
+    'Host': 'ballandbeer.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+  };
+  
+  // Scenario 1: Homepage visitor (40%)
+  if (scenarios < 0.4) {
+    const homeRes = http.get(`${BASE_URL}/`, { headers: pageHeaders });
+    check(homeRes, { 'homepage loaded': (r) => r.status === 200 });
+    sleep(2);
+    
+  } 
+  // Scenario 2: Product browser (30%)
+  else if (scenarios < 0.7) {
+    const productsRes = http.get(`${BASE_URL}/products`, { headers: pageHeaders });
+    check(productsRes, { 'products page loaded': (r) => r.status === 200 });
+    sleep(2);
+    
+    const productId = Math.floor(Math.random() * 20) + 1;
+    const productDetailRes = http.get(`${BASE_URL}/productinfo/${productId}`, { headers: pageHeaders });
+    check(productDetailRes, { 'product detail loaded': (r) => r.status === 200 });
+    sleep(3);
+    
+  }
+  // Scenario 3: Booking browser (20%)
+  else if (scenarios < 0.9) {
+    const bookingRes = http.get(`${BASE_URL}/booking`, { headers: pageHeaders });
+    check(bookingRes, { 'booking page loaded': (r) => r.status === 200 });
+    sleep(2);
+    
+    const field = Math.random() < 0.5 ? 'san7' : 'san5';
+    const bookingInfoRes = http.get(`${BASE_URL}/bookinginfo?field=${field}`, { headers: pageHeaders });
+    check(bookingInfoRes, { 'booking info loaded': (r) => r.status === 200 });
+    sleep(3);
+    
+  }
+  // Scenario 4: Profile/Account pages (10%)
+  else {
+    const loginRes = http.get(`${BASE_URL}/login`, { headers: pageHeaders });
+    check(loginRes, { 'login page loaded': (r) => r.status === 200 });
+    sleep(1);
+    
+    if (Math.random() < 0.5) {
+      const registerRes = http.get(`${BASE_URL}/register`, { headers: pageHeaders });
+      check(registerRes, { 'register page loaded': (r) => r.status === 200 });
+      sleep(2);
+    }
   }
 }
