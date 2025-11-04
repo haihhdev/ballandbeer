@@ -6,6 +6,7 @@ namespace: ballandbeer
 resources:
 - serviceaccount.yaml
 - rbac.yaml
+- pvc.yaml
 - deployment.yaml
 - service.yaml
 

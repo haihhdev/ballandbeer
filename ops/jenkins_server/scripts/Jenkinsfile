@@ -156,20 +156,32 @@ pipeline{
                             --selector=app.kubernetes.io/component=controller \
                             --timeout=120s || true
                         
+                        echo "Patching NGINX Ingress Controller to expose metrics port..."
+                        kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type='json' -p='[
+                          {
+                            "op": "add",
+                            "path": "/spec/template/spec/containers/0/ports/-",
+                            "value": {
+                              "containerPort": 10254,
+                              "name": "metrics",
+                              "protocol": "TCP"
+                            }
+                          }
+                        ]' || echo "Metrics port may already exist"
+                        
+                        echo "Enabling metrics in NGINX Ingress Controller args..."
+                        kubectl get deployment ingress-nginx-controller -n ingress-nginx -o json | \
+                          jq '.spec.template.spec.containers[0].args |= map(if . == "--enable-metrics=false" then "--enable-metrics=true" else . end)' | \
+                          kubectl apply -f -
+                        
                         echo "Configuring NGINX Ingress Controller with metrics enabled..."
                         kubectl apply -f ops/monitoring/nginx-ingress-configmap.yaml
                         
                         echo "Setting up NGINX Ingress ServiceMonitor for Prometheus..."
                         kubectl apply -f ops/monitoring/nginx-ingress-servicemonitor.yaml
                         
-                        echo "Restarting NGINX Ingress Controller to apply config..."
-                        kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
-                        
-                        echo "Waiting for Ingress Controller to be ready after restart..."
-                        kubectl wait --namespace ingress-nginx \
-                            --for=condition=ready pod \
-                            --selector=app.kubernetes.io/component=controller \
-                            --timeout=120s || true
+                        echo "Waiting for Ingress Controller rollout to complete..."
+                        kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=120s || true
                     '''
                 }
             }
@@ -304,13 +316,16 @@ pipeline{
             }
         }
 
-        stage('Setup K6 Load Test Scripts') {
+        stage('Setup K6 Load Test Infrastructure') {
             when {
                 expression { return params.action == 'apply'}
             }
             steps {
                 script {
                     sh '''
+                        echo "Setting up K6 PriorityClass..."
+                        kubectl apply -f services/collector/k6/k6-priorityclass.yaml
+                        
                         echo "Setting up K6 load test ConfigMaps..."
                         
                         # Create ConfigMap for weekday traffic script
@@ -325,10 +340,13 @@ pipeline{
                             --from-file=weekend-traffic.js=services/collector/k6/weekend-traffic.js \
                             --dry-run=client -o yaml | kubectl apply -f -
                         
-                        echo "K6 ConfigMaps created successfully"
-                        echo "To run K6 tests manually:"
-                        echo "  - Weekday: kubectl apply -f services/collector/k6/k6-weekday-test.yaml"
+                        echo "K6 infrastructure setup completed"
+                        echo ""
+                        echo "================================================"
+                        echo "To run K6 load tests:"
+                        echo "  - Weekday: kubectl apply -f services/collector/k6/k6-weekday-job.yaml"
                         echo "  - Weekend: kubectl apply -f services/collector/k6/k6-weekend-job.yaml"
+                        echo "================================================"
                     '''
                 }
             }

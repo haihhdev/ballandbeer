@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: collector
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       serviceAccountName: collector-sa
       containers:
@@ -42,4 +44,5 @@ spec:
           mountPath: /data
       volumes:
       - name: data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: collector-data-pvc

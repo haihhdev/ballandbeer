@@ -22,6 +22,11 @@ extraArgs:
   expander: least-waste
   balance-similar-node-groups: true
   skip-nodes-with-system-pods: false
+  scale-down-enabled: true
+  scale-down-delay-after-add: 10m
+  scale-down-unneeded-time: 10m
+  scale-down-utilization-threshold: 0.5
+  new-pod-scale-up-delay: 0s
 
 resources:
   limits:
