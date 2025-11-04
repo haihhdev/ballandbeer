@@ -65,7 +65,6 @@ class FeatureEngineer:
         
         return {
             'is_holiday': 1 if is_holiday else 0,
-            'hour_of_day': local_time.hour,
             'is_weekend': 1 if is_weekend else 0,
         }
     

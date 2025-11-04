@@ -137,27 +137,6 @@ pipeline{
             }
         }
 
-        stage('Install K6 Operator') {
-            when {
-                expression { return params.action == 'apply'}
-            }
-            steps {
-                script {
-                    sh """
-                        echo "Installing K6 Operator for load testing using bundle manifest..."
-                        
-                        curl -s https://raw.githubusercontent.com/grafana/k6-operator/main/bundle.yaml | kubectl apply -f -
-                        
-                        echo "Waiting for K6 Operator controller manager to be ready..."
-                        kubectl wait --for=condition=ready pod -l "control-plane=controller-manager" \
-                            -n k6-operator-system --timeout=120s || true
-                        
-                        echo "K6 Operator installed successfully"
-                    """
-                }
-            }
-        }
-
         stage('Install Infrastructure Prerequisites') {
             when {
                 expression { return params.action == 'apply'}
