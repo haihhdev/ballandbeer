@@ -270,7 +270,8 @@ pipeline{
                             --set console.enabled=true \
                             --set console.service.type=LoadBalancer \
                             --set auth.sasl.enabled=false \
-                            --set tls.enabled=false
+                            --set tls.enabled=false \
+                            --set statefulset.podAnnotations."cluster-autoscaler\.kubernetes\.io/safe-to-evict"="false"
                         
                         echo "Waiting for Redpanda StatefulSet pod to be ready..."
                         kubectl wait --for=condition=ready pod/redpanda-0 \
