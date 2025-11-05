@@ -70,6 +70,137 @@ class DataPreprocessor:
         logger.info(f"Loaded {len(data)} rows")
         return data
     
+    def clean_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Clean data by removing invalid and erroneous data points
+        
+        Issues to fix:
+        1. CPU/RAM usage > 100% (calculation errors)
+        2. replica_count = 0 but has active metrics (CPU/RAM/requests)
+        3. Zero resource limits
+        4. High pod restart counts (unstable services)
+        5. Incident periods (extreme error rates)
+        6. Services with all-zero metrics (collector errors)
+        7. Response time outliers (timeout values)
+        """
+        df = data.copy()
+        initial_count = len(df)
+        
+        logger.info(f"Starting data cleaning. Initial rows: {initial_count}")
+        
+        # Rule 0: Cap CPU/RAM usage at 100% (fix calculation errors)
+        cpu_over_100 = (df['cpu_usage_percent'] > 100).sum()
+        ram_over_100 = (df['ram_usage_percent'] > 100).sum()
+        
+        if cpu_over_100 > 0:
+            logger.warning(f"Found {cpu_over_100} rows with CPU >100%, capping at 100%")
+            df.loc[df['cpu_usage_percent'] > 100, 'cpu_usage_percent'] = 100.0
+        
+        if ram_over_100 > 0:
+            logger.warning(f"Found {ram_over_100} rows with RAM >100% (max: {df['ram_usage_percent'].max():.2f}%), capping at 100%")
+            df.loc[df['ram_usage_percent'] > 100, 'ram_usage_percent'] = 100.0
+        
+        # Cap response time at 10000ms (timeout values)
+        resp_outliers = (df['response_time_ms'] > 10000).sum()
+        if resp_outliers > 0:
+            logger.warning(f"Found {resp_outliers} rows with response time >10s, capping at 10000ms")
+            df.loc[df['response_time_ms'] > 10000, 'response_time_ms'] = 10000.0
+        
+        # Rule 1: Remove replica_count=0 with active metrics (data inconsistency)
+        invalid_mask = (
+            (df['replica_count'] == 0) & 
+            (
+                (df['cpu_usage_percent'] > 0) | 
+                (df['ram_usage_percent'] > 0) |
+                (df['request_count_per_second'] > 0) |
+                (df['response_time_ms'] > 0)
+            )
+        )
+        removed_invalid = invalid_mask.sum()
+        df = df[~invalid_mask].reset_index(drop=True)
+        logger.info(f"Removed {removed_invalid} rows with replica_count=0 but active metrics")
+        
+        # Rule 2: Handle zero resource limits
+        # Fill with service-specific medians (better than removing)
+        zero_resources_mask = (
+            (df['cpu_request'] == 0) & 
+            (df['cpu_limit'] == 0) & 
+            (df['ram_request'] == 0) & 
+            (df['ram_limit'] == 0)
+        )
+        
+        if zero_resources_mask.sum() > 0:
+            logger.info(f"Found {zero_resources_mask.sum()} rows with zero resource limits")
+            
+            # Calculate service-specific medians
+            for service in config.SERVICES:
+                service_mask = (df['service_name'] == service) & (~zero_resources_mask)
+                
+                if service_mask.sum() > 0:
+                    # Get medians from valid rows
+                    cpu_request_median = df.loc[service_mask, 'cpu_request'].median()
+                    cpu_limit_median = df.loc[service_mask, 'cpu_limit'].median()
+                    ram_request_median = df.loc[service_mask, 'ram_request'].median()
+                    ram_limit_median = df.loc[service_mask, 'ram_limit'].median()
+                    
+                    # Fill zeros for this service
+                    service_zero_mask = (df['service_name'] == service) & zero_resources_mask
+                    df.loc[service_zero_mask, 'cpu_request'] = cpu_request_median
+                    df.loc[service_zero_mask, 'cpu_limit'] = cpu_limit_median
+                    df.loc[service_zero_mask, 'ram_request'] = ram_request_median
+                    df.loc[service_zero_mask, 'ram_limit'] = ram_limit_median
+                    
+                    if service_zero_mask.sum() > 0:
+                        logger.info(f"  Filled {service_zero_mask.sum()} zero resource rows for {service}")
+        
+        # Rule 3: Flag (not remove) high restart counts - add as feature
+        df['is_unstable'] = (df['pod_restart_count'] > 3).astype(int)
+        high_restart_count = df['is_unstable'].sum()
+        if high_restart_count > 0:
+            logger.info(f"Flagged {high_restart_count} rows with high restart count (will be used as feature)")
+        
+        # Rule 4: Flag incident periods (extreme error rates)
+        df['is_incident'] = (df['error_rate'] > 30.0).astype(int)
+        incident_count = df['is_incident'].sum()
+        if incident_count > 0:
+            logger.info(f"Flagged {incident_count} rows as incident periods (will be used as feature)")
+        
+        # Rule 5: Remove rows where service has all-zero metrics (collector error)
+        null_metrics_mask = (
+            (df['cpu_usage_percent'] == 0) &
+            (df['ram_usage_percent'] == 0) &
+            (df['request_count_per_second'] == 0) &
+            (df['response_time_ms'] == 0) &
+            (df['replica_count'] > 0)  # Should have replicas running
+        )
+        removed_null = null_metrics_mask.sum()
+        df = df[~null_metrics_mask].reset_index(drop=True)
+        logger.info(f"Removed {removed_null} rows with all-zero metrics (collector errors)")
+        
+        final_count = len(df)
+        removed_total = initial_count - final_count
+        removed_pct = (removed_total / initial_count) * 100
+        
+        logger.info(f"Data cleaning completed:")
+        logger.info(f"  Initial rows: {initial_count}")
+        logger.info(f"  Final rows: {final_count}")
+        logger.info(f"  Removed: {removed_total} ({removed_pct:.2f}%)")
+        logger.info(f"  Data quality: {(final_count/initial_count)*100:.2f}%")
+        
+        # Check replica count distribution
+        unique_replicas = sorted(df['replica_count'].unique())
+        logger.info(f"  Unique replica counts: {unique_replicas}")
+        
+        if max(unique_replicas) <= 1:
+            logger.warning("="*60)
+            logger.warning("WARNING: Dataset only has replica_count of 0 or 1")
+            logger.warning("No scaling data (2+ replicas) found in dataset!")
+            logger.warning("Model will not learn proper scaling decisions")
+            logger.warning("Recommendation: Collect data during high-load periods")
+            logger.warning("="*60)
+        
+        return df
+    
     def engineer_features(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Engineer features from raw metrics
@@ -77,16 +208,11 @@ class DataPreprocessor:
         """
         df = data.copy()
         
-        # Convert timestamp to datetime
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Convert timestamp to datetime (use ISO8601 for flexible parsing)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='ISO8601')
         
         # Sort by service and timestamp
         df = df.sort_values(['service_name', 'timestamp']).reset_index(drop=True)
-        
-        # Cyclical encoding of hour (minimal time feature)
-        df['hour_of_day'] = df['timestamp'].dt.hour
-        df['hour_sin'] = np.sin(2 * np.pi * df['hour_of_day'] / 24)
-        df['hour_cos'] = np.cos(2 * np.pi * df['hour_of_day'] / 24)
         
         # Group by service for rolling features
         for service in config.SERVICES:
@@ -230,13 +356,14 @@ class DataPreprocessor:
         
         # Add engineered features
         engineered_features = [
-            'hour_sin', 'hour_cos',
             'cpu_utilization_ratio', 'ram_utilization_ratio',
             'cpu_change_rate', 'ram_change_rate', 'request_change_rate',
             'cpu_rolling_std', 'ram_rolling_std',
             'request_rolling_max', 'response_time_rolling_p95',
             'cpu_per_replica', 'ram_per_replica', 'requests_per_replica',
-            'system_pressure'
+            'system_pressure',
+            'is_unstable',
+            'is_incident'
         ]
         
         all_features.extend(engineered_features)
@@ -315,6 +442,9 @@ class DataPreprocessor:
                 data = self.load_local_folder(data_source)
             else:
                 data = self.load_local_data(data_source)
+        
+        # Clean data (NEW: remove invalid/erroneous data points)
+        data = self.clean_data(data)
         
         # Engineer features
         data = self.engineer_features(data)
