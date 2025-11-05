@@ -271,7 +271,12 @@ pipeline{
                             --set console.service.type=LoadBalancer \
                             --set auth.sasl.enabled=false \
                             --set tls.enabled=false \
-                            --set 'statefulset.podTemplate.annotations.cluster-autoscaler\.kubernetes\.io/safe-to-evict="false"'
+                            --set 'statefulset.podTemplate.annotations.cluster-autoscaler\.kubernetes\.io/safe-to-evict="false"' \
+                            --set 'statefulset.nodeSelector.node-type=infrastructure' \
+                            --set 'statefulset.tolerations[0].key=infrastructure' \
+                            --set 'statefulset.tolerations[0].operator=Equal' \
+                            --set 'statefulset.tolerations[0].value=true' \
+                            --set 'statefulset.tolerations[0].effect=NoSchedule'
                         
                         echo "Waiting for Redpanda StatefulSet pod to be ready..."
                         kubectl wait --for=condition=ready pod/redpanda-0 \

@@ -33,9 +33,15 @@ variable "private_subnets" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type for EKS nodes (use types with 'g' for Graviton/ARM, e.g., t4g.medium, m6g.large)"
+  description = "EC2 instance type for EKS application nodes (use types with 'g' for Graviton/ARM, e.g., t4g.medium, m6g.large)"
   type        = string
   default     = "t4g.small"
+}
+
+variable "infra_instance_type" {
+  description = "EC2 instance type for infrastructure nodes (Vault, Redpanda, Collector)"
+  type        = string
+  default     = "t4g.medium"
 }
 
 variable "cluster_version" {

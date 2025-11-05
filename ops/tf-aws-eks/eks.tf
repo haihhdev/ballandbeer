@@ -60,6 +60,62 @@ module "eks" {
 
   # EKS Managed Node Groups
   eks_managed_node_groups = {
+    # Infrastructure Node Group - On-Demand, excluded from autoscaler
+    infrastructure = {
+      name = "${local.name_prefix}-infra-node-group"
+
+      min_size     = 1
+      max_size     = 1
+      desired_size = 1
+
+      instance_types = [var.infra_instance_type]
+      capacity_type  = "ON_DEMAND"
+      ami_type       = local.ami_type
+
+      iam_role_use_name_prefix = false
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 50
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 125
+            encrypted             = true
+            delete_on_termination = true
+          }
+        }
+      }
+
+      labels = {
+        node-type    = "infrastructure"
+        architecture = local.is_graviton ? "arm64" : "amd64"
+        environment  = var.environment
+        managed-by   = "terraform"
+      }
+
+      taints = {
+        infrastructure = {
+          key    = "infrastructure"
+          value  = "true"
+          effect = "NO_SCHEDULE"
+        }
+      }
+
+      tags = merge(
+        local.common_tags,
+        {
+          Name                                              = "${local.name_prefix}-infra-node"
+          Architecture                                      = local.is_graviton ? "ARM64" : "x86_64"
+          NodeType                                          = "infrastructure"
+          "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
+          "k8s.io/cluster-autoscaler/enabled"               = "false"
+        }
+      )
+    }
+
+    # Application Node Group - Spot instances with autoscaling
     main = {
       name = "${local.name_prefix}-node-group"
 
@@ -88,6 +144,7 @@ module "eks" {
       }
 
       labels = {
+        node-type    = "application"
         architecture = local.is_graviton ? "arm64" : "amd64"
         environment  = var.environment
         managed-by   = "terraform"
@@ -98,6 +155,7 @@ module "eks" {
         {
           Name                                              = "${local.name_prefix}-eks-node"
           Architecture                                      = local.is_graviton ? "ARM64" : "x86_64"
+          NodeType                                          = "application"
           "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
           "k8s.io/cluster-autoscaler/enabled"               = "true"
         }

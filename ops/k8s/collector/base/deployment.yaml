@@ -16,6 +16,13 @@ spec:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
+      nodeSelector:
+        node-type: infrastructure
+      tolerations:
+      - key: infrastructure
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
       serviceAccountName: collector-sa
       containers:
       - name: collector
