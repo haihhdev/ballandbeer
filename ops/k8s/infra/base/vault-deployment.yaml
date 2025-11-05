@@ -11,6 +11,8 @@ spec:
     metadata:
       labels:
         app: vault
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       containers:
       - name: vault
@@ -23,6 +25,13 @@ spec:
           value: "root"
         - name: VAULT_DEV_LISTEN_ADDRESS
           value: "0.0.0.0:8200"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         securityContext:
           capabilities:
             add: ["IPC_LOCK"]
