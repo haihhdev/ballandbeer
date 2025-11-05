@@ -19,8 +19,8 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        { duration: '5m', target: 10 },
-        { duration: '55m', target: 15 },
+        { duration: '5m', target: 30 },
+        { duration: '55m', target: 50 },
       ],
       gracefulStop: '30s',
       exec: 'lightBrowsing',
@@ -30,9 +30,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '60m',
       stages: [
-        { duration: '10m', target: 30 },
-        { duration: '170m', target: 40 },
-        { duration: '10m', target: 30 },
+        { duration: '10m', target: 80 },
+        { duration: '170m', target: 120 },
+        { duration: '10m', target: 100 },
       ],
       gracefulStop: '30s',
       exec: 'moderateActivity',
@@ -42,9 +42,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '250m',
       stages: [
-        { duration: '15m', target: 60 },
-        { duration: '165m', target: 80 },
-        { duration: '10m', target: 70 },
+        { duration: '15m', target: 150 },
+        { duration: '165m', target: 250 },
+        { duration: '10m', target: 200 },
       ],
       gracefulStop: '30s',
       exec: 'busyActivity',
@@ -54,12 +54,12 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '440m',
       stages: [
-        { duration: '20m', target: 120 },
-        { duration: '60m', target: 180 },
-        { duration: '60m', target: 200 },
-        { duration: '60m', target: 150 },
+        { duration: '20m', target: 300 },
+        { duration: '60m', target: 450 },
+        { duration: '60m', target: 500 },
+        { duration: '60m', target: 400 },
+        { duration: '20m', target: 250 },
         { duration: '20m', target: 100 },
-        { duration: '20m', target: 50 },
         { duration: '20m', target: 0 },
       ],
       gracefulStop: '30s',
@@ -71,29 +71,29 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        { duration: '5m', target: 5 },    // Morning: light browsing
-        { duration: '55m', target: 10 },  
-        { duration: '10m', target: 15 },  // Midday: moderate
-        { duration: '170m', target: 20 },
-        { duration: '10m', target: 15 },
-        { duration: '15m', target: 25 },  // Afternoon: busy
-        { duration: '165m', target: 30 },
-        { duration: '10m', target: 25 },
-        { duration: '20m', target: 40 },  // Evening: peak browsing
-        { duration: '60m', target: 60 },
-        { duration: '60m', target: 70 },
-        { duration: '60m', target: 50 },
-        { duration: '20m', target: 30 },
-        { duration: '20m', target: 15 },
-        { duration: '20m', target: 5 },
+        { duration: '5m', target: 15 },    // Morning: light browsing
+        { duration: '55m', target: 30 },  
+        { duration: '10m', target: 50 },  // Midday: moderate
+        { duration: '170m', target: 70 },
+        { duration: '10m', target: 60 },
+        { duration: '15m', target: 80 },  // Afternoon: busy
+        { duration: '165m', target: 100 },
+        { duration: '10m', target: 90 },
+        { duration: '20m', target: 120 },  // Evening: peak browsing
+        { duration: '60m', target: 150 },
+        { duration: '60m', target: 180 },
+        { duration: '60m', target: 130 },
+        { duration: '20m', target: 80 },
+        { duration: '20m', target: 40 },
+        { duration: '20m', target: 10 },
       ],
       gracefulStop: '30s',
       exec: 'browseFrontendPages',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<2000'],
-    'errors': ['rate<0.2'],
+    'http_req_duration': ['p(95)<2500'],
+    'errors': ['rate<0.25'],
   },
 };
 
@@ -104,15 +104,15 @@ export function lightBrowsing() {
   };
   
   http.get(`${BASE_URL}/`, { headers });
-  sleep(5);
+  sleep(1);
   
-  if (Math.random() > 0.7) {
+  if (Math.random() > 0.5) {
     http.get(`${BASE_URL}/api/products`, { headers });
-    sleep(4);
+    sleep(0.8);
     
     const productId = Math.floor(Math.random() * 20) + 1;
     http.get(`${BASE_URL}/api/products/${productId}`, { headers });
-    sleep(3);
+    sleep(0.5);
   }
 }
 
@@ -126,14 +126,14 @@ export function moderateActivity() {
   
   if (action < 0.5) {
     http.get(`${BASE_URL}/api/products`, { headers });
-    sleep(3);
+    sleep(0.8);
     
     const productId = Math.floor(Math.random() * 20) + 1;
     http.get(`${BASE_URL}/api/products/${productId}`, { headers });
-    sleep(2);
+    sleep(0.5);
     
     http.get(`${BASE_URL}/api/products/${productId}/comments`, { headers });
-    sleep(2);
+    sleep(0.5);
     
   } else if (action < 0.8) {
     const email = `user${Math.floor(Math.random() * 1000)}@example.com`;
@@ -152,10 +152,10 @@ export function moderateActivity() {
       };
       
       http.get(`${BASE_URL}/api/profile`, { headers: authHeaders });
-      sleep(2);
+      sleep(0.5);
       
       http.get(`${BASE_URL}/api/bookings/my-bookings`, { headers: authHeaders });
-      sleep(2);
+      sleep(0.5);
     }
     
   } else {
@@ -167,7 +167,7 @@ export function moderateActivity() {
       }),
       { headers }
     );
-    sleep(2);
+    sleep(0.8);
   }
 }
 
@@ -193,7 +193,7 @@ export function busyActivity() {
       }),
       { headers }
     );
-    sleep(1);
+    sleep(0.3);
     
     const loginRes = http.post(
       `${BASE_URL}/api/auth/login`,
@@ -230,16 +230,16 @@ export function busyActivity() {
         'booking created': (r) => r.status === 201,
       }) || errorRate.add(1);
       
-      sleep(1);
+      sleep(0.5);
     }
     
   } else if (action < 0.85) {
     http.get(`${BASE_URL}/api/products`, { headers });
-    sleep(2);
+    sleep(0.5);
     
     const productId = Math.floor(Math.random() * 20) + 1;
     http.get(`${BASE_URL}/api/products/${productId}`, { headers });
-    sleep(1);
+    sleep(0.3);
     
     http.post(
       `${BASE_URL}/recommend`,
@@ -249,7 +249,7 @@ export function busyActivity() {
       }),
       { headers }
     );
-    sleep(1);
+    sleep(0.5);
     
   } else {
     const email = `shopper${Math.floor(Math.random() * 500)}@example.com`;
@@ -280,7 +280,7 @@ export function busyActivity() {
         }),
         { headers: authHeaders }
       );
-      sleep(1);
+      sleep(0.5);
     }
   }
 }
@@ -309,7 +309,7 @@ export function peakBooking() {
     'register success or exists': (r) => r.status === 201 || r.status === 400,
   }) || errorRate.add(1);
   
-  sleep(0.5);
+  sleep(0.2);
   
   const loginRes = http.post(
     `${BASE_URL}/api/auth/login`,
@@ -323,7 +323,7 @@ export function peakBooking() {
       'Authorization': `Bearer ${loginRes.json('token')}`,
     };
     
-    sleep(0.5);
+    sleep(0.2);
     
     const bookingDate = new Date();
     const daysAhead = Math.random() > 0.7 ? 0 : Math.floor(Math.random() * 3) + 1;
@@ -359,20 +359,20 @@ export function peakBooking() {
       'peak booking created': (r) => r.status === 201,
     }) || errorRate.add(1);
     
-    sleep(1);
+    sleep(0.3);
     
-    if (Math.random() > 0.6) {
+    if (Math.random() > 0.5) {
       http.get(`${BASE_URL}/api/bookings/my-bookings`, { headers: authHeaders });
-      sleep(0.5);
+      sleep(0.2);
     }
     
-    if (Math.random() > 0.7) {
+    if (Math.random() > 0.6) {
       http.get(`${BASE_URL}/api/products`, { headers: authHeaders });
-      sleep(1);
+      sleep(0.3);
       
       const productId = Math.floor(Math.random() * 20) + 1;
       http.get(`${BASE_URL}/api/products/${productId}`, { headers: authHeaders });
-      sleep(0.5);
+      sleep(0.2);
     }
   } else {
     errorRate.add(1);
@@ -394,43 +394,43 @@ export function browseFrontendPages() {
   if (scenarios < 0.4) {
     const homeRes = http.get(`${BASE_URL}/`, { headers: pageHeaders });
     check(homeRes, { 'homepage loaded': (r) => r.status === 200 });
-    sleep(2);
+    sleep(0.8);
     
   } 
   // Scenario 2: Product browser (30%)
   else if (scenarios < 0.7) {
     const productsRes = http.get(`${BASE_URL}/products`, { headers: pageHeaders });
     check(productsRes, { 'products page loaded': (r) => r.status === 200 });
-    sleep(2);
+    sleep(0.5);
     
     const productId = Math.floor(Math.random() * 20) + 1;
     const productDetailRes = http.get(`${BASE_URL}/productinfo/${productId}`, { headers: pageHeaders });
     check(productDetailRes, { 'product detail loaded': (r) => r.status === 200 });
-    sleep(3);
+    sleep(0.8);
     
   }
   // Scenario 3: Booking browser (20%)
   else if (scenarios < 0.9) {
     const bookingRes = http.get(`${BASE_URL}/booking`, { headers: pageHeaders });
     check(bookingRes, { 'booking page loaded': (r) => r.status === 200 });
-    sleep(2);
+    sleep(0.5);
     
     const field = Math.random() < 0.5 ? 'san7' : 'san5';
     const bookingInfoRes = http.get(`${BASE_URL}/bookinginfo?field=${field}`, { headers: pageHeaders });
     check(bookingInfoRes, { 'booking info loaded': (r) => r.status === 200 });
-    sleep(3);
+    sleep(0.8);
     
   }
   // Scenario 4: Profile/Account pages (10%)
   else {
     const loginRes = http.get(`${BASE_URL}/login`, { headers: pageHeaders });
     check(loginRes, { 'login page loaded': (r) => r.status === 200 });
-    sleep(1);
+    sleep(0.5);
     
     if (Math.random() < 0.5) {
       const registerRes = http.get(`${BASE_URL}/register`, { headers: pageHeaders });
       check(registerRes, { 'register page loaded': (r) => r.status === 200 });
-      sleep(2);
+      sleep(0.5);
     }
   }
 }

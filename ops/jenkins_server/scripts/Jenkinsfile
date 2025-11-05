@@ -1,28 +1,17 @@
 pipeline{
     agent any
     environment {
-        // AWS Credentials
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION = "ap-southeast-1"
-        
-        // EKS Configuration
         CLUSTER_NAME = "ballandbeer-dev-eks"
-        
-        // Repository Configuration
         REPO_URL = "https://github.com/haihhdev/ballandbeer.git"
         BRANCH_NAME = "master"
         GITHUB_TOKEN = credentials('GITHUB_TOKEN')
-        
-        // Terraform Configuration
         TERRAFORM_DIR = "ops/tf-aws-eks"
         TF_VARS_FILE = "variables/dev.tfvars"
-        
-        // Monitoring Configuration
         MONITORING_NAMESPACE = "monitoring"
         KUBE_PROM_VALUES_FILE = "ops/monitoring/kube-prometheus-stack-values.yaml"
-        
-        // ArgoCD Configuration
         ARGOCD_NAMESPACE = "argocd"
         ARGOCD_VALUES_FILE = "ops/argocd/argocd-values.yaml"
     }
@@ -41,28 +30,16 @@ pipeline{
             steps {
                 script {
                     sh """
-                        echo "Cleaning up LoadBalancer services before cluster destroy..."
-                        
-                        # Update kubeconfig
                         aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION} || true
-                        
-                        # Delete LoadBalancer services to trigger AWS ELB cleanup
                         kubectl delete svc argocd-server -n argocd --ignore-not-found=true || true
                         kubectl delete svc redpanda-console -n redpanda --ignore-not-found=true || true
                         kubectl delete svc ingress-nginx-controller -n ingress-nginx --ignore-not-found=true || true
-                        
-                        # Wait for LoadBalancers to be deleted (max 2 minutes)
-                        echo "Waiting for LoadBalancers to be cleaned up..."
                         sleep 30
-                        
-                        # Uninstall Helm releases to ensure clean deletion
                         helm uninstall cluster-autoscaler -n kube-system || true
                         helm uninstall k6-operator -n k6-operator-system || true
                         helm uninstall argocd -n argocd || true
                         helm uninstall redpanda -n redpanda || true
                         helm uninstall kube-prometheus-stack -n monitoring || true
-                        
-                        echo "LoadBalancer cleanup completed"
                     """
                 }
             }
@@ -87,10 +64,7 @@ pipeline{
             }
             steps {
                 script {
-                    sh """
-                        echo "Updating kubeconfig for cluster: ${CLUSTER_NAME}"
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
-                    """
+                    sh "aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
                 }
             }
         }
@@ -102,14 +76,12 @@ pipeline{
             steps {
                 script {
                     sh '''
-                        echo "Adding Helm repositories..."
                         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
                         helm repo add argo https://argoproj.github.io/argo-helm || true
                         helm repo add autoscaler https://kubernetes.github.io/autoscaler || true
                         helm repo add redpanda https://charts.redpanda.com || true
                         helm repo add grafana https://grafana.github.io/helm-charts || true
                         helm repo update
-                        echo "Helm repositories added successfully"
                     '''
                 }
             }
@@ -123,15 +95,26 @@ pipeline{
                 script {
                     sh """
                         kubectl create namespace ${MONITORING_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        echo "Installing kube-prometheus-stack..."
                         helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
                             --namespace ${MONITORING_NAMESPACE} \
                             -f ops/monitoring/kube-prometheus-stack-values.yaml
-                        
-                        echo "Waiting for Grafana to be ready..."
                         kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=grafana" \
                             -n ${MONITORING_NAMESPACE} --timeout=120s
+                    """
+                }
+            }
+        }
+
+        stage('Install K6 Operator') {
+            when {
+                expression { return params.action == 'apply'}
+            }
+            steps {
+                script {
+                    sh """
+                        curl -s https://raw.githubusercontent.com/grafana/k6-operator/main/bundle.yaml | kubectl apply -f -
+                        kubectl wait --for=condition=ready pod -l "control-plane=controller-manager" \
+                            -n k6-operator-system --timeout=120s || true
                     """
                 }
             }
@@ -144,44 +127,15 @@ pipeline{
             steps {
                 script {
                     sh '''
-                        echo "Creating application namespace..."
                         kubectl create namespace ballandbeer --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        echo "Installing NGINX Ingress Controller..."
                         kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/aws/deploy.yaml
-                        
-                        echo "Waiting for Ingress Controller to be ready..."
-                        kubectl wait --namespace ingress-nginx \
-                            --for=condition=ready pod \
-                            --selector=app.kubernetes.io/component=controller \
-                            --timeout=120s || true
-                        
-                        echo "Patching NGINX Ingress Controller to expose metrics port..."
-                        kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type='json' -p='[
-                          {
-                            "op": "add",
-                            "path": "/spec/template/spec/containers/0/ports/-",
-                            "value": {
-                              "containerPort": 10254,
-                              "name": "metrics",
-                              "protocol": "TCP"
-                            }
-                          }
-                        ]' || echo "Metrics port may already exist"
-                        
-                        echo "Enabling metrics in NGINX Ingress Controller args..."
-                        kubectl get deployment ingress-nginx-controller -n ingress-nginx -o json | \
-                          jq '.spec.template.spec.containers[0].args |= map(if . == "--enable-metrics=false" then "--enable-metrics=true" else . end)' | \
-                          kubectl apply -f -
-                        
-                        echo "Configuring NGINX Ingress Controller with metrics enabled..."
+                        kubectl wait --namespace ingress-nginx --for=condition=ready pod \
+                            --selector=app.kubernetes.io/component=controller --timeout=120s || true
                         kubectl apply -f ops/monitoring/nginx-ingress-configmap.yaml
-                        
-                        echo "Setting up NGINX Ingress ServiceMonitor for Prometheus..."
                         kubectl apply -f ops/monitoring/nginx-ingress-servicemonitor.yaml
-                        
-                        echo "Waiting for Ingress Controller rollout to complete..."
-                        kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=120s || true
+                        kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
+                        kubectl wait --namespace ingress-nginx --for=condition=ready pod \
+                            --selector=app.kubernetes.io/component=controller --timeout=120s || true
                     '''
                 }
             }
@@ -194,17 +148,12 @@ pipeline{
             steps {
                 script {
                     sh """
-                        echo "Getting Cluster Autoscaler IAM Role ARN from Terraform..."
                         CA_ROLE_ARN=\$(terraform -chdir=${TERRAFORM_DIR} output -raw cluster_autoscaler_role_arn)
-                        echo "Cluster Autoscaler IAM Role ARN: \${CA_ROLE_ARN}"
-                        
-                        echo "Installing Cluster Autoscaler..."
+                        echo "CA Role ARN: \${CA_ROLE_ARN}"
                         helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
                             --namespace kube-system \
                             -f ops/k8s/infra/cluster-autoscaler-values.yaml \
                             --set rbac.serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"="\${CA_ROLE_ARN}"
-                        
-                        echo "Waiting for Cluster Autoscaler to be ready..."
                         kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=aws-cluster-autoscaler" \
                             -n kube-system --timeout=120s || true
                     """
@@ -219,12 +168,25 @@ pipeline{
             steps {
                 script {
                     sh '''
-                        echo "Installing Metrics Server for HPA support..."
                         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-                        
-                        echo "Waiting for Metrics Server to be ready..."
-                        kubectl wait --for=condition=ready pod -l "k8s-app=metrics-server" \
-                            -n kube-system --timeout=120s || true
+                        kubectl wait --for=condition=ready pod -l "k8s-app=metrics-server" -n kube-system --timeout=120s || true
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy HPA for All Services') {
+            when {
+                expression { return params.action == 'apply'}
+            }
+            steps {
+                script {
+                    sh '''
+                        for service in authen booking order product profile frontend recommender; do
+                            kubectl apply -f ops/k8s/$service/base/hpa.yaml -n ballandbeer || true
+                        done
+                        sleep 5
+                        kubectl get hpa -n ballandbeer || true
                     '''
                 }
             }
@@ -238,13 +200,8 @@ pipeline{
                 script {
                     sh """
                         kubectl create namespace ${ARGOCD_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        echo "Installing ArgoCD..."
                         helm upgrade --install argocd argo/argo-cd \
-                            --namespace ${ARGOCD_NAMESPACE} \
-                            -f ${ARGOCD_VALUES_FILE}
-                        
-                        echo "Waiting for ArgoCD server to be ready..."
+                            --namespace ${ARGOCD_NAMESPACE} -f ${ARGOCD_VALUES_FILE}
                         kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=argocd-server" \
                             -n ${ARGOCD_NAMESPACE} --timeout=120s
                     """
@@ -260,30 +217,13 @@ pipeline{
                 script {
                     sh """
                         kubectl create namespace redpanda --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        echo "Installing Redpanda..."
-                        helm upgrade --install redpanda redpanda/redpanda \
-                            --namespace redpanda \
-                            --set statefulset.replicas=1 \
-                            --set storage.persistentVolume.storageClass=gp3 \
-                            --set storage.persistentVolume.size=50Gi \
-                            --set console.enabled=true \
-                            --set console.service.type=LoadBalancer \
-                            --set auth.sasl.enabled=false \
-                            --set tls.enabled=false \
-                            --set 'statefulset.podTemplate.annotations.cluster-autoscaler\.kubernetes\.io/safe-to-evict="false"' \
-                            --set 'statefulset.nodeSelector.node-type=infrastructure' \
-                            --set 'statefulset.tolerations[0].key=infrastructure' \
-                            --set 'statefulset.tolerations[0].operator=Equal' \
-                            --set 'statefulset.tolerations[0].value=true' \
-                            --set 'statefulset.tolerations[0].effect=NoSchedule'
-                        
-                        echo "Waiting for Redpanda StatefulSet pod to be ready..."
-                        kubectl wait --for=condition=ready pod/redpanda-0 \
-                            -n redpanda --timeout=300s
-                        
-                        echo "Creating order-topic..."
-                        kubectl exec -n redpanda redpanda-0 -- rpk topic create order-topic --brokers=localhost:9093 || echo "Topic may already exist"
+                        helm upgrade --install redpanda redpanda/redpanda --namespace redpanda \
+                            --set statefulset.replicas=1 --set storage.persistentVolume.storageClass=gp3 \
+                            --set storage.persistentVolume.size=50Gi --set console.enabled=true \
+                            --set console.service.type=LoadBalancer --set auth.sasl.enabled=false \
+                            --set tls.enabled=false
+                        kubectl wait --for=condition=ready pod/redpanda-0 -n redpanda --timeout=300s
+                        kubectl exec -n redpanda redpanda-0 -- rpk topic create order-topic --brokers=localhost:9093 || true
                     """
                 }
             }
@@ -295,26 +235,12 @@ pipeline{
             }
             steps {
                 script {
-                    def apps = [
-                        'authen',
-                        'booking',
-                        'order',
-                        'product',
-                        'profile',
-                        'frontend',
-                        'recommender',
-                        'infra',
-                        'collector'
-                    ]
-
+                    def apps = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'recommender', 'infra', 'collector']
                     for (svc in apps) {
-                        def appFile = "ops/k8s/${svc}/overlays/dev/argocd-app.yaml"
-                        echo "Applying ArgoCD app for: ${svc}"
                         try {
-                            sh "kubectl apply -f ${appFile} -n argocd"
-                            echo "Successfully deployed ${svc} application"
+                            sh "kubectl apply -f ops/k8s/${svc}/overlays/dev/argocd-app.yaml -n argocd"
                         } catch (Exception e) {
-                            echo "Failed to deploy ${svc} application: ${e.message}"
+                            echo "Failed to deploy ${svc}: ${e.message}"
                             currentBuild.result = 'UNSTABLE'
                         }
                     }
@@ -329,30 +255,12 @@ pipeline{
             steps {
                 script {
                     sh '''
-                        echo "Setting up K6 PriorityClass..."
-                        kubectl apply -f services/collector/k6/k6-priorityclass.yaml
-                        
-                        echo "Setting up K6 load test ConfigMaps..."
-                        
-                        # Create ConfigMap for weekday traffic script
-                        kubectl create configmap k6-weekday-script \
-                            -n ballandbeer \
+                        kubectl create configmap k6-weekday-script -n ballandbeer \
                             --from-file=weekday-traffic.js=services/collector/k6/weekday-traffic.js \
                             --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        # Create ConfigMap for weekend traffic script
-                        kubectl create configmap k6-weekend-script \
-                            -n ballandbeer \
+                        kubectl create configmap k6-weekend-script -n ballandbeer \
                             --from-file=weekend-traffic.js=services/collector/k6/weekend-traffic.js \
                             --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        echo "K6 infrastructure setup completed"
-                        echo ""
-                        echo "================================================"
-                        echo "To run K6 load tests:"
-                        echo "  - Weekday: kubectl apply -f services/collector/k6/k6-weekday-job.yaml"
-                        echo "  - Weekend: kubectl apply -f services/collector/k6/k6-weekend-job.yaml"
-                        echo "================================================"
                     '''
                 }
             }
@@ -366,29 +274,17 @@ pipeline{
                 script {
                     def jenkinsUrl = "http://your-jenkins-url"
                     def webhookUrl = "${jenkinsUrl}/github-webhook/"
-                    
-                    echo "Setting up GitHub webhook..."
                     sh """
-                        curl -X POST \
-                        -H "Authorization: token ${GITHUB_TOKEN}" \
+                        curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
                         -H "Accept: application/vnd.github.v3+json" \
                         https://api.github.com/repos/haihhdev/ballandbeer/hooks \
-                        -d '{
-                            "name": "web",
-                            "active": true,
-                            "events": ["push", "pull_request"],
-                            "config": {
-                                "url": "${webhookUrl}",
-                                "content_type": "json",
-                                "insecure_ssl": "0"
-                            }
-                        }' || echo "Webhook may already exist or failed to create"
+                        -d '{"name":"web","active":true,"events":["push","pull_request"],"config":{"url":"${webhookUrl}","content_type":"json","insecure_ssl":"0"}}' || true
                     """
                 }
             }
         }
 
-        stage('Show LoadBalancer URLs') {
+        stage('Show Cluster Info') {
             when {
                 expression { return params.action == 'apply'}
             }
@@ -396,39 +292,33 @@ pipeline{
                 script {
                     sh '''
                         kubectl apply -f ops/k8s/ingress.yaml -n ballandbeer
-
-                        echo "\n=========================================="
-                        echo "GRAFANA ACCESS"
-                        echo "=========================================="
-                        echo "Getting Grafana admin password..."
-                        GRAFANA_PASSWORD=$(kubectl get secret kube-prometheus-stack-grafana \
-                            -n monitoring -o jsonpath="{.data.admin-password}" | base64 -d)
-                        echo "Grafana Admin Password: $GRAFANA_PASSWORD"
-                        echo "Access Grafana: kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80"
-                        echo "Then open: http://localhost:3000"
                         
-                        echo "\n=========================================="
-                        echo "ARGOCD ACCESS"
-                        echo "=========================================="
-                        echo "Getting ArgoCD admin password..."
-                        ARGOCD_PASSWORD=$(kubectl get secret -n argocd argocd-initial-admin-secret \
-                            -o jsonpath="{.data.password}" | base64 -d)
-                        echo "ArgoCD Admin Password: $ARGOCD_PASSWORD"
-                        echo "Getting ArgoCD LoadBalancer URL..."
-                        ARGOCD_URL=$(kubectl get svc argocd-server -n argocd \
-                            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-                        echo "ArgoCD URL: http://$ARGOCD_URL"
+                        echo "\n========== ACCESS INFO =========="
+                        GRAFANA_PASS=$(kubectl get secret kube-prometheus-stack-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 -d)
+                        echo "Grafana Password: $GRAFANA_PASS"
                         
-                        echo "\n=========================================="
-                        echo "INGRESS NGINX LOADBALANCER URL"
-                        echo "=========================================="
-                        kubectl get svc ingress-nginx-controller -n ingress-nginx -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
-
-                        echo "\n=========================================="
-                        echo "REDPANDA CONSOLE LOADBALANCER URL"
-                        echo "=========================================="
-                        kubectl get svc redpanda-console -n redpanda -o 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
-                        echo ""
+                        ARGOCD_PASS=$(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+                        echo "ArgoCD Password: $ARGOCD_PASS"
+                        
+                        ARGOCD_URL=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                        echo "ArgoCD URL: $ARGOCD_URL"
+                        
+                        INGRESS_URL=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                        echo "Ingress URL: $INGRESS_URL"
+                        
+                        REDPANDA_URL=$(kubectl get svc redpanda-console -n redpanda -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                        echo "Redpanda URL: $REDPANDA_URL"
+                        
+                        echo "\nGrafana: http://localhost:3000 (admin/$GRAFANA_PASS)"
+                        echo "  Port-forward: kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80"
+                        echo "ArgoCD: http://$ARGOCD_URL (admin/$ARGOCD_PASS)"
+                        echo "Ingress: $INGRESS_URL"
+                        echo "Redpanda: $REDPANDA_URL"
+                        
+                        echo "\n========== HPA STATUS =========="
+                        kubectl get hpa -n ballandbeer
+                        echo "\nTrigger scaling: kubectl apply -f services/collector/k6/k6-weekday-test.yaml"
+                        echo "Monitor: kubectl get hpa -n ballandbeer -w"
                     '''
                 }
             }

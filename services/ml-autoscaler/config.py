@@ -47,12 +47,6 @@ FEATURE_COLUMNS = [
     'node_memory_pressure_flag',
 ]
 
-# Minimal time features (only hour for basic cyclical pattern)
-OPTIONAL_TIME_FEATURES = [
-    'hour_sin',  # sin(hour * 2π / 24) - cyclical encoding
-    'hour_cos',  # cos(hour * 2π / 24) - cyclical encoding
-]
-
 # Target column
 TARGET_COLUMN = 'replica_count'
 
@@ -67,11 +61,11 @@ RANDOM_FOREST_PARAMS = {
 }
 
 LSTM_CNN_PARAMS = {
-    'sequence_length': 12,  # Use last 12 time steps (6 minutes of data at 30s interval)
-    'lstm_units': 128,
-    'cnn_filters': 64,
+    'sequence_length': 6,  # Reduced from 12: Use last 6 time steps (3 minutes) for less temporal dependency
+    'lstm_units': 96,      # Reduced: Less emphasis on temporal patterns
+    'cnn_filters': 96,     # Increased: More emphasis on spatial patterns
     'cnn_kernel_size': 3,
-    'dense_units': 64,
+    'dense_units': 128,    # Increased: Better pattern recognition in final layers
     'dropout_rate': 0.3,
     'learning_rate': 0.001,
     'batch_size': 64,
@@ -91,17 +85,23 @@ PLOTS_OUTPUT_DIR = BASE_DIR / 'plots'
 COMPARISON_OUTPUT_DIR = BASE_DIR / 'training' / 'comparison_results'
 
 # Scaling thresholds for determining when to scale
+# IMPORTANT: These are MORE AGGRESSIVE than cluster-autoscaler to enable PROACTIVE scaling
+# Goal: Scale BEFORE cluster-autoscaler reacts (predict 5 minutes ahead)
 SCALE_UP_THRESHOLDS = {
-    'cpu_usage_percent': 70,
-    'ram_usage_percent': 75,
-    'response_time_ms': 500,
-    'error_rate': 0.05
+    'cpu_usage_percent': 60,     # Lower than typical 70-80% - scale earlier
+    'ram_usage_percent': 65,     # Lower than typical 75-80% - scale earlier
+    'response_time_ms': 400,     # Lower than typical 500ms - detect slowdown earlier
+    'error_rate': 0.03           # Lower than typical 0.05 - catch errors earlier
 }
 
 SCALE_DOWN_THRESHOLDS = {
-    'cpu_usage_percent': 30,
-    'ram_usage_percent': 35,
-    'response_time_ms': 100,
-    'request_count_per_second': 1
+    'cpu_usage_percent': 25,     # More conservative than 30% - avoid thrashing
+    'ram_usage_percent': 30,     # More conservative - avoid thrashing
+    'response_time_ms': 80,      # Only scale down when really underutilized
+    'request_count_per_second': 0.5  # Very low traffic
 }
+
+# Proactive scaling parameters
+LOOKAHEAD_MINUTES = 5            # Predict 5 minutes into the future
+LOOKAHEAD_SAMPLES = 10           # At 30s interval, 10 samples = 5 minutes
 

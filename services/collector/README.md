@@ -53,3 +53,21 @@ kubectl logs -n ballandbeer deployment/collector -f
 aws s3 ls s3://ballandbeer-metrics/metrics/ --recursive
 ```
 
+## Load Testing with K6
+
+To collect meaningful scaling data, run K6 load tests:
+
+```bash
+# Trigger HPA scaling with weekday traffic
+kubectl apply -f k6/k6-weekday-job.yaml
+
+# Monitor HPA and pod scaling
+watch kubectl get hpa -n ballandbeer
+kubectl top pods -n ballandbeer
+
+# Check collected metrics
+aws s3 ls s3://ballandbeer-metrics/metrics/ --recursive
+```
+
+See `k6/README.md` for detailed load testing scenarios.
+

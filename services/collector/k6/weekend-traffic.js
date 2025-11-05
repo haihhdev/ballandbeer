@@ -20,9 +20,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        { duration: '5m', target: 40 },   // Ramp up nhanh
-        { duration: '25m', target: 60 },  // Duy trì cao
-        { duration: '10m', target: 50 },  // Giảm nhẹ
+        { duration: '5m', target: 80 },
+        { duration: '25m', target: 120 },
+        { duration: '10m', target: 100 },
       ],
       gracefulStop: '30s',
       exec: 'morningBooking',
@@ -33,9 +33,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '40m',
       stages: [
-        { duration: '10m', target: 80 },
-        { duration: '80m', target: 100 },
-        { duration: '10m', target: 70 },
+        { duration: '10m', target: 150 },
+        { duration: '80m', target: 200 },
+        { duration: '10m', target: 170 },
       ],
       gracefulStop: '30s',
       exec: 'peakBooking',
@@ -46,9 +46,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '140m',
       stages: [
-        { duration: '10m', target: 50 },
-        { duration: '50m', target: 60 },
-        { duration: '10m', target: 55 },
+        { duration: '10m', target: 100 },
+        { duration: '50m', target: 130 },
+        { duration: '10m', target: 120 },
       ],
       gracefulStop: '30s',
       exec: 'moderateActivity',
@@ -59,9 +59,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '210m',
       stages: [
-        { duration: '15m', target: 80 },
-        { duration: '100m', target: 120 },
-        { duration: '15m', target: 110 },
+        { duration: '15m', target: 180 },
+        { duration: '100m', target: 280 },
+        { duration: '15m', target: 250 },
       ],
       gracefulStop: '30s',
       exec: 'busyActivity',
@@ -72,13 +72,13 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '340m',
       stages: [
-        { duration: '20m', target: 150 },
-        { duration: '40m', target: 250 },
-        { duration: '80m', target: 300 },  // Peak tối đa
-        { duration: '60m', target: 250 },
-        { duration: '40m', target: 180 },
-        { duration: '30m', target: 100 },
-        { duration: '20m', target: 50 },
+        { duration: '20m', target: 350 },
+        { duration: '40m', target: 500 },
+        { duration: '80m', target: 600 },
+        { duration: '60m', target: 500 },
+        { duration: '40m', target: 350 },
+        { duration: '30m', target: 200 },
+        { duration: '20m', target: 80 },
         { duration: '10m', target: 0 },
       ],
       gracefulStop: '30s',
@@ -90,9 +90,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '60m',
       stages: [
-        { duration: '20m', target: 30 },
-        { duration: '300m', target: 50 },
-        { duration: '20m', target: 20 },
+        { duration: '20m', target: 60 },
+        { duration: '300m', target: 100 },
+        { duration: '20m', target: 40 },
       ],
       gracefulStop: '30s',
       exec: 'shoppingActivity',
@@ -103,17 +103,17 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        { duration: '10m', target: 20 },
-        { duration: '600m', target: 40 },
-        { duration: '10m', target: 10 },
+        { duration: '10m', target: 50 },
+        { duration: '600m', target: 100 },
+        { duration: '10m', target: 30 },
       ],
       gracefulStop: '30s',
       exec: 'browseFrontendPages',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<2500'],  // Cho phép threshold cao hơn do traffic lớn
-    'errors': ['rate<0.15'],
+    'http_req_duration': ['p(95)<3000'],
+    'errors': ['rate<0.20'],
   },
 };
 
@@ -138,7 +138,7 @@ export function morningBooking() {
     { headers }
   );
   
-  sleep(0.5);
+  sleep(0.2);
   
   const loginRes = http.post(
     `${BASE_URL}/api/auth/login`,
@@ -152,7 +152,7 @@ export function morningBooking() {
       'Authorization': `Bearer ${loginRes.json('token')}`,
     };
     
-    sleep(0.5);
+    sleep(0.2);
     
     // Đặt sân buổi sáng (7:00-11:00)
     const bookingDate = new Date();
@@ -189,7 +189,7 @@ export function morningBooking() {
       'morning booking created': (r) => r.status === 201,
     }) || errorRate.add(1);
     
-    sleep(1);
+    sleep(0.3);
   }
 }
 
@@ -204,14 +204,14 @@ export function moderateActivity() {
   if (action < 0.4) {
     // Browse products
     http.get(`${BASE_URL}/api/products`, { headers });
-    sleep(2);
+    sleep(0.5);
     
     const productId = Math.floor(Math.random() * 20) + 1;
     http.get(`${BASE_URL}/api/products/${productId}`, { headers });
-    sleep(2);
+    sleep(0.5);
     
     http.get(`${BASE_URL}/api/products/${productId}/comments`, { headers });
-    sleep(2);
+    sleep(0.5);
     
   } else if (action < 0.7) {
     // Check existing bookings
@@ -231,10 +231,10 @@ export function moderateActivity() {
       };
       
       http.get(`${BASE_URL}/api/bookings/my-bookings`, { headers: authHeaders });
-      sleep(2);
+      sleep(0.3);
       
       http.get(`${BASE_URL}/api/profile`, { headers: authHeaders });
-      sleep(2);
+      sleep(0.3);
     }
     
   } else {
@@ -247,7 +247,7 @@ export function moderateActivity() {
       }),
       { headers }
     );
-    sleep(2);
+    sleep(0.5);
   }
 }
 
@@ -274,7 +274,7 @@ export function busyActivity() {
       }),
       { headers }
     );
-    sleep(0.5);
+    sleep(0.2);
     
     const loginRes = http.post(
       `${BASE_URL}/api/auth/login`,
@@ -320,13 +320,13 @@ export function busyActivity() {
         'afternoon booking created': (r) => r.status === 201,
       }) || errorRate.add(1);
       
-      sleep(1);
+      sleep(0.3);
     }
     
   } else {
     // Browse and get recommendations
     http.get(`${BASE_URL}/api/products`, { headers });
-    sleep(1);
+    sleep(0.3);
     
     http.post(
       `${BASE_URL}/recommend`,
@@ -336,7 +336,7 @@ export function busyActivity() {
       }),
       { headers }
     );
-    sleep(1);
+    sleep(0.5);
   }
 }
 
@@ -364,7 +364,7 @@ export function peakBooking() {
     'register success or exists': (r) => r.status === 201 || r.status === 400,
   }) || errorRate.add(1);
   
-  sleep(0.3);
+  sleep(0.2);
   
   const loginRes = http.post(
     `${BASE_URL}/api/auth/login`,
@@ -378,7 +378,7 @@ export function peakBooking() {
       'Authorization': `Bearer ${loginRes.json('token')}`,
     };
     
-    sleep(0.3);
+    sleep(0.2);
     
     const bookingDate = new Date();
     const daysAhead = Math.random() > 0.6 ? 0 : Math.floor(Math.random() * 4) + 1;
@@ -414,11 +414,11 @@ export function peakBooking() {
       'peak booking created': (r) => r.status === 201,
     }) || errorRate.add(1);
     
-    sleep(0.5);
+    sleep(0.3);
     
     if (Math.random() > 0.5) {
       http.get(`${BASE_URL}/api/bookings/my-bookings`, { headers: authHeaders });
-      sleep(0.3);
+      sleep(0.2);
     }
   }
 }
@@ -447,7 +447,7 @@ export function superPeakBooking() {
     'register success or exists': (r) => r.status === 201 || r.status === 400,
   }) || errorRate.add(1);
   
-  sleep(0.2);
+  sleep(0.15);
   
   const loginRes = http.post(
     `${BASE_URL}/api/auth/login`,
@@ -498,23 +498,23 @@ export function superPeakBooking() {
       'super peak booking created': (r) => r.status === 201,
     }) || errorRate.add(1);
     
-    sleep(0.5);
-    
-    if (Math.random() > 0.6) {
-      http.get(`${BASE_URL}/api/bookings/my-bookings`, { headers: authHeaders });
-      sleep(0.3);
-    }
+    sleep(0.2);
     
     if (Math.random() > 0.5) {
+      http.get(`${BASE_URL}/api/bookings/my-bookings`, { headers: authHeaders });
+      sleep(0.2);
+    }
+    
+    if (Math.random() > 0.4) {
       http.get(`${BASE_URL}/api/products`, { headers: authHeaders });
-      sleep(0.5);
+      sleep(0.2);
       
       const productId = Math.floor(Math.random() * 20) + 1;
       http.get(`${BASE_URL}/api/products/${productId}`, { headers: authHeaders });
-      sleep(0.3);
+      sleep(0.2);
       
       // Có thể thêm vào giỏ hàng
-      if (Math.random() > 0.7) {
+      if (Math.random() > 0.6) {
         http.post(
           `${BASE_URL}/recommend`,
           JSON.stringify({
@@ -523,7 +523,7 @@ export function superPeakBooking() {
           }),
           { headers: authHeaders }
         );
-        sleep(0.3);
+        sleep(0.2);
       }
     }
   } else {
@@ -547,7 +547,7 @@ export function browseFrontendPages() {
     // Load homepage - Frontend will serve HTML/CSS/JS
     const homeRes = http.get(`${BASE_URL}/`, { headers: pageHeaders });
     check(homeRes, { 'homepage loaded': (r) => r.status === 200 });
-    sleep(2);
+    sleep(0.5);
     
   } 
   // Scenario 2: Product browser (30%)
@@ -555,13 +555,13 @@ export function browseFrontendPages() {
     // Visit products page - Frontend serves page, then calls /api/products
     const productsRes = http.get(`${BASE_URL}/products`, { headers: pageHeaders });
     check(productsRes, { 'products page loaded': (r) => r.status === 200 });
-    sleep(2);
+    sleep(0.4);
     
     // View product detail
     const productId = Math.floor(Math.random() * 20) + 1;
     const productDetailRes = http.get(`${BASE_URL}/productinfo/${productId}`, { headers: pageHeaders });
     check(productDetailRes, { 'product detail loaded': (r) => r.status === 200 });
-    sleep(3);
+    sleep(0.6);
     
   }
   // Scenario 3: Booking browser (20%)
@@ -569,13 +569,13 @@ export function browseFrontendPages() {
     // Visit booking page - Frontend serves videos/HTML
     const bookingRes = http.get(`${BASE_URL}/booking`, { headers: pageHeaders });
     check(bookingRes, { 'booking page loaded': (r) => r.status === 200 });
-    sleep(2);
+    sleep(0.4);
     
     // Visit booking info
     const field = Math.random() < 0.5 ? 'san7' : 'san5';
     const bookingInfoRes = http.get(`${BASE_URL}/bookinginfo?field=${field}`, { headers: pageHeaders });
     check(bookingInfoRes, { 'booking info loaded': (r) => r.status === 200 });
-    sleep(3);
+    sleep(0.6);
     
   }
   // Scenario 4: Profile/Account pages (10%)
@@ -583,13 +583,13 @@ export function browseFrontendPages() {
     // Visit login page - Frontend serves form
     const loginRes = http.get(`${BASE_URL}/login`, { headers: pageHeaders });
     check(loginRes, { 'login page loaded': (r) => r.status === 200 });
-    sleep(1);
+    sleep(0.3);
     
     // Or visit register page
     if (Math.random() < 0.5) {
       const registerRes = http.get(`${BASE_URL}/register`, { headers: pageHeaders });
       check(registerRes, { 'register page loaded': (r) => r.status === 200 });
-      sleep(2);
+      sleep(0.4);
     }
   }
 }
@@ -605,14 +605,14 @@ export function shoppingActivity() {
   if (action < 0.6) {
     // Browse products extensively
     http.get(`${BASE_URL}/api/products`, { headers });
-    sleep(2);
+    sleep(0.4);
     
     const productId = Math.floor(Math.random() * 20) + 1;
     http.get(`${BASE_URL}/api/products/${productId}`, { headers });
-    sleep(1.5);
+    sleep(0.3);
     
     http.get(`${BASE_URL}/api/products/${productId}/comments`, { headers });
-    sleep(1);
+    sleep(0.2);
     
     // Get recommendations
     http.post(
@@ -623,7 +623,7 @@ export function shoppingActivity() {
       }),
       { headers }
     );
-    sleep(1);
+    sleep(0.4);
     
   } else {
     // Make purchase
@@ -641,7 +641,7 @@ export function shoppingActivity() {
       { headers }
     );
     
-    sleep(0.5);
+    sleep(0.2);
     
     const loginRes = http.post(
       `${BASE_URL}/api/auth/login`,
@@ -657,7 +657,7 @@ export function shoppingActivity() {
       
       // Browse products
       http.get(`${BASE_URL}/api/products`, { headers: authHeaders });
-      sleep(1);
+      sleep(0.3);
       
       // Create order
       const numProducts = Math.floor(Math.random() * 3) + 1;
@@ -685,7 +685,7 @@ export function shoppingActivity() {
         'order created': (r) => r.status === 201 || r.status === 200,
       }) || errorRate.add(1);
       
-      sleep(1);
+      sleep(0.3);
     }
   }
 }
