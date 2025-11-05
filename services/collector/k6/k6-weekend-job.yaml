@@ -13,6 +13,19 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       restartPolicy: Never
+      priorityClassName: k6-high-priority
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - collector
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: k6
         image: grafana/k6:latest

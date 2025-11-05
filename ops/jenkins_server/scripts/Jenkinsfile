@@ -248,7 +248,7 @@ pipeline{
             }
         }
 
-        stage('Setup K6 Load Test Scripts') {
+        stage('Setup K6 Load Test Infrastructure') {
             when {
                 expression { return params.action == 'apply'}
             }

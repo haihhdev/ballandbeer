@@ -10,9 +10,22 @@ spec:
       labels:
         app: k6-weekday
       annotations:
-        cluster-autoscaler.kubernetes.io/safe-to-evict: "false" # Prevent eviction by cluster autoscaler
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       restartPolicy: Never
+      priorityClassName: k6-high-priority
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - collector
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: k6
         image: grafana/k6:latest
@@ -22,6 +35,13 @@ spec:
           - --env
           - BASE_URL=
           - /scripts/weekday-traffic.js
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
         volumeMounts:
         - name: k6-script
           mountPath: /scripts
