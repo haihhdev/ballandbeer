@@ -22,6 +22,17 @@ extraArgs:
   expander: least-waste
   balance-similar-node-groups: true
   skip-nodes-with-system-pods: false
+  scale-down-enabled: true
+  scale-down-unneeded-time: 20m
+  scale-down-delay-after-add: 15m
+  scale-down-delay-after-delete: 10m
+  scale-down-utilization-threshold: 0.4
+  max-node-provision-time: 15m
+  scan-interval: 10s
+  max-graceful-termination-sec: 600
+  max-total-nodes: 5
+  cores-total: 0:10
+  memory-total: 0:20480
 
 resources:
   limits:
