@@ -30,9 +30,6 @@ extraArgs:
   max-node-provision-time: 15m
   scan-interval: 10s
   max-graceful-termination-sec: 600
-  max-total-nodes: 5
-  cores-total: 0:10
-  memory-total: 0:20480
 
 resources:
   limits:

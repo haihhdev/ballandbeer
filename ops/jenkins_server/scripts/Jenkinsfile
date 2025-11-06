@@ -177,6 +177,7 @@ pipeline{
                         CA_ROLE_ARN=\$(terraform -chdir=${TERRAFORM_DIR} output -raw cluster_autoscaler_role_arn)
                         echo "CA Role ARN: \${CA_ROLE_ARN}"
                         helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
+                            --version 9.51.0 \
                             --namespace kube-system \
                             -f ops/k8s/infra/cluster-autoscaler-values.yaml \
                             --set rbac.serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"="\${CA_ROLE_ARN}"
