@@ -23,6 +23,15 @@ spec:
         operator: Equal
         value: "true"
         effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: collector
+              topologyKey: kubernetes.io/hostname
       serviceAccountName: collector-sa
       containers:
       - name: collector

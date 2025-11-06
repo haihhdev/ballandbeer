@@ -14,6 +14,13 @@ spec:
     spec:
       restartPolicy: Never
       priorityClassName: k6-high-priority
+      nodeSelector:
+        node-type: infrastructure
+      tolerations:
+      - key: infrastructure
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

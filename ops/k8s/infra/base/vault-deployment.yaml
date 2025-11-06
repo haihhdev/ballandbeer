@@ -21,6 +21,15 @@ spec:
         operator: Equal
         value: "true"
         effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: vault
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: vault
         image: hashicorp/vault:latest

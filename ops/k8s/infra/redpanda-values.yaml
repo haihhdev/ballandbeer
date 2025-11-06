@@ -1,0 +1,67 @@
+# Redpanda Configuration
+statefulset:
+  replicas: 1
+  
+  # Pod placement configuration
+  podTemplate:
+    spec:
+      nodeSelector:
+        node-type: infrastructure
+      
+      tolerations:
+      - key: infrastructure
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: redpanda
+              topologyKey: kubernetes.io/hostname
+
+# Storage configuration
+storage:
+  persistentVolume:
+    enabled: true
+    storageClass: gp3
+    size: 50Gi
+
+# Redpanda Console - Web UI
+console:
+  enabled: true
+  service:
+    type: LoadBalancer
+  
+  # Deploy console on infrastructure node group
+  nodeSelector:
+    node-type: infrastructure
+  
+  tolerations:
+  - key: infrastructure
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+  
+  # Anti-affinity to spread across infrastructure nodes
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: console
+          topologyKey: kubernetes.io/hostname
+
+# Security settings - disabled for dev environment
+auth:
+  sasl:
+    enabled: false
+
+tls:
+  enabled: false

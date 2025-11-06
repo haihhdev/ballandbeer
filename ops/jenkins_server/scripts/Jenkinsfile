@@ -133,9 +133,35 @@ pipeline{
                             --selector=app.kubernetes.io/component=controller --timeout=120s || true
                         kubectl apply -f ops/monitoring/nginx-ingress-configmap.yaml
                         kubectl apply -f ops/monitoring/nginx-ingress-servicemonitor.yaml
-                        kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
                         kubectl wait --namespace ingress-nginx --for=condition=ready pod \
                             --selector=app.kubernetes.io/component=controller --timeout=120s || true
+                    '''
+                }
+            }
+        }
+
+        stage('Enable Nginx Metrics') {
+            when {
+                expression { return params.action == 'apply'}
+            }
+            steps {
+                script {
+                    sh '''
+                        kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type='json' -p='[
+                            {
+                                "op": "add",
+                                "path": "/spec/template/spec/containers/0/ports/-",
+                                "value": {
+                                "containerPort": 10254,
+                                "name": "metrics",
+                                "protocol": "TCP"
+                                }
+                            }
+                        ]'
+                        kubectl get deployment ingress-nginx-controller -n ingress-nginx -o json | \
+                        jq '.spec.template.spec.containers[0].args |= map(if . == "--enable-metrics=false" then "--enable-metrics=true" else . end)' | \
+                        kubectl apply -f -
+                        kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=2m
                     '''
                 }
             }
@@ -175,23 +201,6 @@ pipeline{
             }
         }
 
-        stage('Deploy HPA for All Services') {
-            when {
-                expression { return params.action == 'apply'}
-            }
-            steps {
-                script {
-                    sh '''
-                        for service in authen booking order product profile frontend recommender; do
-                            kubectl apply -f ops/k8s/$service/base/hpa.yaml -n ballandbeer || true
-                        done
-                        sleep 5
-                        kubectl get hpa -n ballandbeer || true
-                    '''
-                }
-            }
-        }
-
         stage('Install ArgoCD') {
             when {
                 expression { return params.action == 'apply'}
@@ -217,11 +226,9 @@ pipeline{
                 script {
                     sh """
                         kubectl create namespace redpanda --dry-run=client -o yaml | kubectl apply -f -
-                        helm upgrade --install redpanda redpanda/redpanda --namespace redpanda \
-                            --set statefulset.replicas=1 --set storage.persistentVolume.storageClass=gp3 \
-                            --set storage.persistentVolume.size=50Gi --set console.enabled=true \
-                            --set console.service.type=LoadBalancer --set auth.sasl.enabled=false \
-                            --set tls.enabled=false
+                        helm upgrade --install redpanda redpanda/redpanda \
+                            --namespace redpanda \
+                            -f ops/k8s/infra/redpanda-values.yaml
                         kubectl wait --for=condition=ready pod/redpanda-0 -n redpanda --timeout=300s
                         kubectl exec -n redpanda redpanda-0 -- rpk topic create order-topic --brokers=localhost:9093 || true
                     """
@@ -255,6 +262,7 @@ pipeline{
             steps {
                 script {
                     sh '''
+                        kubectl apply -f services/collector/k6/k6-priorityclass.yaml
                         kubectl create configmap k6-weekday-script -n ballandbeer \
                             --from-file=weekday-traffic.js=services/collector/k6/weekday-traffic.js \
                             --dry-run=client -o yaml | kubectl apply -f -
