@@ -10,7 +10,7 @@ spec:
     targetRevision: master
     path: ops/k8s/recommender/overlays/dev
   destination:
-    server: 'https://kubernetes.default.svc'
+    server: https://kubernetes.default.svc
     namespace: ballandbeer
   syncPolicy:
     automated:
@@ -18,3 +18,8 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
