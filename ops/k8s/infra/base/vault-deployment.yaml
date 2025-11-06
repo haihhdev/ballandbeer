@@ -41,6 +41,9 @@ spec:
           value: "root"
         - name: VAULT_DEV_LISTEN_ADDRESS
           value: "0.0.0.0:8200"
+        volumeMounts:
+        - name: vault-data
+          mountPath: /vault/file
         resources:
           requests:
             cpu: 100m
@@ -51,3 +54,7 @@ spec:
         securityContext:
           capabilities:
             add: ["IPC_LOCK"]
+      volumes:
+      - name: vault-data
+        persistentVolumeClaim:
+          claimName: vault-pvc
