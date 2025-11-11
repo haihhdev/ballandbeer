@@ -86,7 +86,7 @@ COMPARISON_OUTPUT_DIR = BASE_DIR / 'training' / 'comparison_results'
 
 # Scaling thresholds for determining when to scale
 # IMPORTANT: These are MORE AGGRESSIVE than cluster-autoscaler to enable PROACTIVE scaling
-# Goal: Scale BEFORE cluster-autoscaler reacts (predict 5 minutes ahead)
+# Goal: Scale BEFORE cluster-autoscaler reacts (predict 10 minutes ahead)
 SCALE_UP_THRESHOLDS = {
     'cpu_usage_percent': 60,     # Lower than typical 70-80% - scale earlier
     'ram_usage_percent': 65,     # Lower than typical 75-80% - scale earlier
@@ -102,6 +102,6 @@ SCALE_DOWN_THRESHOLDS = {
 }
 
 # Proactive scaling parameters
-LOOKAHEAD_MINUTES = 5            # Predict 5 minutes into the future
-LOOKAHEAD_SAMPLES = 10           # At 30s interval, 10 samples = 5 minutes
+LOOKAHEAD_MINUTES = 10           # Predict 10 minutes into the future
+LOOKAHEAD_SAMPLES = 20           # At 30s interval, 20 samples = 10 minutes
 
