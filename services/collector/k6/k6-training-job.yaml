@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-training-diverse
+  namespace: ballandbeer
+  labels:
+    purpose: ml-training-data-collection
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600  # Keep for 1 hour after completion
+  template:
+    metadata:
+      labels:
+        app: k6-training
+        purpose: ml-data-collection
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+    spec:
+      restartPolicy: Never
+      priorityClassName: k6-high-priority
+      
+      # Run on infrastructure nodes to avoid affecting application pods
+      nodeSelector:
+        node-type: infrastructure
+      
+      tolerations:
+      - key: infrastructure
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      
+      # Avoid running near collector to prevent resource contention
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - collector
+                  - k6-weekday
+                  - k6-weekend
+              topologyKey: kubernetes.io/hostname
+      
+      containers:
+      - name: k6
+        image: grafana/k6:latest
+        command:
+          - k6
+          - run
+          - --out
+          - json=/data/k6-results.json
+          - --env
+          - BASE_URL=
+          - /scripts/training-diverse-traffic.js
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "1000m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+        
+        volumeMounts:
+        - name: k6-script
+          mountPath: /scripts
+          readOnly: true
+        - name: k6-output
+          mountPath: /data
+      
+      volumes:
+      - name: k6-script
+        configMap:
+          name: k6-training-script
+      - name: k6-output
+        emptyDir: {}
+

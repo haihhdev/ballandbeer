@@ -13,6 +13,8 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Union
 import keras
+from keras import layers
+import tensorflow as tf
 
 import config
 
@@ -23,19 +25,141 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Custom Keras layers for Transformer model
+class PositionalEncoding(layers.Layer):
+    """Positional encoding for transformer"""
+    def __init__(self, sequence_length, d_model, **kwargs):
+        super(PositionalEncoding, self).__init__(**kwargs)
+        self.sequence_length = sequence_length
+        self.d_model = d_model
+        self.pos_encoding = self.positional_encoding(sequence_length, d_model)
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'sequence_length': self.sequence_length,
+            'd_model': self.d_model
+        })
+        return config
+    
+    def get_angles(self, position, i, d_model):
+        angles = 1 / tf.pow(10000.0, (2 * (i // 2)) / tf.cast(d_model, tf.float32))
+        return position * angles
+    
+    def positional_encoding(self, sequence_length, d_model):
+        angle_rads = self.get_angles(
+            position=tf.range(sequence_length, dtype=tf.float32)[:, tf.newaxis],
+            i=tf.range(d_model, dtype=tf.float32)[tf.newaxis, :],
+            d_model=d_model
+        )
+        
+        sines = tf.sin(angle_rads[:, 0::2])
+        cosines = tf.cos(angle_rads[:, 1::2])
+        
+        pos_encoding = tf.concat([sines, cosines], axis=-1)
+        pos_encoding = pos_encoding[tf.newaxis, ...]
+        
+        return tf.cast(pos_encoding, tf.float32)
+    
+    def call(self, inputs):
+        return inputs + self.pos_encoding[:, :tf.shape(inputs)[1], :]
+
+
+class TransformerDecoderBlock(layers.Layer):
+    """Decoder block with causal attention"""
+    def __init__(self, d_model, num_heads, dff, dropout_rate=0.1, **kwargs):
+        super(TransformerDecoderBlock, self).__init__(**kwargs)
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.dff = dff
+        self.dropout_rate = dropout_rate
+        
+        self.causal_attention = layers.MultiHeadAttention(
+            num_heads=num_heads,
+            key_dim=d_model // num_heads,
+            dropout=dropout_rate
+        )
+        
+        self.ffn = keras.Sequential([
+            layers.Dense(dff, activation='gelu'),
+            layers.Dropout(dropout_rate),
+            layers.Dense(d_model)
+        ])
+        
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        
+        self.dropout1 = layers.Dropout(dropout_rate)
+        self.dropout2 = layers.Dropout(dropout_rate)
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'd_model': self.d_model,
+            'num_heads': self.num_heads,
+            'dff': self.dff,
+            'dropout_rate': self.dropout_rate
+        })
+        return config
+    
+    def get_causal_mask(self, sequence_length):
+        """Lower triangular mask"""
+        mask = tf.linalg.band_part(tf.ones((sequence_length, sequence_length)), -1, 0)
+        return mask
+    
+    def call(self, inputs, training=False):
+        seq_length = tf.shape(inputs)[1]
+        causal_mask = self.get_causal_mask(seq_length)
+        
+        attn_output = self.causal_attention(
+            query=inputs,
+            key=inputs,
+            value=inputs,
+            attention_mask=causal_mask,
+            training=training
+        )
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(inputs + attn_output)
+        
+        ffn_output = self.ffn(out1, training=training)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        out2 = self.layernorm2(out1 + ffn_output)
+        
+        return out2
+
+
+class GetItem(layers.Layer):
+    """Get specific timestep from sequence"""
+    def __init__(self, index=-1, **kwargs):
+        super(GetItem, self).__init__(**kwargs)
+        self.index = index
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({'index': self.index})
+        return config
+    
+    def call(self, inputs):
+        # Use tf.gather to properly handle tensor indexing during deserialization
+        if self.index == -1:
+            return inputs[:, -1, :]
+        else:
+            return tf.gather(inputs, self.index, axis=1)
+
+
 class K8sAutoScalingPredictor:
     """
     Predictor class for K8s auto-scaling
     
-    Supports both Random Forest and LSTM-CNN models
+    Supports Random Forest, LSTM-CNN, and Transformer models
     """
     
-    def __init__(self, model_type: str = 'random_forest', model_dir: str = None):
+    def __init__(self, model_type: str = 'transformer', model_dir: str = None):
         """
         Initialize predictor
         
         Args:
-            model_type: 'random_forest' or 'lstm_cnn'
+            model_type: 'random_forest', 'lstm_cnn', or 'transformer'
             model_dir: Directory containing saved models (default: from config)
         """
         self.model_type = model_type
@@ -45,8 +169,10 @@ class K8sAutoScalingPredictor:
             self.model_dir = Path(model_dir)
         self.model = None
         self.scaler = None
+        self.pca = None
+        self.pca_scaler = None
         self.feature_names = None
-        self.sequence_buffer = {}  # For LSTM-CNN sequences per service
+        self.sequence_buffer = {}  # For sequence-based models (LSTM-CNN, Transformer)
         
         self._load_model()
     
@@ -84,6 +210,43 @@ class K8sAutoScalingPredictor:
                 logger.warning("Scaler not found, predictions may be inaccurate")
             
             logger.info("LSTM-CNN model loaded successfully")
+            
+        elif self.model_type == 'transformer':
+            model_path = self.model_dir / 'transformer_model.keras'
+            scaler_path = self.model_dir / 'transformer_scaler.joblib'
+            pca_path = self.model_dir / 'transformer_pca.joblib'
+            
+            if not model_path.exists():
+                raise FileNotFoundError(f"Model not found at {model_path}")
+            
+            # Load with custom layers defined in this file
+            custom_objects = {
+                'PositionalEncoding': PositionalEncoding,
+                'TransformerDecoderBlock': TransformerDecoderBlock,
+                'GetItem': GetItem
+            }
+            
+            self.model = keras.models.load_model(model_path, custom_objects=custom_objects, compile=False)
+            
+            if scaler_path.exists():
+                self.scaler = joblib.load(scaler_path)
+            else:
+                logger.warning("Scaler not found, predictions may be inaccurate")
+            
+            if pca_path.exists():
+                pca_bundle = joblib.load(pca_path)
+                if isinstance(pca_bundle, dict):
+                    self.pca = pca_bundle['pca']
+                    self.pca_scaler = pca_bundle.get('pca_scaler', None)
+                else:
+                    # Backward compatibility
+                    self.pca = pca_bundle
+                    self.pca_scaler = None
+                logger.info(f"PCA loaded with {self.pca.n_components_} components")
+            else:
+                logger.warning("PCA not found, predictions may be inaccurate")
+            
+            logger.info("Transformer model loaded successfully")
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
     
@@ -99,8 +262,12 @@ class K8sAutoScalingPredictor:
         """
         if self.model_type == 'random_forest':
             return self._predict_rf_single(features)
-        else:
+        elif self.model_type == 'lstm_cnn':
             return self._predict_lstm_single(features)
+        elif self.model_type == 'transformer':
+            return self._predict_transformer_single(features)
+        else:
+            raise ValueError(f"Unknown model type: {self.model_type}")
     
     def _predict_rf_single(self, features: Dict) -> int:
         """Random Forest prediction for single instance"""
@@ -166,6 +333,125 @@ class K8sAutoScalingPredictor:
         
         # Clip to valid range
         replica_count = int(np.clip(np.round(prediction), 1, 10))
+        
+        return replica_count
+    
+    def _predict_transformer_single(self, features: Dict) -> int:
+        """Transformer prediction for single instance (requires sequence with PCA)"""
+        service_name = features.get('service_name', 'unknown')
+        
+        # Initialize buffer for this service if needed
+        if service_name not in self.sequence_buffer:
+            self.sequence_buffer[service_name] = []
+        
+        # Prepare full feature set matching training (34 features after removing constant ones)
+        # Order must match training: config.FEATURE_COLUMNS + engineered features + service dummies
+        
+        # Base features from config.FEATURE_COLUMNS (excluding removed constant features)
+        # Removed: cpu_request, cpu_limit, pod_restart_count, node_cpu_pressure_flag, 
+        #          node_memory_pressure_flag, is_unstable
+        feature_list = []
+        
+        # CPU metrics
+        feature_list.append(features.get('cpu_usage_percent', 0))
+        feature_list.append(features.get('cpu_usage_percent_last_5_min', features.get('cpu_usage_percent', 0)))
+        feature_list.append(features.get('cpu_usage_percent_slope', 0))
+        
+        # RAM metrics
+        feature_list.append(features.get('ram_usage_percent', 0))
+        feature_list.append(features.get('ram_usage_percent_last_5_min', features.get('ram_usage_percent', 0)))
+        feature_list.append(features.get('ram_usage_percent_slope', 0))
+        
+        # Request metrics
+        feature_list.append(features.get('request_count_per_second', 0))
+        feature_list.append(features.get('request_count_per_second_last_5_min', features.get('request_count_per_second', 0)))
+        feature_list.append(features.get('response_time_ms', 200))
+        
+        # Resource limits (normalized to GB)
+        ram_request = features.get('ram_request', 536870912) / (1024**3)
+        ram_limit = features.get('ram_limit', 1073741824) / (1024**3)
+        feature_list.append(ram_request)
+        feature_list.append(ram_limit)
+        
+        # Application metrics
+        feature_list.append(features.get('queue_length', 0))
+        feature_list.append(features.get('error_rate', 0))
+        
+        # Engineered features - compute or use defaults
+        cpu_pct = features.get('cpu_usage_percent', 0)
+        ram_pct = features.get('ram_usage_percent', 0)
+        replica_count = features.get('replica_count', 1)
+        
+        # Utilization ratios
+        feature_list.append(features.get('cpu_utilization_ratio', cpu_pct / 100 if cpu_pct > 0 else 0))
+        feature_list.append(features.get('ram_utilization_ratio', ram_pct / 100 if ram_pct > 0 else 0))
+        
+        # Change rates
+        feature_list.append(features.get('cpu_change_rate', 0))
+        feature_list.append(features.get('ram_change_rate', 0))
+        feature_list.append(features.get('request_change_rate', 0))
+        
+        # Rolling stats (use defaults if not provided)
+        feature_list.append(features.get('cpu_rolling_std', cpu_pct * 0.1))
+        feature_list.append(features.get('ram_rolling_std', ram_pct * 0.1))
+        feature_list.append(features.get('request_rolling_max', features.get('request_count_per_second', 0) * 1.2))
+        feature_list.append(features.get('response_time_rolling_p95', features.get('response_time_ms', 200) * 1.2))
+        
+        # Per-replica metrics
+        feature_list.append(cpu_pct / max(replica_count, 1))
+        feature_list.append(ram_pct / max(replica_count, 1))
+        feature_list.append(features.get('request_count_per_second', 0) / max(replica_count, 1))
+        
+        # System pressure
+        pressure = 0
+        if cpu_pct > 70: pressure += 1
+        if ram_pct > 75: pressure += 1
+        if features.get('response_time_ms', 0) > 500: pressure += 1
+        if features.get('error_rate', 0) > 0.05: pressure += 1
+        feature_list.append(pressure)
+        
+        # Incident flag
+        feature_list.append(features.get('is_incident', 0))
+        
+        # Service one-hot encoding (7 services)
+        services = ['authen', 'booking', 'frontend', 'order', 'product', 'profile', 'recommender']
+        for svc in services:
+            feature_list.append(1 if service_name == svc else 0)
+        
+        # Convert to numpy array
+        feature_array = np.array(feature_list, dtype=np.float32)
+        
+        # Apply PCA if available
+        if self.pca is not None:
+            # Scale features before PCA
+            if self.pca_scaler is not None:
+                feature_array = self.pca_scaler.transform(feature_array.reshape(1, -1)).flatten()
+            feature_array = self.pca.transform(feature_array.reshape(1, -1)).flatten()
+        
+        # Add to buffer
+        self.sequence_buffer[service_name].append(feature_array)
+        
+        # Keep only last sequence_length samples
+        seq_length = config.TRANSFORMER_PARAMS['sequence_length']
+        if len(self.sequence_buffer[service_name]) > seq_length:
+            self.sequence_buffer[service_name] = self.sequence_buffer[service_name][-seq_length:]
+        
+        # Need at least sequence_length samples to predict
+        if len(self.sequence_buffer[service_name]) < seq_length:
+            logger.warning(f"Not enough samples for {service_name}. "
+                          f"Need {seq_length}, have {len(self.sequence_buffer[service_name])}. "
+                          f"Using current replica count.")
+            return int(features.get('replica_count', 1))
+        
+        # Create sequence
+        sequence = np.array(self.sequence_buffer[service_name][-seq_length:])
+        sequence = sequence.reshape(1, seq_length, -1)
+        
+        # Predict
+        prediction = self.model.predict(sequence, verbose=0)[0][0]
+        
+        # Clip to valid range (1-5 to match HPA maxReplicas)
+        replica_count = int(np.clip(np.round(prediction), 1, 5))
         
         return replica_count
     
@@ -274,7 +560,7 @@ class K8sAutoScalingPredictor:
         return round(confidence, 2)
     
     def reset_sequence_buffer(self, service_name: str = None):
-        """Reset sequence buffer for LSTM-CNN"""
+        """Reset sequence buffer for Transformer"""
         if service_name:
             if service_name in self.sequence_buffer:
                 del self.sequence_buffer[service_name]
@@ -287,9 +573,9 @@ class K8sAutoScalingPredictor:
 def example_usage():
     """Example usage of the predictor"""
     
-    # Initialize predictor (choose model type)
-    print("Initializing Random Forest predictor...")
-    rf_predictor = K8sAutoScalingPredictor(model_type='random_forest')
+    # Initialize Transformer predictor
+    print("Initializing Transformer predictor...")
+    predictor = K8sAutoScalingPredictor(model_type='transformer')
     
     # Example metrics data
     example_features = {
@@ -343,12 +629,12 @@ def example_usage():
     
     # Simple prediction
     print("\n1. Simple Prediction:")
-    replica_prediction = rf_predictor.predict_single(example_features)
+    replica_prediction = predictor.predict_single(example_features)
     print(f"   Predicted replicas: {replica_prediction}")
     
     # Detailed decision
     print("\n2. Detailed Scaling Decision:")
-    decision = rf_predictor.get_scaling_decision(example_features)
+    decision = predictor.get_scaling_decision(example_features)
     print(f"   Service: {decision['service_name']}")
     print(f"   Current replicas: {decision['current_replicas']}")
     print(f"   Predicted replicas: {decision['predicted_replicas']}")

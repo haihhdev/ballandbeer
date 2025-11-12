@@ -9,6 +9,9 @@ import boto3
 from typing import List, Tuple, Optional
 import logging
 from pathlib import Path
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import joblib
 import config
 
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +21,8 @@ logger = logging.getLogger(__name__)
 class DataPreprocessor:
     def __init__(self):
         self.s3_client = boto3.client('s3', region_name=config.AWS_REGION)
+        self.pca = None
+        self.scaler = None
         
     def download_data_from_s3(self, start_date: Optional[str] = None, 
                                end_date: Optional[str] = None) -> pd.DataFrame:
@@ -214,6 +219,13 @@ class DataPreprocessor:
         # Sort by service and timestamp
         df = df.sort_values(['service_name', 'timestamp']).reset_index(drop=True)
         
+        # Normalize resource limit/request values (likely in bytes/millicores)
+        # Convert to more reasonable scales to prevent extreme values
+        df['cpu_request'] = np.clip(df['cpu_request'] / 1000, 0, 100)  # millicores to cores, cap at 100
+        df['cpu_limit'] = np.clip(df['cpu_limit'] / 1000, 0, 100)      # millicores to cores, cap at 100
+        df['ram_request'] = np.clip(df['ram_request'] / (1024**3), 0, 100)  # bytes to GB, cap at 100
+        df['ram_limit'] = np.clip(df['ram_limit'] / (1024**3), 0, 100)      # bytes to GB, cap at 100
+        
         # Group by service for rolling features
         for service in config.SERVICES:
             service_mask = df['service_name'] == service
@@ -329,7 +341,7 @@ class DataPreprocessor:
             should_scale_up = scale_up_cpu | scale_up_ram | scale_up_response
             target_replicas[should_scale_up] = np.minimum(
                 current_replicas[should_scale_up] + 1, 
-                10  # max replicas
+                5
             )
             
             # Scale down if all metrics are low
@@ -377,6 +389,16 @@ class DataPreprocessor:
             service_dummies
         ], axis=1)
         
+        # Remove constant or near-constant features (std < 0.01)
+        constant_features = []
+        for col in X.columns:
+            if X[col].std() < 0.01:
+                constant_features.append(col)
+        
+        if constant_features:
+            logger.info(f"Removing {len(constant_features)} constant features: {constant_features}")
+            X = X.drop(columns=constant_features)
+        
         # Target variable
         y = data['target_replicas']
         
@@ -418,7 +440,101 @@ class DataPreprocessor:
         
         return data
     
-    def process_full_pipeline(self, data_source: str = 'local') -> Tuple[pd.DataFrame, pd.Series]:
+    def fit_pca_transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fit PCA and transform features
+        
+        Args:
+            X: Feature dataframe
+            
+        Returns:
+            Transformed features with PCA
+        """
+        logger.info("Fitting PCA for dimensionality reduction...")
+        
+        # Initialize scaler and PCA
+        self.scaler = StandardScaler()
+        self.pca = PCA(**config.PCA_PARAMS)
+        
+        # Scale features first
+        X_scaled = self.scaler.fit_transform(X)
+        
+        # Apply PCA
+        X_pca = self.pca.fit_transform(X_scaled)
+        
+        # Convert back to DataFrame
+        pca_columns = [f'pca_{i}' for i in range(X_pca.shape[1])]
+        X_pca_df = pd.DataFrame(X_pca, columns=pca_columns, index=X.index)
+        
+        # Log PCA results
+        explained_variance = self.pca.explained_variance_ratio_
+        cumulative_variance = np.cumsum(explained_variance)
+        
+        logger.info(f"PCA reduced dimensions from {X.shape[1]} to {X_pca.shape[1]}")
+        logger.info(f"Total variance explained: {cumulative_variance[-1]:.4f}")
+        logger.info(f"Top 5 components explain: {cumulative_variance[min(4, len(cumulative_variance)-1)]:.4f} of variance")
+        
+        return X_pca_df
+    
+    def transform_pca(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transform features using fitted PCA
+        
+        Args:
+            X: Feature dataframe
+            
+        Returns:
+            Transformed features with PCA
+        """
+        if self.pca is None or self.scaler is None:
+            raise ValueError("PCA not fitted. Call fit_pca_transform first.")
+        
+        # Scale and transform
+        X_scaled = self.scaler.transform(X)
+        X_pca = self.pca.transform(X_scaled)
+        
+        # Convert back to DataFrame
+        pca_columns = [f'pca_{i}' for i in range(X_pca.shape[1])]
+        X_pca_df = pd.DataFrame(X_pca, columns=pca_columns, index=X.index)
+        
+        return X_pca_df
+    
+    def save_pca(self, output_dir: str) -> None:
+        """Save fitted PCA and scaler"""
+        if self.pca is None or self.scaler is None:
+            logger.warning("PCA or scaler not fitted, nothing to save")
+            return
+        
+        from pathlib import Path
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        pca_path = output_path / 'preprocessor_pca.joblib'
+        scaler_path = output_path / 'preprocessor_scaler.joblib'
+        
+        joblib.dump(self.pca, pca_path)
+        joblib.dump(self.scaler, scaler_path)
+        
+        logger.info(f"PCA saved to {pca_path}")
+        logger.info(f"Scaler saved to {scaler_path}")
+    
+    def load_pca(self, model_dir: str) -> None:
+        """Load fitted PCA and scaler"""
+        from pathlib import Path
+        model_path = Path(model_dir)
+        
+        pca_path = model_path / 'preprocessor_pca.joblib'
+        scaler_path = model_path / 'preprocessor_scaler.joblib'
+        
+        if pca_path.exists() and scaler_path.exists():
+            self.pca = joblib.load(pca_path)
+            self.scaler = joblib.load(scaler_path)
+            logger.info("PCA and scaler loaded successfully")
+        else:
+            logger.warning("PCA or scaler files not found")
+    
+    def process_full_pipeline(self, data_source: str = 'local', 
+                            apply_pca: bool = False) -> Tuple[pd.DataFrame, pd.Series]:
         """
         Run full preprocessing pipeline
         
@@ -426,6 +542,7 @@ class DataPreprocessor:
             data_source: 'local' (default, load from metrics/ folder), 
                         's3' (download from S3), 
                         or path to specific CSV file
+            apply_pca: Whether to apply PCA for dimensionality reduction
         """
         logger.info("Starting full preprocessing pipeline")
         
@@ -454,6 +571,10 @@ class DataPreprocessor:
         
         # Prepare features and target
         X, y = self.prepare_features_and_target(data)
+        
+        # Apply PCA if requested
+        if apply_pca:
+            X = self.fit_pca_transform(X)
         
         logger.info("Preprocessing pipeline completed")
         return X, y

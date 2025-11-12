@@ -8,7 +8,7 @@ spec:
     kind: Deployment
     name: order
   minReplicas: 1
-  maxReplicas: 6
+  maxReplicas: 5
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60

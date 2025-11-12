@@ -51,26 +51,26 @@ FEATURE_COLUMNS = [
 TARGET_COLUMN = 'replica_count'
 
 # Model Configuration
-RANDOM_FOREST_PARAMS = {
-    'n_estimators': 200,
-    'max_depth': 15,
-    'min_samples_split': 10,
-    'min_samples_leaf': 4,
-    'random_state': 42,
-    'n_jobs': -1
+# PCA Configuration
+PCA_PARAMS = {
+    'n_components': 25,
+    'whiten': True,
+    'random_state': 42
 }
 
-LSTM_CNN_PARAMS = {
-    'sequence_length': 6,  # Reduced from 12: Use last 6 time steps (3 minutes) for less temporal dependency
-    'lstm_units': 96,      # Reduced: Less emphasis on temporal patterns
-    'cnn_filters': 96,     # Increased: More emphasis on spatial patterns
-    'cnn_kernel_size': 3,
-    'dense_units': 128,    # Increased: Better pattern recognition in final layers
-    'dropout_rate': 0.3,
-    'learning_rate': 0.001,
-    'batch_size': 64,
-    'epochs': 100,
-    'early_stopping_patience': 15
+# Transformer Configuration
+TRANSFORMER_PARAMS = {
+    'sequence_length': 12,      # Use last 12 time steps (6 minutes at 30s interval)
+    'd_model': 64,              # Model dimension (reduced from 128)
+    'num_heads': 4,             # Number of attention heads (reduced from 8)
+    'num_layers': 3,            # Number of transformer layers (reduced from 4)
+    'dff': 256,                 # Feedforward network dimension (reduced from 512)
+    'dropout_rate': 0.2,        # Increased dropout for better regularization
+    'learning_rate': 0.0005,    # Increased learning rate
+    'batch_size': 32,           # Reduced batch size for better generalization
+    'epochs': 150,
+    'early_stopping_patience': 25,
+    'warmup_steps': 4000        # Learning rate warmup
 }
 
 # Training Configuration

@@ -1,0 +1,143 @@
+# KEDA ScaledObjects for ML-based Autoscaling
+# These replace traditional HPA with ML predictions from transformer model
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: authen-ml-scaler
+spec:
+  scaleTargetRef:
+    name: authen
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="authen"}
+      threshold: "1"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: booking-ml-scaler
+spec:
+  scaleTargetRef:
+    name: booking
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="booking"}
+      threshold: "1"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-ml-scaler
+spec:
+  scaleTargetRef:
+    name: order
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="order"}
+      threshold: "1"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: product-ml-scaler
+spec:
+  scaleTargetRef:
+    name: product
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="product"}
+      threshold: "1"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: profile-ml-scaler
+spec:
+  scaleTargetRef:
+    name: profile
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="profile"}
+      threshold: "1"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: frontend-ml-scaler
+spec:
+  scaleTargetRef:
+    name: frontend
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="frontend"}
+      threshold: "1"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: recommender-ml-scaler
+spec:
+  scaleTargetRef:
+    name: recommender
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://ml-autoscaler.ballandbeer.svc.cluster.local:8080
+      metricName: ml_predicted_replicas
+      query: |
+        ml_predicted_replicas{service="recommender"}
+      threshold: "1"
+

@@ -1,119 +1,121 @@
 # ML Auto-Scaling for Kubernetes
 
-ML models to predict optimal replica counts for proactive K8s scaling.
+ML-based prediction service for proactive Kubernetes auto-scaling using Transformer model with PCA.
 
-## Models
+## Quick Start
 
-- **Random Forest** - Pattern-based, fast inference
-- **LSTM-CNN** - Pattern + temporal, better accuracy
-
-## Installation
+### 1. Install Dependencies
 
 ```bash
 cd services/ml-autoscaler
 pip install -r requirements.txt
 ```
 
-## Training
+### 2. Train Model
 
-Dataset in `metrics/` folder (CSV files collected from K8s).
-
-### Check CSV Quality
+Prepare your metrics data in `metrics/` folder, then run:
 
 ```bash
-cd training
-python analyze_csv.py ../metrics/metrics_20251105.csv
+python training/transformer_decoder.py
 ```
 
-Shows usable rows count and data issues per file.
+Output files:
+- `models/transformer_model.keras`
+- `models/transformer_pca.joblib`
+- `models/transformer_scaler.joblib`
 
-### Train Random Forest
+### 3. Deploy Service
+
 ```bash
-cd training
-python random_forest.py
+# Build image
+docker build -t hao1706/ml-autoscaler:latest .
+docker push hao1706/ml-autoscaler:latest
+
+# Deploy to Kubernetes
+kubectl apply -k ops/k8s/ml-autoscaler/base
 ```
 
-**Output:**
-- `models/random_forest_model.joblib`
-- `models/rf_feature_names.json`
-- `models/rf_metrics.json`
-- `plots/rf_feature_importance.png`
-- `plots/rf_predictions.png`
+### 4. Verify Deployment
 
-### Train LSTM-CNN
 ```bash
-cd training
-python lstm_cnn.py
-```
+# Check service status
+kubectl get pods -n ballandbeer -l app=ml-autoscaler
 
-**Output:**
-- `models/lstm_cnn_model.keras`
-- `models/lstm_cnn_scaler.joblib`
-- `models/lstm_cnn_metrics.json`
-- `plots/lstm_cnn_training_history.png`
-- `plots/lstm_cnn_predictions.png`
+# Check predictions
+kubectl port-forward -n ballandbeer svc/ml-autoscaler 8080:8080
+curl http://localhost:8080/predictions
 
-## Inference
-
-```python
-from inference import K8sAutoScalingPredictor
-
-# Load model (choose one)
-predictor = K8sAutoScalingPredictor(model_type='random_forest')
-# or
-predictor = K8sAutoScalingPredictor(model_type='lstm_cnn')
-
-# Get scaling decision
-decision = predictor.get_scaling_decision({
-    'service_name': 'product',
-    'cpu_usage_percent': 65.0,
-    'ram_usage_percent': 58.0,
-    'request_count_per_second': 120.5,
-    'response_time_ms': 380.0,
-    'replica_count': 2,
-    # ... other metrics from collector
-})
-
-# Output
-print(decision['action'])           # 'scale_up', 'scale_down', 'no_change'
-print(decision['predicted_replicas']) # 3
-print(decision['reasoning'])        # 'High CPU usage (65%); Predicted increase'
-print(decision['confidence'])       # 0.85
+# Check metrics for KEDA
+curl http://localhost:8080/metrics | grep ml_predicted_replicas
 ```
 
 ## Configuration
 
-**File:** `config.py`
+Environment variables in deployment:
 
-Key settings:
-- `SCALE_UP_THRESHOLDS`: CPU 60%, RAM 65%, ResponseTime 400ms (proactive)
-- `SCALE_DOWN_THRESHOLDS`: CPU 25%, RAM 30% (conservative)
-- `LOOKAHEAD_MINUTES`: 5 (predict 5 minutes ahead)
-- `LSTM_CNN_PARAMS['sequence_length']`: 6 (3 minutes of history)
+```yaml
+- name: MODEL_TYPE
+  value: "transformer"
+- name: PROMETHEUS_URL
+  value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+- name: NAMESPACE
+  value: "ballandbeer"
+- name: PREDICTION_INTERVAL
+  value: "30"  # seconds
+```
 
-## Data Processing
+## API Endpoints
 
-**Automatic cleaning in `data_preprocessor.py`:**
-- Caps CPU/RAM usage at 100% (fixes calculation errors)
-- Removes replica=0 with active metrics (inconsistent data)
-- Fills zero resource limits with service medians
-- Caps response time at 10,000ms (timeout values)
-- Flags unstable services (pod restarts >3)
-- Flags incidents (error rate >30%)
-- Removes all-zero metrics (collector errors)
-- Parses timestamps with ISO8601 format
+- `GET /health` - Health check
+- `GET /metrics` - Prometheus metrics (for KEDA)
+- `GET /predictions` - All predictions
+- `GET /predictions/{service}` - Service-specific prediction
+- `POST /predict` - Manual prediction
+- `GET /docs` - API documentation
 
-**Known limitations:**
-- Current dataset only has replica_count 0-1 (no scaling examples)
-- Model needs data with 2+ replicas to learn proper scaling
-- Collect metrics during high-load periods for better training
+## KEDA Integration
 
-## Model Comparison
+Service exposes `ml_predicted_replicas` metric that KEDA uses to scale deployments 10 minutes ahead.
 
-Compare in production by tracking:
-- Actual scaling effectiveness
-- Response time improvements
-- Resource utilization
-- Over/under scaling events
+KEDA ScaledObjects are defined in `ops/k8s/ml-autoscaler/base/scaledobjects.yaml`.
 
-Use whichever performs better in real environment.
+## Manual Prediction
+
+```python
+from inference import K8sAutoScalingPredictor
+
+predictor = K8sAutoScalingPredictor(model_type='transformer')
+
+features = {
+    'service_name': 'product',
+    'cpu_usage_percent': 75.0,
+    'ram_usage_percent': 68.0,
+    'request_count_per_second': 150.0,
+    'response_time_ms': 450.0,
+    'replica_count': 2
+}
+
+decision = predictor.get_scaling_decision(features)
+print(decision)
+```
+
+## Monitoring
+
+```bash
+# View metrics
+curl http://ml-autoscaler:8080/metrics
+
+# View predictions
+curl http://ml-autoscaler:8080/predictions
+
+# Check logs
+kubectl logs -n ballandbeer -l app=ml-autoscaler -f
+```
+
+## Troubleshooting
+
+**"Not enough samples"**: Wait 6 minutes for buffer to fill (12 time steps)
+
+**"PCA not found"**: Re-run training: `python training/transformer_decoder.py`
+
+**High errors**: Retrain with recent data or check feature consistency

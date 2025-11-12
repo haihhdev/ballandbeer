@@ -8,7 +8,7 @@ spec:
     kind: Deployment
     name: recommender
   minReplicas: 1
-  maxReplicas: 4
+  maxReplicas: 5
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60
