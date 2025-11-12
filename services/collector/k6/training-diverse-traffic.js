@@ -81,9 +81,9 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '115m',
       stages: [
-        { duration: '5m', target: 200 },
-        { duration: '15m', target: 300 },
         { duration: '5m', target: 100 },
+        { duration: '15m', target: 150 },
+        { duration: '5m', target: 50 },
       ],
       gracefulStop: '30s',
       exec: 'browsingHeavy',
@@ -130,11 +130,11 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '195m',
       stages: [
-        { duration: '10m', target: 180 },
-        { duration: '20m', target: 350 },
-        { duration: '15m', target: 400 },  // Peak
-        { duration: '20m', target: 280 },
         { duration: '10m', target: 150 },
+        { duration: '20m', target: 280 },
+        { duration: '15m', target: 320 },  // Peak (reduced from 400)
+        { duration: '20m', target: 220 },
+        { duration: '10m', target: 120 },
       ],
       gracefulStop: '30s',
       exec: 'eveningPeakMix',
@@ -255,7 +255,7 @@ export function browsingHeavy() {
     'status is 200': (r) => r.status === 200,
   }) || errorRate.add(1);
   
-  sleep(Math.random() * 1.2 + 0.5);
+  sleep(Math.random() * 2 + 1);
 }
 
 // Recommendation load - Recommender service
@@ -310,14 +310,14 @@ export function eveningPeakMix() {
   const weights = Math.random();
   let endpoint;
   
-  if (weights < 0.4) {
-    // 40% booking
+  if (weights < 0.5) {
+    // 50% booking
     endpoint = '/booking/venues';
-  } else if (weights < 0.7) {
-    // 30% browsing
+  } else if (weights < 0.65) {
+    // 15% browsing (reduced from 30%)
     endpoint = '/';
   } else if (weights < 0.85) {
-    // 15% product
+    // 20% product
     endpoint = '/product/list';
   } else {
     // 15% others
