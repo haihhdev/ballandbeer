@@ -13,11 +13,8 @@ spec:
     scaleUp:
       stabilizationWindowSeconds: 60
       policies:
-      - type: Percent
-        value: 100
-        periodSeconds: 60
       - type: Pods
-        value: 2
+        value: 1
         periodSeconds: 60
       selectPolicy: Max
     scaleDown:
