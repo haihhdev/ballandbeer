@@ -42,6 +42,7 @@ coverage/
 *.env.local
 .env.test
 .env.production
+vnpay.env
 
 # Python
 __pycache__/
