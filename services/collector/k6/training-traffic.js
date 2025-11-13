@@ -12,189 +12,160 @@ const commonHeaders = {
   'Accept': 'application/json',
 };
 
-// 11-hour progressive training traffic - Gradual scaling from 1→5 replicas, then down to 2, then back up
-// Target: 70% CPU utilization threshold
-// Most services: 50m CPU request → need ~35m CPU usage per pod to trigger scale
-// Strategy: Controlled, gradual load increase over 1-hour periods
+// Training Traffic: 10-hour aggressive scaling (SKIP warmup, start at 2→5→2→4→1 replicas)
+// Purpose: Generate balanced ML training data with aggressive CPU-based scaling
+// Memory: 128Mi-1Gi requests (stable, won't trigger 75% threshold)
+// CPU: 50-100m requests (70% threshold = primary scaling trigger)
+// Pattern: Start hot, aggressive VUs to force scaling immediately
 export const options = {
   scenarios: {
-    // PHASE 1: Hour 0-1 - Warm-up period (1 replica)
-    // Target: Keep at 1 replica with light traffic
-    phase1_warmup: {
+    // PHASE 1: Hour 0-1 - Scale to 2 replicas (SKIP warmup, start hot)
+    // Target: Immediately push past 70% CPU → ~40m CPU for 50m request services
+    phase1_scale_to_2: {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        { duration: '10m', target: 8 },    // Very light load
-        { duration: '50m', target: 12 },   // Stable light load
-      ],
-      gracefulStop: '30s',
-      exec: 'lightMixedTraffic',
-    },
-
-    // PHASE 2: Hour 1-2 - Scale to 2 replicas
-    // Need to push past 70% CPU on 1 pod → ~40-45m CPU total
-    phase2_scale_to_2: {
-      executor: 'ramping-vus',
-      startTime: '60m',
-      stages: [
-        { duration: '15m', target: 25 },   // Gradual increase
-        { duration: '30m', target: 35 },   // Sustained load for 2 replicas
-        { duration: '15m', target: 32 },   // Slight reduction
+        { duration: '10m', target: 100 },  // Start hot!
+        { duration: '35m', target: 120 },  // Sustained for 2 replicas
+        { duration: '15m', target: 110 },  // Hold
       ],
       gracefulStop: '30s',
       exec: 'moderateMixedTraffic',
     },
 
-    // PHASE 3: Hour 2-3 - Scale to 3 replicas
+    // PHASE 2: Hour 1-2 - Scale to 3 replicas
     // Need ~105m CPU total (70% of 150m across 3 pods)
-    phase3_scale_to_3: {
+    phase2_scale_to_3: {
       executor: 'ramping-vus',
-      startTime: '120m',
+      startTime: '60m',
       stages: [
-        { duration: '15m', target: 50 },   // Push past 2 replica capacity
-        { duration: '30m', target: 58 },   // Sustained for 3 replicas
-        { duration: '15m', target: 55 },   // Hold steady
+        { duration: '15m', target: 150 },  // Aggressive ramp
+        { duration: '30m', target: 180 },  // Sustained for 3 replicas
+        { duration: '15m', target: 170 },  // Hold
       ],
       gracefulStop: '30s',
       exec: 'mediumMixedTraffic',
     },
 
-    // PHASE 4: Hour 3-4 - Scale to 4 replicas
+    // PHASE 3: Hour 2-3 - Scale to 4 replicas
     // Need ~140m CPU total (70% of 200m across 4 pods)
-    phase4_scale_to_4: {
+    phase3_scale_to_4: {
       executor: 'ramping-vus',
-      startTime: '180m',
+      startTime: '120m',
       stages: [
-        { duration: '15m', target: 75 },   // Push past 3 replica capacity
-        { duration: '30m', target: 85 },   // Sustained for 4 replicas
-        { duration: '15m', target: 82 },   // Hold steady
+        { duration: '15m', target: 220 },  // Very high load
+        { duration: '30m', target: 250 },  // Sustained for 4 replicas
+        { duration: '15m', target: 240 },  // Hold
       ],
       gracefulStop: '30s',
       exec: 'highMixedTraffic',
     },
 
-    // PHASE 5: Hour 4-5 - Scale to 5 replicas (MAX)
+    // PHASE 4: Hour 3-4 - Scale to 5 replicas (MAX)
     // Need ~175m CPU total (70% of 250m across 5 pods)
-    phase5_scale_to_5: {
+    phase4_scale_to_5: {
       executor: 'ramping-vus',
-      startTime: '240m',
+      startTime: '180m',
       stages: [
-        { duration: '15m', target: 105 },  // Push to max
-        { duration: '30m', target: 115 },  // Peak load
-        { duration: '15m', target: 110 },  // Sustained max
+        { duration: '15m', target: 300 },  // Maximum load
+        { duration: '30m', target: 350 },  // Peak sustained
+        { duration: '15m', target: 330 },  // Hold max
       ],
       gracefulStop: '30s',
       exec: 'peakMixedTraffic',
     },
 
-    // PHASE 6: Hour 5-6 - Scale down to 2 replicas
+    // PHASE 5: Hour 4-5 - Scale down to 2 replicas
     // Gradually reduce load to trigger scale-down (with 5min stabilization window)
-    phase6_scale_down_to_2: {
+    phase5_scale_down_to_2: {
       executor: 'ramping-vus',
-      startTime: '300m',
+      startTime: '240m',
       stages: [
-        { duration: '10m', target: 90 },   // Start reduction
-        { duration: '10m', target: 65 },   // Continue down
-        { duration: '10m', target: 45 },   // Approach 3 replica level
-        { duration: '10m', target: 35 },   // Down to 2 replica level
-        { duration: '20m', target: 30 },   // Hold at 2 replicas
+        { duration: '10m', target: 250 },  // Start reduction
+        { duration: '10m', target: 180 },  // Continue down
+        { duration: '10m', target: 140 },  // Approach 3 replica level
+        { duration: '10m', target: 110 },  // Down to 2 replica level
+        { duration: '20m', target: 100 },  // Hold at 2 replicas
       ],
       gracefulStop: '30s',
       exec: 'scalingDownTraffic',
     },
 
-    // PHASE 7: Hour 6-7 - Maintain 2 replicas
+    // PHASE 6: Hour 5-6 - Maintain 2 replicas
     // Steady state at 2 replica level
-    phase7_maintain_2: {
+    phase6_maintain_2: {
       executor: 'ramping-vus',
-      startTime: '360m',
+      startTime: '300m',
       stages: [
-        { duration: '30m', target: 32 },   // Stable
-        { duration: '30m', target: 28 },   // Slight variation
+        { duration: '30m', target: 115 },  // Stable
+        { duration: '30m', target: 105 },  // Slight variation
       ],
       gracefulStop: '30s',
       exec: 'moderateMixedTraffic',
     },
 
-    // PHASE 8: Hour 7-8 - Scale back up to 3 replicas
-    phase8_scale_to_3_again: {
+    // PHASE 7: Hour 6-7 - Scale back up to 3 replicas
+    phase7_scale_to_3_again: {
       executor: 'ramping-vus',
-      startTime: '420m',
+      startTime: '360m',
       stages: [
-        { duration: '20m', target: 50 },   // Ramp up
-        { duration: '40m', target: 56 },   // Hold at 3 replicas
+        { duration: '20m', target: 160 },  // Ramp up
+        { duration: '40m', target: 180 },  // Hold at 3 replicas
       ],
       gracefulStop: '30s',
       exec: 'mediumMixedTraffic',
     },
 
-    // PHASE 9: Hour 8-9 - Scale to 4 replicas again
-    phase9_scale_to_4_again: {
+    // PHASE 8: Hour 7-8 - Scale to 4 replicas again
+    phase8_scale_to_4_again: {
       executor: 'ramping-vus',
-      startTime: '480m',
+      startTime: '420m',
       stages: [
-        { duration: '20m', target: 78 },   // Push to 4
-        { duration: '40m', target: 84 },   // Hold at 4 replicas
+        { duration: '20m', target: 230 },  // Push to 4
+        { duration: '40m', target: 250 },  // Hold at 4 replicas
       ],
       gracefulStop: '30s',
       exec: 'highMixedTraffic',
     },
 
-    // PHASE 10: Hour 9-10 - Varied load (3-4 replicas oscillation)
-    phase10_oscillate_3_4: {
+    // PHASE 9: Hour 8-9 - Varied load (3-4 replicas oscillation)
+    phase9_oscillate_3_4: {
       executor: 'ramping-vus',
-      startTime: '540m',
+      startTime: '480m',
       stages: [
-        { duration: '15m', target: 70 },   // Drop to 3
-        { duration: '15m', target: 82 },   // Back to 4
-        { duration: '15m', target: 65 },   // Down to 3
-        { duration: '15m', target: 80 },   // Up to 4
+        { duration: '15m', target: 170 },  // Drop to 3
+        { duration: '15m', target: 240 },  // Back to 4
+        { duration: '15m', target: 165 },  // Down to 3
+        { duration: '15m', target: 235 },  // Up to 4
       ],
       gracefulStop: '30s',
       exec: 'oscillatingTraffic',
     },
 
-    // PHASE 11: Hour 10-11 - Cool down to 1 replica
-    phase11_cooldown: {
+    // PHASE 10: Hour 9-10 - Cool down to 1 replica
+    phase10_cooldown: {
       executor: 'ramping-vus',
-      startTime: '600m',
+      startTime: '540m',
       stages: [
-        { duration: '15m', target: 50 },   // Start reduction
-        { duration: '15m', target: 30 },   // Down to 2
-        { duration: '15m', target: 18 },   // Down to 1
-        { duration: '15m', target: 10 },   // Minimal load
+        { duration: '15m', target: 150 },  // Start reduction
+        { duration: '15m', target: 100 },  // Down to 2
+        { duration: '15m', target: 60 },   // Down to 1
+        { duration: '15m', target: 30 },   // Minimal load
       ],
       gracefulStop: '30s',
       exec: 'cooldownTraffic',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<5000'],  // Lenient for training
-    'errors': ['rate<0.4'],  // Allow some errors during high load
+    'http_req_duration': ['p(95)<8000'],  // Very lenient for aggressive training
+    'errors': ['rate<0.5'],  // Allow more errors during high load
   },
 };
 
-// Light mixed traffic - Baseline load (1 replica)
-// Sleep longer between requests to keep CPU low
-export function lightMixedTraffic() {
-  const endpoints = [
-    '/authen/health',
-    '/booking/venues',
-    '/product/list',
-  ];
-  
-  const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
-  const res = http.get(`${BASE_URL}${endpoint}`, { headers: commonHeaders });
-  
-  check(res, {
-    'status is 200': (r) => r.status === 200,
-  }) || errorRate.add(1);
-  
-  sleep(Math.random() * 3 + 2);  // Long sleep = low RPS
-}
+// No more light traffic - removed to skip warmup phase
 
-// Moderate mixed traffic - 2 replica level
-// Balanced mix of services, moderate request rate
+// Moderate mixed traffic - 2 replica level - AGGRESSIVE
+// Balanced mix of services, high request rate
 export function moderateMixedTraffic() {
   const weights = Math.random();
   let endpoint;
@@ -220,11 +191,11 @@ export function moderateMixedTraffic() {
     'status is 200 or 401': (r) => r.status === 200 || r.status === 401,
   }) || errorRate.add(1);
   
-  sleep(Math.random() * 1.5 + 0.8);  // Moderate sleep
+  sleep(Math.random() * 0.3 + 0.1);  // Very short: 0.1-0.4s
 }
 
-// Medium mixed traffic - 3 replica level
-// More requests, shorter sleep
+// Medium mixed traffic - 3 replica level - AGGRESSIVE
+// More requests, very short sleep
 export function mediumMixedTraffic() {
   const activities = [
     '/booking/venues',
@@ -241,11 +212,11 @@ export function mediumMixedTraffic() {
     'status is 200 or 401': (r) => r.status === 200 || r.status === 401,
   }) || errorRate.add(1);
   
-  sleep(Math.random() * 1 + 0.5);  // Medium sleep
+  sleep(Math.random() * 0.2 + 0.1);  // Very short: 0.1-0.3s
 }
 
-// High mixed traffic - 4 replica level
-// Higher request rate across all services
+// High mixed traffic - 4 replica level - AGGRESSIVE
+// Maximum request rate across all services
 export function highMixedTraffic() {
   const weights = Math.random();
   let endpoint;
@@ -272,11 +243,11 @@ export function highMixedTraffic() {
     'status is 200 or 401': (r) => r.status === 200 || r.status === 401,
   }) || errorRate.add(1);
   
-  sleep(Math.random() * 0.7 + 0.3);  // Short sleep = higher RPS
+  sleep(Math.random() * 0.15 + 0.05);  // Minimal: 0.05-0.2s
 }
 
-// Peak mixed traffic - 5 replica level (MAX)
-// Maximum load across all services
+// Peak mixed traffic - 5 replica level (MAX) - ULTRA AGGRESSIVE
+// Absolute maximum load across all services
 export function peakMixedTraffic() {
   const allEndpoints = [
     '/booking/venues',
@@ -294,7 +265,7 @@ export function peakMixedTraffic() {
     'status is 200 or 401': (r) => r.status === 200 || r.status === 401,
   }) || errorRate.add(1);
   
-  sleep(Math.random() * 0.5 + 0.2);  // Very short sleep = peak RPS
+  sleep(Math.random() * 0.1 + 0.02);  // Ultra short: 0.02-0.12s
 }
 
 // Scaling down traffic - Gradual reduction

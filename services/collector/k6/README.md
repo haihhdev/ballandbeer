@@ -2,30 +2,25 @@
 
 Aggressive load testing to trigger HPA pod scaling and collect ML training data.
 
-## Scenarios
+## 3 Load Testing Scenarios
 
-### Weekday Traffic (`weekday-traffic.js`)
-High-load simulation for business days (Mon-Fri) - 16 hours (6 AM - 10 PM)
+### 1. Weekday Traffic (`weekday-traffic.js`)
+**Purpose:** Simulate realistic Mon-Fri business patterns  
+**Duration:** 16 hours (6 AM - 10 PM)  
+**Load:** 30-500 VUs (natural daily cycle with evening peak)  
+**Scaling:** Variable 1-4 replicas, fast transitions
 
-**Traffic Pattern:**
-- **06:00-09:00** (3h): 30-50 VUs - Morning rush (3x baseline)
-- **09:00-13:00** (4h): 80-120 VUs - Moderate load (3x baseline)
-- **13:00-17:00** (4h): 150-250 VUs - Busy afternoon (3x baseline)
-- **17:00-22:00** (5h): 300-500 VUs - Peak evening (2.5x baseline)
+### 2. Weekend Traffic (`weekend-traffic.js`)
+**Purpose:** Simulate Sat-Sun with higher peak loads  
+**Duration:** 16 hours (6 AM - 10 PM)  
+**Load:** 80-600 VUs (early morning rush + super peak evening)  
+**Scaling:** Aggressive 1-6 replicas, rapid scaling events
 
-**Goal:** Trigger HPA scaling to 2-6 replicas per service for data collection.
-
-### Weekend Traffic (`weekend-traffic.js`)
-Maximum load simulation for weekend days (Sat-Sun) - 16 hours (6 AM - 10 PM)
-
-**Traffic Pattern:**
-- **06:00-07:20** (1h20m): 80-120 VUs - Early morning rush (2x baseline)
-- **07:20-09:40** (2h20m): 150-200 VUs - Late morning peak (2x baseline)
-- **09:40-12:50** (3h10m): 100-130 VUs - Midday moderate (2x baseline)
-- **12:50-18:20** (5h30m): 180-280 VUs - Afternoon buildup (2.5x baseline)
-- **18:20-22:00** (3h40m): 350-600 VUs - Super peak evening (2x baseline)
-
-**Goal:** Trigger aggressive HPA scaling to collect diverse scaling patterns.
+### 3. Training Traffic (`training-traffic.js`)
+**Purpose:** Generate balanced ML training data with controlled patterns  
+**Duration:** 11 hours  
+**Load:** 8-115 VUs (gradual progression: 1→5→2→4→1 replicas)  
+**Scaling:** Systematic 1 replica/hour, CPU-focused (memory stable)
 
 ## Key Changes
 
@@ -96,107 +91,136 @@ kubectl logs -n ballandbeer deployment/collector -f
 
 ## ML Training Data Collection
 
-### Training Diverse Traffic (`training-diverse-traffic.js`)
-Specialized load generator designed to create **diverse, balanced training data** for ML model. Duration: ~5 hours (305 minutes).
+### Resource Specifications (Updated)
 
-**Why This Script?**
-- Current data has **class imbalance** (Replica 1: 41%, Replica 6: 5%)
-- Too few **scaling events** (Profile: 3 changes, Product: 25 changes)
-- Missing **high-load scenarios** (insufficient 4-5 replica data)
-- Traffic too **smooth** (lacks spikes and oscillations)
+**Current Resource Allocation:**
+- **Most services** (authen, booking, product, profile): 128Mi RAM / 50m CPU request
+- **Frontend**: 256Mi RAM / 50m CPU request  
+- **Order**: 256Mi RAM / 100m CPU request
+- **Recommender**: 1Gi RAM / 100m CPU request
 
-### 11 Diverse Scenarios
+**HPA Thresholds:**
+- CPU: 70% utilization → triggers scaling
+- Memory: 75% utilization → triggers scaling
 
-**1. Flash Sale Spike (0-15m)**
-- **Pattern:** Sudden burst 50 → 400 VUs
-- **Goal:** Force 4-5 replicas, create spike response data
-- **Services:** Booking + Product heavy
+**Scaling Triggers:**
+- Most services: ~35m CPU or ~96Mi RAM usage per pod
+- Order: ~70m CPU or ~192Mi RAM usage per pod
+- Recommender: ~70m CPU or ~768Mi RAM usage per pod
 
-**2. Gradual Ramp (15-60m)**
-- **Pattern:** Step increase 30 → 350 → 30 VUs
-- **Goal:** Create ALL replica levels (1-5) smoothly
-- **Services:** All services mixed
+### Training Progressive Traffic (`training-traffic.js`)
+Specialized 11-hour load generator designed to create **gradual, controlled scaling patterns** for ML model training.
 
-**3. Oscillating Load (60-90m)**
-- **Pattern:** Rapid up/down cycles
-- **Goal:** Maximum scaling events for learning
-- **Services:** Booking focused
+**Why 11-Hour Progressive Training?**
+- Creates **balanced replica distribution** (1→5 replicas over time)
+- Generates **gradual scaling patterns** (1 replica increase per hour)
+- Focuses on **CPU-based scaling** (memory now more stable with 128-1024Mi requests)
+- Avoids **memory pressure spikes** (can cause unwanted scaling)
+- Produces **predictable patterns** for transformer model training
 
-**4. Booking Stress (90-110m)**
-- **Pattern:** Constant 150 VUs
-- **Goal:** Product service specific patterns
-- **Services:** Product + Booking
+### 11 Progressive Phases (660 minutes total)
 
-**5. Browsing Stress (115-140m)**
-- **Pattern:** Ramp 200 → 300 VUs
-- **Goal:** Frontend service stress
-- **Services:** Frontend heavy
+**1. Phase 1: Warm-up (0-60m)**
+- **Pattern:** Light load 8-12 VUs
+- **Goal:** Keep at 1 replica, establish baseline
+- **Services:** Mixed light traffic (authen, booking, product)
+- **Expected:** CPU ~10-20%, Memory ~30-40%
 
-**6. Recommendation Burst (145-160m)**
-- **Pattern:** High req/s (100 → 300/s)
-- **Goal:** Recommender service patterns
-- **Services:** Recommender focused
+**2. Phase 2: Scale to 2 replicas (60-120m)**
+- **Pattern:** Gradual 25-35 VUs
+- **Goal:** Push past 70% CPU on 1 pod to trigger scale to 2
+- **Services:** Mixed moderate traffic (40% booking, 25% product, 20% authen)
+- **Expected:** CPU ~75-80%, triggers 2nd replica
 
-**7. Profile Activity (160-175m)**
-- **Pattern:** Constant 40 VUs
-- **Goal:** Profile service data (usually low)
-- **Services:** Profile focused
+**3. Phase 3: Scale to 3 replicas (120-180m)**
+- **Pattern:** Medium 50-58 VUs
+- **Goal:** ~105m CPU total (70% of 150m across 3 pods)
+- **Services:** More booking/product requests, shorter sleep
+- **Expected:** 2 replicas at 70-75% → triggers 3rd replica
 
-**8. Auth Burst (180-195m)**
-- **Pattern:** Ramp 150 → 250 VUs
-- **Goal:** Authen service stress
-- **Services:** Authen focused
+**4. Phase 4: Scale to 4 replicas (180-240m)**
+- **Pattern:** High 75-85 VUs
+- **Goal:** ~140m CPU total (70% of 200m across 4 pods)
+- **Services:** Higher request rate, mixed endpoints
+- **Expected:** 3 replicas at 70-75% → triggers 4th replica
 
-**9. Evening Peak Realistic (195-270m)**
-- **Pattern:** 180 → 400 VUs realistic mix
-- **Goal:** Production-like peak hour
-- **Services:** 40% booking, 30% browsing, 30% others
+**5. Phase 5: Scale to 5 replicas (240-300m)**
+- **Pattern:** Peak 105-115 VUs
+- **Goal:** ~175m CPU total (70% of 250m across 5 pods)
+- **Services:** Maximum concurrent requests, all endpoints
+- **Expected:** 4 replicas at 70-75% → triggers 5th replica (max)
 
-**10. Stress Test Max (270-295m)**
-- **Pattern:** Push to 500 VUs
-- **Goal:** Force 5 replicas, test limits
-- **Services:** All services stressed
+**6. Phase 6: Scale down to 2 replicas (300-360m)**
+- **Pattern:** Gradual reduction 90→30 VUs
+- **Goal:** Trigger scale-down with 5min stabilization window
+- **Services:** Decreasing traffic to 2-replica level
+- **Expected:** 5→4→3→2 replicas over 60 minutes
 
-**11. Idle Period (295-305m)**
-- **Pattern:** Only 15 VUs
-- **Goal:** Create low-load 1-replica data
-- **Services:** Minimal health checks
+**7. Phase 7: Maintain 2 replicas (360-420m)**
+- **Pattern:** Steady 28-32 VUs
+- **Goal:** Stable 2-replica state
+- **Services:** Consistent moderate load
+- **Expected:** CPU ~60-70%, stays at 2 replicas
+
+**8. Phase 8: Scale to 3 replicas again (420-480m)**
+- **Pattern:** Ramp 50-56 VUs
+- **Goal:** Return to 3-replica pattern
+- **Services:** Medium load increase
+- **Expected:** 2 replicas → 3 replicas
+
+**9. Phase 9: Scale to 4 replicas again (480-540m)**
+- **Pattern:** Push 78-84 VUs
+- **Goal:** Reach 4-replica level again
+- **Services:** High sustained load
+- **Expected:** 3 replicas → 4 replicas
+
+**10. Phase 10: Oscillate 3-4 replicas (540-600m)**
+- **Pattern:** Variable 65-82 VUs
+- **Goal:** Create scaling event patterns (up/down)
+- **Services:** Alternating load levels
+- **Expected:** Multiple 3↔4 replica transitions
+
+**11. Phase 11: Cool down to 1 replica (600-660m)**
+- **Pattern:** Gradual reduction 50→10 VUs
+- **Goal:** Scale back to baseline
+- **Services:** Decreasing to minimal load
+- **Expected:** 4→3→2→1 replicas over 60 minutes
 
 ### Expected Training Data Improvements
 
-**Before (Current Data):**
-```
-Replica 1: 3113 samples (41.2%)
-Replica 2: 1146 samples (15.2%)
-Replica 3:  825 samples (10.9%)
-Replica 4: 1399 samples (18.5%)
-Replica 5:  681 samples (9.0%)
-Replica 6:  397 samples (5.3%)  ← Shouldn't exist!
+**Training Strategy:**
+- **11 hours total** = 660 minutes of controlled load
+- **Each replica level**: ~60-120 minutes of sustained data
+- **Gradual transitions**: Smooth scaling for better pattern learning
+- **Repeat patterns**: Phases 6-9 repeat 2-4 replica patterns for data balance
 
-Imbalance ratio: 7.84x
-Scaling events: 3-25 per service
+**Expected Data Distribution:**
+```
+Replica 1: ~120 min (Phases 1, 11) - Baseline + Cooldown
+Replica 2: ~180 min (Phases 2, 6, 7) - Moderate sustained load
+Replica 3: ~120 min (Phases 3, 8, 10) - Medium load patterns
+Replica 4: ~120 min (Phases 4, 9, 10) - High load patterns  
+Replica 5: ~120 min (Phases 5, 6 start) - Peak load patterns
+
+Target imbalance: < 2x (vs current 7.84x)
+Scaling events: 20-30 per service (gradual transitions)
+CPU-focused scaling: ✓ (memory now stable)
+Predictable patterns: ✓ (transformer-friendly)
 ```
 
-**After (With New Script):**
-```
-Replica 1: More idle data
-Replica 2: Gradual ramp data
-Replica 3: Medium load sustained
-Replica 4: Spike recovery, stress test
-Replica 5: Peak load, max stress  ← More data!
-
-Target imbalance: < 3x
-Scaling events: 30-50 per service
-Service-specific patterns: ✓
-Spike handling: ✓
-```
+**Key Improvements:**
+- **Balanced data**: Each replica level gets 90-180 minutes
+- **Controlled scaling**: CPU-based, memory stable with new limits
+- **Pattern repetition**: Phases 6-9 revisit 2-4 replicas for reinforcement
+- **No memory spikes**: 128-1024Mi requests prevent memory-triggered scaling
+- **Gradual changes**: 1 replica/hour prevents abrupt jumps
 
 ### Deployment
 
 **Step 1: Create ConfigMap**
 ```bash
 kubectl create configmap k6-training-script \
-  --from-file=training-diverse-traffic.js \
+  --from-file=training-traffic.js \
   --namespace=ballandbeer \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
@@ -209,17 +233,17 @@ kubectl apply -f k6-training-job.yaml
 **Step 3: Monitor**
 ```bash
 # Watch job progress
-kubectl logs -f job/k6-training-diverse -n ballandbeer
+kubectl logs -f job/k6-training-progressive -n ballandbeer
 
-# Monitor HPA scaling
+# Monitor HPA scaling (should see gradual 1→2→3→4→5 replica increases)
 watch kubectl get hpa -n ballandbeer
 
-# Check pod counts
-kubectl get pods -n ballandbeer -w
+# Check pod counts and CPU/Memory usage
+kubectl top pods -n ballandbeer --sort-by=cpu
 ```
 
 **Step 4: Collect Metrics**
-After job completes (~5 hours):
+After job completes (~11 hours):
 ```bash
 # Trigger metrics collection
 kubectl exec -it deployment/collector -n ballandbeer -- python collect_metrics.py
@@ -238,23 +262,26 @@ python training/transformer_decoder.py
 
 ```bash
 # Delete job when done
-kubectl delete job k6-training-diverse -n ballandbeer
+kubectl delete job k6-training-progressive -n ballandbeer
 
 # Delete configmap if needed
 kubectl delete configmap k6-training-script -n ballandbeer
 ```
 
-### Key Differences from Weekday/Weekend
+### Comparison: When to Use Each Script
 
-| Feature | Weekday/Weekend | Training Diverse |
-|---------|-----------------|------------------|
-| Duration | 16 hours | 5 hours |
-| Purpose | Realistic simulation | ML data balance |
-| Pattern | Smooth gradual | Spikes + oscillations |
-| Replicas | Mostly 2-3 | Focus on 4-5 |
-| Service Focus | Mixed realistic | Service-specific bursts |
-| Scaling Events | ~10-25 per service | ~30-50 per service |
-| Load Distribution | Natural | Engineered for balance |
+| Feature | Weekday | Weekend | Training |
+|---------|---------|---------|----------|
+| **Purpose** | Realistic Mon-Fri | Realistic Sat-Sun | ML model training |
+| **Duration** | 16h | 16h | 11h |
+| **Load Pattern** | Natural cycle | Natural + spikes | Controlled progression |
+| **VUs Range** | 30-500 | 80-600 | 8-115 |
+| **Replicas** | 1-4 variable | 1-6 aggressive | 1→5→2→4→1 systematic |
+| **Scaling Speed** | Fast (minutes) | Very fast | Slow (1/hour) |
+| **Scaling Trigger** | CPU+Memory mix | CPU+Memory mix | CPU-only (memory stable) |
+| **Scaling Events** | 10-25/service | 15-40/service | 20-30/service balanced |
+| **Data Quality** | Realistic but imbalanced | Diverse but noisy | Balanced for ML training |
+| **Use Case** | Production testing | Stress testing | Model retraining |
 
 ### Monitoring Metrics Quality
 
