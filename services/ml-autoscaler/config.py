@@ -53,24 +53,25 @@ TARGET_COLUMN = 'replica_count'
 # Model Configuration
 # PCA Configuration
 PCA_PARAMS = {
-    'n_components': 25,
-    'whiten': True,
+    'n_components': 30,         # Increased from 25 to retain more information
+    'whiten': True,             # Whiten to normalize variance
     'random_state': 42
 }
 
 # Transformer Configuration
 TRANSFORMER_PARAMS = {
     'sequence_length': 12,      # Use last 12 time steps (6 minutes at 30s interval)
-    'd_model': 64,              # Model dimension (reduced from 128)
-    'num_heads': 4,             # Number of attention heads (reduced from 8)
-    'num_layers': 3,            # Number of transformer layers (reduced from 4)
-    'dff': 256,                 # Feedforward network dimension (reduced from 512)
-    'dropout_rate': 0.2,        # Increased dropout for better regularization
-    'learning_rate': 0.0005,    # Increased learning rate
-    'batch_size': 32,           # Reduced batch size for better generalization
-    'epochs': 150,
-    'early_stopping_patience': 25,
-    'warmup_steps': 4000        # Learning rate warmup
+    'lookahead': 20,            # Predict 20 steps ahead (10 minutes)
+    'd_model': 128,             # Model dimension
+    'num_heads': 4,             # Number of attention heads
+    'num_layers': 3,            # 3 layers for better feature extraction
+    'dff': 512,                 # Larger feedforward for complex patterns
+    'dropout_rate': 0.2,        # Standard dropout
+    'learning_rate': 0.0005,    # Lower learning rate for stability
+    'batch_size': 64,           # Batch size for stability
+    'epochs': 100,
+    'early_stopping_patience': 20,
+    'discrete_penalty': 0.5     # Penalty weight for non-integer predictions (encourage integers)
 }
 
 # Training Configuration
@@ -85,8 +86,6 @@ PLOTS_OUTPUT_DIR = BASE_DIR / 'plots'
 COMPARISON_OUTPUT_DIR = BASE_DIR / 'training' / 'comparison_results'
 
 # Scaling thresholds for determining when to scale
-# IMPORTANT: These are MORE AGGRESSIVE than cluster-autoscaler to enable PROACTIVE scaling
-# Goal: Scale BEFORE cluster-autoscaler reacts (predict 10 minutes ahead)
 SCALE_UP_THRESHOLDS = {
     'cpu_usage_percent': 60,     # Lower than typical 70-80% - scale earlier
     'ram_usage_percent': 65,     # Lower than typical 75-80% - scale earlier

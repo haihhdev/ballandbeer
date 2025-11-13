@@ -14,7 +14,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.utils.class_weight import compute_class_weight
 import joblib
 import logging
 from pathlib import Path
@@ -174,18 +173,23 @@ class TransformerDecoderModel:
         
         logger.info(f"PCA: {X_train.shape[1]} -> {self.n_pca_components} dims")
         logger.info(f"Variance explained: {cumulative_variance[-1]:.4f}")
-        logger.info(f"Top 3 components: {explained_variance[:3]}")
+        logger.info(f"Top 5 components variance: {explained_variance[:5]}")
         
         return X_train_pca, X_val_pca, X_test_pca
         
     def create_sequences(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Create sequences for transformer"""
+        """Create sequences for transformer with lookahead prediction"""
+        lookahead = config.TRANSFORMER_PARAMS.get('lookahead', 0)
         X_seq, y_seq = [], []
         
-        for i in range(len(X) - self.sequence_length + 1):
+        # Need enough data: sequence_length for input + lookahead for target
+        for i in range(len(X) - self.sequence_length - lookahead + 1):
             X_seq.append(X[i:i + self.sequence_length])
-            y_seq.append(y[i + self.sequence_length - 1])
+            # Predict value at sequence_length + lookahead - 1
+            target_idx = i + self.sequence_length + lookahead - 1
+            y_seq.append(y[target_idx])
         
+        logger.info(f"Created sequences with lookahead={lookahead} steps (~{lookahead*0.5:.1f} min)")
         return np.array(X_seq), np.array(y_seq)
     
     def build_model(self, input_shape: Tuple) -> keras.Model:
@@ -221,19 +225,33 @@ class TransformerDecoderModel:
         
         x = layers.Dense(128, activation='gelu')(x)
         x = layers.LayerNormalization()(x)
-        x = layers.Dropout(params['dropout_rate'] / 2)(x)
+        x = layers.Dropout(params['dropout_rate'])(x)
         
         x = layers.Dense(64, activation='gelu')(x)
         x = layers.Dropout(params['dropout_rate'] / 2)(x)
         
-        outputs = layers.Dense(1, activation='linear', name='output')(x)
+        # Output layer - Unbounded regression with discrete-aware loss
+        # Use ReLU to prevent negative predictions
+        outputs = layers.Dense(1, activation='relu', name='output')(x)
         
         model = models.Model(inputs=inputs, outputs=outputs, name='TransformerDecoder')
+        
+        # Custom loss: MSE + penalty for non-integer values
+        def discrete_aware_loss(y_true, y_pred):
+            # Standard MSE
+            mse = tf.reduce_mean(tf.square(y_true - y_pred))
+            
+            # Penalty for non-integer predictions (encourage integer outputs)
+            discrete_penalty_weight = params.get('discrete_penalty', 0.5)
+            rounded_pred = tf.round(y_pred)
+            discrete_penalty = tf.reduce_mean(tf.square(y_pred - rounded_pred))
+            
+            return mse + discrete_penalty_weight * discrete_penalty
         
         optimizer = optimizers.Adam(learning_rate=params['learning_rate'], clipnorm=1.0)
         model.compile(
             optimizer=optimizer,
-            loss='huber',
+            loss=discrete_aware_loss,
             metrics=['mae', 'mse']
         )
         
@@ -241,8 +259,8 @@ class TransformerDecoderModel:
     
     def train(self, X_train: np.ndarray, y_train: np.ndarray,
               X_val: np.ndarray, y_val: np.ndarray) -> None:
-        """Train model"""
-        logger.info("Training Transformer Decoder...")
+        """Train model with discrete-aware regression (unbounded) and class weighting"""
+        logger.info("Training Transformer Decoder (Discrete-Aware Regression)...")
         logger.info(f"Train: {len(X_train)}, Val: {len(X_val)}")
         
         # Scale features
@@ -261,6 +279,24 @@ class TransformerDecoderModel:
         logger.info("\nModel Architecture:")
         self.model.summary(print_fn=logger.info)
         
+        # Compute sample weights to balance classes
+        unique, counts = np.unique(y_train, return_counts=True)
+        class_dist = dict(zip(unique.astype(int), counts))
+        logger.info(f"Target distribution: {class_dist}")
+        logger.info(f"Target range: {y_train.min():.0f} - {y_train.max():.0f}")
+        
+        # Compute inverse frequency weights
+        total_samples = len(y_train)
+        class_weights = {}
+        for replica_count, count in class_dist.items():
+            # Weight = total / (n_classes * count)
+            class_weights[replica_count] = total_samples / (len(unique) * count)
+        
+        logger.info(f"Class weights: {class_weights}")
+        
+        # Create sample weights array
+        sample_weights = np.array([class_weights[int(y)] for y in y_train])
+        
         # Callbacks
         early_stopping = callbacks.EarlyStopping(
             monitor='val_loss',
@@ -272,66 +308,61 @@ class TransformerDecoderModel:
         reduce_lr = callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
-            patience=7,
-            min_lr=1e-7,
+            patience=5,
+            min_lr=1e-6,
             verbose=1
         )
         
-        # Compute class weights to handle imbalance
-        unique_classes = np.unique(y_train)
-        class_weights_array = compute_class_weight(
-            class_weight='balanced',
-            classes=unique_classes,
-            y=y_train
-        )
-        class_weights = dict(zip(unique_classes.astype(int), class_weights_array))
-        
-        logger.info(f"Class weights: {class_weights}")
-        
-        # Train
+        # Train with sample weights
         self.history = self.model.fit(
             X_train_scaled, y_train,
             validation_data=(X_val_scaled, y_val),
+            sample_weight=sample_weights,
             epochs=config.TRANSFORMER_PARAMS['epochs'],
             batch_size=config.TRANSFORMER_PARAMS['batch_size'],
             callbacks=[early_stopping, reduce_lr],
-            class_weight=class_weights,
             verbose=1
         )
         
         logger.info("Training completed!")
     
     def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> Dict:
-        """Evaluate model"""
+        """Evaluate model with discrete-aware regression (unbounded)"""
         logger.info("Evaluating model...")
         
         X_test_scaled = self.scaler.transform(
             X_test.reshape(-1, X_test.shape[-1])
         ).reshape(X_test.shape)
         
+        # Get predictions (unbounded, just round to nearest integer)
         y_pred = self.model.predict(X_test_scaled, verbose=0).flatten()
-        y_pred_clipped = np.clip(np.round(y_pred), 1, 10)
+        y_pred_rounded = np.maximum(np.round(y_pred), 1)  # Only ensure minimum of 1 replica
         
+        # Compute metrics
         mse = mean_squared_error(y_test, y_pred)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
         
-        accuracy = np.mean(y_pred_clipped == y_test)
-        within_1_accuracy = np.mean(np.abs(y_pred_clipped - y_test) <= 1)
+        # Discrete accuracy metrics
+        exact_accuracy = np.mean(y_pred_rounded == y_test)
+        within_1_accuracy = np.mean(np.abs(y_pred_rounded - y_test) <= 1)
+        
+        # Average "integerity" - how close predictions are to integers
+        integerity = 1 - np.mean(np.abs(y_pred - np.round(y_pred)))
         
         self.metrics = {
-            'mse': float(mse),
             'rmse': float(rmse),
             'mae': float(mae),
             'r2_score': float(r2),
-            'exact_accuracy': float(accuracy),
+            'exact_accuracy': float(exact_accuracy),
             'within_1_accuracy': float(within_1_accuracy),
-            'n_pca_components': int(self.n_pca_components) if self.n_pca_components else 0
+            'integerity': float(integerity)
         }
         
         logger.info(f"RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
-        logger.info(f"Accuracy: {accuracy:.4f}, Within-1: {within_1_accuracy:.4f}")
+        logger.info(f"Exact Accuracy: {exact_accuracy:.4f}, Within-1: {within_1_accuracy:.4f}")
+        logger.info(f"Integerity: {integerity:.4f} (closer to 1.0 = more integer-like)")
         
         return self.metrics
     
@@ -344,11 +375,12 @@ class TransformerDecoderModel:
         axes[0].plot(self.history.history['loss'], label='Train', linewidth=2)
         axes[0].plot(self.history.history['val_loss'], label='Val', linewidth=2)
         axes[0].set_xlabel('Epoch')
-        axes[0].set_ylabel('Loss')
+        axes[0].set_ylabel('Loss (Discrete-Aware MSE)')
         axes[0].set_title('Training and Validation Loss')
         axes[0].legend()
         axes[0].grid(True, alpha=0.3)
         
+        # Plot MAE
         axes[1].plot(self.history.history['mae'], label='Train', linewidth=2)
         axes[1].plot(self.history.history['val_mae'], label='Val', linewidth=2)
         axes[1].set_xlabel('Epoch')
@@ -404,22 +436,22 @@ class TransformerDecoderModel:
         ).reshape(X_test.shape)
         
         y_pred = self.model.predict(X_test_scaled, verbose=0).flatten()
-        y_pred_clipped = np.clip(np.round(y_pred), 1, 10)
+        y_pred_rounded = np.maximum(np.round(y_pred), 1)  # Only ensure minimum of 1 replica
         
         fig, axes = plt.subplots(1, 2, figsize=(15, 6))
         
-        axes[0].scatter(y_test, y_pred_clipped, alpha=0.5, s=10)
+        axes[0].scatter(y_test, y_pred_rounded, alpha=0.5, s=10)
         axes[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()],
                      'r--', lw=2, label='Perfect')
         axes[0].set_xlabel('Actual Replicas')
         axes[0].set_ylabel('Predicted Replicas')
-        axes[0].set_title('Predicted vs Actual')
+        axes[0].set_title(f'Predicted vs Actual (Data Range: {int(y_test.min())}-{int(y_test.max())})')
         axes[0].legend()
         axes[0].grid(True, alpha=0.3)
         
-        bins = np.arange(0.5, 11.5, 1)
+        bins = np.arange(int(y_test.min()) - 0.5, int(y_test.max()) + 1.5, 1)
         axes[1].hist(y_test, bins=bins, alpha=0.5, label='Actual', color='blue', edgecolor='black')
-        axes[1].hist(y_pred_clipped, bins=bins, alpha=0.5, label='Predicted', color='orange', edgecolor='black')
+        axes[1].hist(y_pred_rounded, bins=bins, alpha=0.5, label='Predicted', color='orange', edgecolor='black')
         axes[1].set_xlabel('Replicas')
         axes[1].set_ylabel('Frequency')
         axes[1].set_title('Distribution')
@@ -475,10 +507,14 @@ class TransformerDecoderModel:
         logger.info(f"Model loaded from {model_dir}")
     
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Make predictions"""
+        """Make predictions with discrete-aware regression (unbounded)"""
         X_scaled = self.scaler.transform(X.reshape(-1, X.shape[-1])).reshape(X.shape)
+        
+        # Get predictions - unbounded, only ensure minimum of 1 replica
         predictions = self.model.predict(X_scaled, verbose=0).flatten()
-        return np.clip(np.round(predictions), 1, 10).astype(int)
+        predictions = np.maximum(np.round(predictions), 1)
+        
+        return predictions.astype(int)
 
 
 def main():
