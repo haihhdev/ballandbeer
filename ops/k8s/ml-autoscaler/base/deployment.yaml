@@ -38,7 +38,7 @@ spec:
       serviceAccountName: ml-autoscaler-sa
       containers:
       - name: ml-autoscaler
-        image: hao1706/ml-autoscaler:latest
+        image: hao1706/mlscaler:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
