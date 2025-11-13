@@ -12,6 +12,10 @@ export default function AdminPage() {
   const [orders, setOrders] = useState([]);
   const [orderStatistics, setOrderStatistics] = useState(null);
 
+  // Bookings state
+  const [bookings, setBookings] = useState([]);
+  const [bookingStatistics, setBookingStatistics] = useState(null);
+
   // Products state
   const [products, setProducts] = useState([]);
   const [showProductForm, setShowProductForm] = useState(false);
@@ -91,7 +95,13 @@ export default function AdminPage() {
       });
       const data = await response.json();
       if (data.success) {
-        setOrders(data.data);
+        // Sắp xếp orders theo thứ tự mới nhất trước (createdAt giảm dần)
+        const sortedOrders = data.data.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA; // Sắp xếp giảm dần (mới nhất trước)
+        });
+        setOrders(sortedOrders);
       }
     } catch (error) {
       console.error("Error loading orders:", error);
@@ -115,6 +125,38 @@ export default function AdminPage() {
     }
   };
 
+  // Load bookings
+  const loadBookings = async () => {
+    try {
+      const response = await fetch("/api/bookings/all", {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBookings(data.data);
+      }
+    } catch (error) {
+      console.error("Error loading bookings:", error);
+      showToast("Failed to load bookings", "error");
+    }
+  };
+
+  // Load booking statistics
+  const loadBookingStatistics = async () => {
+    try {
+      const response = await fetch("/api/bookings/statistics", {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBookingStatistics(data.data);
+      }
+    } catch (error) {
+      console.error("Error loading booking statistics:", error);
+      showToast("Failed to load booking statistics", "error");
+    }
+  };
+
   useEffect(() => {
     // Check if user is admin
     const userData = localStorage.getItem("userData");
@@ -126,6 +168,8 @@ export default function AdminPage() {
         loadUsers();
         loadOrders();
         loadOrderStatistics();
+        loadBookings();
+        loadBookingStatistics();
       } else {
         router.push("/");
       }
@@ -410,6 +454,20 @@ export default function AdminPage() {
             onClick={() => setActiveTab("orders")}
           >
             Orders Summary
+          </button>
+          <button
+            className={`flex-1 px-6 py-3 font-semibold rounded-md transition-all ${
+              activeTab === "bookings"
+                ? "bg-orange-500 text-white shadow-md"
+                : "text-gray-600 hover:bg-orange-50"
+            }`}
+            onClick={() => {
+              setActiveTab("bookings");
+              loadBookings();
+              loadBookingStatistics();
+            }}
+          >
+            Booking Summary
           </button>
         </div>
         {/* Products Tab */}
@@ -1126,32 +1184,56 @@ export default function AdminPage() {
                   <div className="space-y-3">
                     {orderStatistics.topProducts
                       .slice(0, 3)
-                      .map((product, index) => (
-                        <div
-                          key={product._id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                              {index + 1}
+                      .map((topProduct, index) => {
+                        // Tìm thông tin đầy đủ của sản phẩm từ danh sách products
+                        // So sánh bằng string để đảm bảo khớp nhau
+                        const productInfo = products.find(
+                          (p) => String(p._id) === String(topProduct._id)
+                        );
+
+                        // Sử dụng image từ productInfo (đã được format URL trong loadProducts)
+                        const productImage = productInfo?.image || null;
+
+                        return (
+                          <div
+                            key={topProduct._id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
+                                {index + 1}
+                              </div>
+                              {productImage && (
+                                <img
+                                  src={productImage}
+                                  alt={productInfo?.name || "Product"}
+                                  className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200 flex-shrink-0"
+                                />
+                              )}
+                              <div>
+                                <p className="font-medium text-gray-800">
+                                  {productInfo?.name ||
+                                    `Product ${topProduct._id}`}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {topProduct.totalQuantity} units sold
+                                </p>
+                                {productInfo?.category && (
+                                  <p className="text-xs text-gray-500">
+                                    {productInfo.category}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-800">
-                                Product {product._id}
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-800">
+                                {topProduct.totalRevenue.toLocaleString()} VND
                               </p>
-                              <p className="text-sm text-gray-600">
-                                {product.totalQuantity} units sold
-                              </p>
+                              <p className="text-sm text-gray-600">Revenue</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-gray-800">
-                              {product.totalRevenue.toLocaleString()} VND
-                            </p>
-                            <p className="text-sm text-gray-600">Revenue</p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -1167,9 +1249,6 @@ export default function AdminPage() {
                       <th className="p-4 text-left font-semibold">
                         Total Amount (VND)
                       </th>
-                      <th className="p-4 text-left font-semibold">
-                        Payment Method
-                      </th>
                       <th className="p-4 text-left font-semibold">Status</th>
                       <th className="p-4 text-left font-semibold">Date</th>
                       <th className="p-4 text-left font-semibold">Actions</th>
@@ -1179,7 +1258,7 @@ export default function AdminPage() {
                     {orders.length === 0 ? (
                       <tr>
                         <td
-                          colSpan="8"
+                          colSpan="7"
                           className="p-8 text-center text-gray-500"
                         >
                           No orders found.
@@ -1231,11 +1310,6 @@ export default function AdminPage() {
                             {order.totalPrice?.toLocaleString()} VND
                           </td>
                           <td className="p-4">
-                            <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {order.paymentMethod || "Cash"}
-                            </span>
-                          </td>
-                          <td className="p-4">
                             <span
                               className={`px-3 py-1 rounded-full text-sm font-medium ${
                                 order.status === "completed"
@@ -1279,6 +1353,390 @@ export default function AdminPage() {
                                 Delete
                               </button>
                             </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Booking Summary Tab */}
+        {activeTab === "bookings" && (
+          <div>
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                Booking Summary
+              </h2>
+              <p className="text-gray-600 mt-1">
+                Overview of all court bookings
+              </p>
+            </div>
+
+            {/* Statistics Cards */}
+            {bookingStatistics && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {/* Total Bookings */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">
+                        Tổng số lượt đặt sân
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookingStatistics.totalBookings}
+                      </p>
+                    </div>
+                    <div className="text-blue-500">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Revenue */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">
+                        Tổng doanh thu
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookingStatistics.totalRevenue?.toLocaleString()} VND
+                      </p>
+                    </div>
+                    <div className="text-green-500">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weekly Revenue */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-purple-500">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">
+                        Doanh thu tuần này
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookingStatistics.weeklyRevenue?.toLocaleString() || 0}{" "}
+                        VND
+                      </p>
+                    </div>
+                    <div className="text-purple-500">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monthly Revenue */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-indigo-500">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">
+                        Doanh thu tháng này
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookingStatistics.monthlyRevenue?.toLocaleString() ||
+                          0}{" "}
+                        VND
+                      </p>
+                    </div>
+                    <div className="text-indigo-500">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Customers */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-pink-500">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">
+                        Số khách hàng đã đặt
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookingStatistics.totalCustomers}
+                      </p>
+                    </div>
+                    <div className="text-pink-500">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Completion Rate */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-600">
+                        Tỷ lệ hoàn tất
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookingStatistics.completionRate}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top 3 Time Slots */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-yellow-500">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-3">
+                      Top 3 khung giờ đặt nhiều nhất
+                    </p>
+                    <div className="space-y-2">
+                      {bookingStatistics.top3TimeSlots &&
+                      Array.isArray(bookingStatistics.top3TimeSlots) &&
+                      bookingStatistics.top3TimeSlots.length > 0 ? (
+                        bookingStatistics.top3TimeSlots.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                {index + 1}
+                              </span>
+                              <span className="text-sm font-medium text-gray-800">
+                                {item.timeSlot || "N/A"}
+                              </span>
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              {item.count || 0} lượt
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Chưa có dữ liệu</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Field Booking Rates */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-teal-500">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-3">
+                      Tỷ lệ đặt sân theo loại
+                    </p>
+                    <div className="space-y-2">
+                      {bookingStatistics.fieldBookingRates &&
+                      Array.isArray(bookingStatistics.fieldBookingRates) &&
+                      bookingStatistics.fieldBookingRates.length > 0 ? (
+                        bookingStatistics.fieldBookingRates.map(
+                          (field, index) => (
+                            <div
+                              key={field.fieldId || index}
+                              className="space-y-1"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-800">
+                                  {field.name}
+                                </span>
+                                <span className="text-sm font-bold text-gray-900">
+                                  {field.rate ? field.rate.toFixed(1) : "0.0"}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-teal-500 h-2 rounded-full transition-all"
+                                  style={{ width: `${field.rate || 0}%` }}
+                                ></div>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                {field.count || 0} lượt đặt
+                              </p>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <p className="text-sm text-gray-500">Chưa có dữ liệu</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Booking Details Table */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 p-6 pb-0">
+                Chi tiết đơn đặt sân
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Booking ID
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Customer
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Field Name
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Date
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Time Slot
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Duration
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Price
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Status
+                      </th>
+                      <th className="p-4 text-left text-sm font-semibold">
+                        Created At
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {bookings.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="9"
+                          className="p-8 text-center text-gray-500"
+                        >
+                          No bookings found
+                        </td>
+                      </tr>
+                    ) : (
+                      bookings.map((booking, index) => (
+                        <tr
+                          key={booking.bookingId}
+                          className={`hover:bg-orange-50 transition-colors ${
+                            index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                          }`}
+                        >
+                          <td className="p-4 text-sm text-gray-800 font-mono">
+                            {booking.bookingId.substring(0, 20)}...
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm">
+                              <p className="font-semibold text-gray-900">
+                                {booking.customer.name}
+                              </p>
+                              <p className="text-gray-600 text-xs">
+                                {booking.customer.email}
+                              </p>
+                              <p className="text-gray-600 text-xs">
+                                {booking.customer.phone}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-800 font-medium">
+                            {booking.fieldName}
+                          </td>
+                          <td className="p-4 text-gray-600">
+                            {new Date(booking.date).toLocaleDateString("vi-VN")}
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm text-gray-700">
+                              {booking.timeSlots
+                                .slice(0, 2)
+                                .map((slot, idx) => (
+                                  <p key={idx}>{slot}</p>
+                                ))}
+                              {booking.timeSlots.length > 2 && (
+                                <p className="text-gray-500 text-xs">
+                                  +{booking.timeSlots.length - 2} more
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-600">
+                            {booking.duration} giờ
+                          </td>
+                          <td className="p-4 text-orange-600 font-semibold">
+                            {booking.price.toLocaleString()} VND
+                          </td>
+                          <td className="p-4">
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                booking.status === "Completed"
+                                  ? "bg-green-100 text-green-800"
+                                  : booking.status === "Pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : booking.status === "Cancelled"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {booking.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-gray-600 text-sm">
+                            {new Date(booking.createdAt).toLocaleString(
+                              "vi-VN"
+                            )}
                           </td>
                         </tr>
                       ))

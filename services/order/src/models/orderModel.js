@@ -21,6 +21,12 @@ const orderSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true },
     status: { type: String, default: "pending" },
     paymentMethod: { type: String, default: "Cash" },
+    paymentTransaction: {
+      transactionId: { type: String },
+      bankCode: { type: String },
+      paymentDate: { type: Date },
+      vnpResponseCode: { type: String },
+    },
   },
   { timestamps: true }
 );

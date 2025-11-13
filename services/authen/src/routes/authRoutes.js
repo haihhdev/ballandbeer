@@ -6,7 +6,10 @@ const {
   changePassword,
   loginWithGoogle,
 } = require("../controllers/authController");
-const { authenticateToken, requireAdmin } = require("../middlewares/authMiddleware");
+const {
+  authenticateToken,
+  requireAdmin,
+} = require("../middlewares/authMiddleware");
 
 router.post("/register", register);
 router.post("/login", login);

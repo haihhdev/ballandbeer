@@ -17,10 +17,23 @@ const authenticateToken = (req, res, next) => {
     }
 
     req.userId = decoded.id;
+    req.user = decoded; // Include full user info for admin checks
     next();
   } catch (err) {
     return res.status(403).json({ error: "Invalid or expired token" });
   }
 };
 
-module.exports = authenticateToken;
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res
+      .status(403)
+      .json({ message: "Access Denied: Admin privileges required" });
+  }
+  next();
+};
+
+module.exports = {
+  authenticateToken,
+  requireAdmin,
+};

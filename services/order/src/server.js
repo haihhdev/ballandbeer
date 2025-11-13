@@ -6,6 +6,7 @@ const cors = require("cors");
 const loadSecrets = require("./vaultClient");
 const { verifyToken, requireAdmin } = require("./middlewares/authMiddleware");
 const orderController = require("./controllers/orderController");
+const paymentController = require("./controllers/paymentController");
 const orderService = require("./services/orderService");
 const runOrderConsumer = require("./consumers/orderConsumer");
 
@@ -30,11 +31,22 @@ app.get("/api/orders/my-orders", verifyToken, async (req, res) => {
     }
 
     const userId = req.user.id;
+    console.log("Fetching orders for userId:", userId, "Type:", typeof userId);
     const result = await orderService.getOrdersByUser(userId);
+
+    if (result.status !== 200) {
+      console.error("Error from getOrdersByUser:", result.message);
+      return res.status(result.status).json(result);
+    }
+
     res.status(result.status).json(result);
   } catch (err) {
     console.error("Error in /my-orders:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error stack:", err.stack);
+    res.status(500).json({
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
+    });
   }
 });
 
@@ -66,6 +78,19 @@ app.get(
 // WRITE API
 app.post("/api/orders", verifyToken, orderController.createOrder);
 app.put("/api/orders/:orderId", verifyToken, orderController.updateOrder);
+
+// PAYMENT API
+app.post(
+  "/api/payment/create-url",
+  verifyToken,
+  paymentController.createPaymentUrl
+);
+app.get("/api/payment/callback", paymentController.handlePaymentCallback);
+app.get(
+  "/api/payment/status/:orderId",
+  verifyToken,
+  paymentController.checkPaymentStatus
+);
 
 // ADMIN API
 app.patch(
