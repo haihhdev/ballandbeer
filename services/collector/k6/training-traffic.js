@@ -432,37 +432,39 @@ export function dynamicMixedTraffic(data) {
     if (session.token) {
       const authAction = Math.random();
       
-      if (authAction < 0.22) {
-        if (Math.random() < 0.65) {
+      if (authAction < 0.26) {
+        if (Math.random() < 0.7) {
           createOrder(session.token);
         } else {
           viewMyOrders(session.token);
         }
-      } else if (authAction < 0.44) {
-        if (Math.random() < 0.7) {
+      } else if (authAction < 0.50) {
+        if (Math.random() < 0.75) {
           createBooking(session.token);
         } else {
           viewBookings();
         }
-      } else if (authAction < 0.66) {
+      } else if (authAction < 0.68) {
         manageProfile(session.token, session.userId);
-      } else if (authAction < 0.84) {
-        getRecommendations();
+      } else if (authAction < 0.82) {
+        verifySession(session.token);
+        sleep(0.05);
+        if (Math.random() < 0.6) {
+          getRecommendations();
+        } else {
+          viewMyOrders(session.token);
+        }
       } else if (authAction < 0.90) {
-        if (Math.random() < 0.4) {
+        getRecommendations();
+      } else if (authAction < 0.96) {
+        if (Math.random() < 0.5) {
           postComment(session.token);
         } else {
           viewMyOrders(session.token);
         }
-      } else if (authAction < 0.96) {
-        verifySession(session.token);
-        sleep(0.1);
-        if (Math.random() < 0.5) {
-          viewMyOrders(session.token);
-        } else {
-          viewBookings();
-        }
       } else {
+        verifySession(session.token);
+        sleep(0.05);
         viewMyOrders(session.token);
       }
     } else {
