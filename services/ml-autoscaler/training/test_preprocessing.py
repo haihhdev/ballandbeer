@@ -139,12 +139,12 @@ def test_preprocessing():
     logger.info(f"  Max: {y_full.max():.0f}")
     
     logger.info("\n" + "="*80)
-    logger.info("✅ PREPROCESSING TEST COMPLETED SUCCESSFULLY!")
+    logger.info("PREPROCESSING TEST COMPLETED SUCCESSFULLY!")
     logger.info("="*80)
     logger.info("\nNext steps:")
-    logger.info("1. Review feature engineering logic in data_preprocessor.py")
-    logger.info("2. Adjust scaling thresholds in config.py if needed")
-    logger.info("3. Run train_random_forest.py or train_lstm_cnn.py")
+    logger.info("1. Review feature engineering in data_preprocessor.py")
+    logger.info("2. Adjust thresholds in config.py if needed")
+    logger.info("3. Train model: python training/transformer_decoder.py")
     logger.info("="*80)
 
 

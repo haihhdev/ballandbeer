@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ballandbeer
+
+resources:
+- deployment.yaml
+- service.yaml
+- serviceaccount.yaml
+- servicemonitor.yaml
+- scaledobjects.yaml
+
+commonLabels:
+  app: ml-autoscaler

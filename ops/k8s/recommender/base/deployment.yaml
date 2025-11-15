@@ -27,8 +27,8 @@ spec:
           value: "root"
         resources:
           requests:
-            memory: "384Mi"
-            cpu: "100m"
+            memory: "1Gi"
+            cpu: "50m"
           limits:
-            memory: "768Mi"
+            memory: "2Gi"
             cpu: "500m"

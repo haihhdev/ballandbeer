@@ -35,6 +35,7 @@ pipeline{
                         kubectl delete svc redpanda-console -n redpanda --ignore-not-found=true || true
                         kubectl delete svc ingress-nginx-controller -n ingress-nginx --ignore-not-found=true || true
                         sleep 30
+                        helm uninstall keda -n keda || true
                         helm uninstall cluster-autoscaler -n kube-system || true
                         helm uninstall k6-operator -n k6-operator-system || true
                         helm uninstall argocd -n argocd || true
@@ -81,6 +82,7 @@ pipeline{
                         helm repo add autoscaler https://kubernetes.github.io/autoscaler || true
                         helm repo add redpanda https://charts.redpanda.com || true
                         helm repo add grafana https://grafana.github.io/helm-charts || true
+                        helm repo add kedacore https://kedacore.github.io/charts || true
                         helm repo update
                     '''
                 }
@@ -197,6 +199,20 @@ pipeline{
                     sh '''
                         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
                         kubectl wait --for=condition=ready pod -l "k8s-app=metrics-server" -n kube-system --timeout=120s || true
+                    '''
+                }
+            }
+        }
+
+        stage('Install KEDA') {
+            when {
+                expression { return params.action == 'apply'}
+            }
+            steps {
+                script {
+                    sh '''
+                        helm install keda kedacore/keda --namespace keda --create-namespace
+                        kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=keda-operator" -n keda --timeout=120s || true
                     '''
                 }
             }

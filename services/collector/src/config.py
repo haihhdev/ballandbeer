@@ -6,8 +6,8 @@ S3_BUCKET = os.getenv('S3_BUCKET', 'ballandbeer-metrics')
 S3_REGION = os.getenv('S3_REGION', 'ap-southeast-1')
 COLLECTION_INTERVAL = int(os.getenv('COLLECTION_INTERVAL', '30'))
 
-COLLECTION_START_HOUR = 6
-COLLECTION_END_HOUR = 22
+COLLECTION_START_HOUR = 0
+COLLECTION_END_HOUR = 24
 
 SERVICES = [
     'authen',
