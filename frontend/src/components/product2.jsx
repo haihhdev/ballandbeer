@@ -220,33 +220,49 @@ export default function Product2() {
 
       {/* Loading State */}
       {loading ? (
-        <p>Loading products...</p>
+        <p className="text-center py-8 text-[#5c3613]">Loading products...</p>
       ) : (
         <>
           <div id="product-list-top" />
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {paginatedProducts.map((product) => (
               <div
                 key={product.id}
-                onClick={() => router.push(`/productinfo/${product.id}`)} // Navigate to productinfo page
-                className="text-left cursor-pointer border-2 border-gray-200 rounded-lg p-3 hover:border-[#f09627] transition-colors duration-200"
+                onClick={() => router.push(`/productinfo/${product.id}`)}
+                className="flex flex-col bg-white cursor-pointer border-2 border-gray-200 rounded-lg overflow-hidden hover:border-[#f09627] hover:shadow-lg transition-all duration-300 group"
               >
-                <div>
+                {/* Image Container - Square Aspect Ratio */}
+                <div className="relative w-full aspect-square overflow-hidden bg-gray-100">
                   <img
-                    className="h-120 w-full object-cover rounded-lg"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     src={product.image}
                     alt={product.name}
+                    loading="lazy"
                   />
-                  <div className="mt-2">
-                    <h3 className="text-lg font-bold text-[#5c3613]">
-                      {product.name}
-                    </h3>
-                    <p className="text-[#5c3613]">
-                      Giá:{" "}
-                      <span className="text-[#f09627]">{product.price}</span>
+                  {/* Out of Stock Overlay */}
+                  {product.quantity === 0 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm sm:text-base">
+                        Hết hàng
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Product Info */}
+                <div className="p-2 sm:p-3 flex flex-col flex-grow">
+                  <h3 className="text-sm sm:text-base font-bold text-[#5c3613] line-clamp-2 mb-1 sm:mb-2 min-h-[2.5rem] sm:min-h-[3rem]">
+                    {product.name}
+                  </h3>
+                  <div className="mt-auto space-y-1">
+                    <p className="text-xs sm:text-sm text-[#5c3613]">
+                      <span className="font-semibold text-[#f09627] text-sm sm:text-base">
+                        {product.price}
+                      </span>
                     </p>
-                    <p className="text-[#5c3613]">
-                      Sản phẩm còn lại: {product.quantity}
+                    <p className="text-xs text-gray-600">
+                      Còn lại:{" "}
+                      <span className="font-medium">{product.quantity}</span>
                     </p>
                   </div>
                 </div>

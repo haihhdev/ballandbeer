@@ -1,3 +1,5 @@
+// Load .env file nếu có (cho local development)
+require("dotenv").config({ path: "./vnpay.env" });
 require("dotenv").config({ path: "/vault/secrets/env" });
 const express = require("express");
 const mongoose = require("mongoose");

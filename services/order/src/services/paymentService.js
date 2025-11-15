@@ -6,16 +6,11 @@ const querystring = require("querystring");
 // LƯU Ý: Bạn cần đăng ký tài khoản tại https://sandbox.vnpayment.vn/devreg/
 // để lấy TMN Code và Secret Key chính xác
 const VNPAY_CONFIG = {
-  tmnCode: process.env.VNPAY_TMN_CODE || "KYM639SZ", // Sandbox TMN Code - CẦN ĐĂNG KÝ ĐỂ LẤY
-  secretKey: process.env.VNPAY_SECRET_KEY || "EGBL3OLMSIV7AMW5M7T1MA6AOPM11XDQ", // Sandbox Secret Key - CẦN ĐĂNG KÝ ĐỂ LẤY
-  url:
-    process.env.VNPAY_URL ||
-    "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-  returnUrl:
-    process.env.VNPAY_RETURN_URL || "http://localhost:3000/payment/callback",
-  apiUrl:
-    process.env.VNPAY_API_URL ||
-    "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
+  tmnCode: process.env.VNPAY_TMN_CODE, // Sandbox TMN Code - CẦN ĐĂNG KÝ ĐỂ LẤY
+  secretKey: process.env.VNPAY_SECRET_KEY, // Sandbox Secret Key - CẦN ĐĂNG KÝ ĐỂ LẤY
+  url: process.env.VNPAY_URL,
+  returnUrl: process.env.VNPAY_RETURN_URL,
+  apiUrl: process.env.VNPAY_API_URL,
 };
 
 /**
@@ -42,9 +37,16 @@ exports.createPaymentUrl = (
     .toString()
     .replace(/[^a-zA-Z0-9]/g, "")
     .substring(0, 100);
+
   // VNPay yêu cầu số tiền phải nhân 100 (ví dụ: 790000 VND -> 79000000)
+  // Đảm bảo amount là số và > 0
+  if (!amount || amount <= 0) {
+    throw new Error("Invalid amount: amount must be greater than 0");
+  }
   const amountStr = Math.round(amount * 100).toString();
-  // OrderInfo cần encode và tối đa 255 ký tự
+
+  // OrderInfo: VNPay hỗ trợ UTF-8, nhưng khi tạo signature thì dùng raw string
+  // Tối đa 255 ký tự
   const orderInfoStr = (
     orderInfo || `Thanh toan don hang ${orderIdStr}`
   ).substring(0, 255);
@@ -71,9 +73,21 @@ exports.createPaymentUrl = (
 
   // Nếu có bankCode, thêm vào params
   // VNPay bank codes: VNBANK (Vietcombank), BIDV (BIDV), etc.
-  if (bankCode) {
-    vnpParams["vnp_BankCode"] = bankCode;
+  // Lưu ý: bankCode phải là string hợp lệ, không null/undefined
+  if (bankCode && bankCode.trim() !== "") {
+    vnpParams["vnp_BankCode"] = bankCode.trim();
   }
+
+  // Loại bỏ các giá trị null/undefined/empty
+  Object.keys(vnpParams).forEach((key) => {
+    if (
+      vnpParams[key] === null ||
+      vnpParams[key] === undefined ||
+      vnpParams[key] === ""
+    ) {
+      delete vnpParams[key];
+    }
+  });
 
   // Sắp xếp params theo thứ tự alphabet
   const sortedParams = Object.keys(vnpParams)
@@ -84,29 +98,84 @@ exports.createPaymentUrl = (
     }, {});
 
   // Tạo query string để ký (không bao gồm SecureHash)
-  const signData = querystring.stringify(sortedParams, { encode: false });
+  // VNPay yêu cầu format: key1=value1&key2=value2
+  const signData = querystring.stringify(sortedParams);
 
-  // Debug log (chỉ trong development)
-  if (process.env.NODE_ENV === "development") {
-    console.log("VNPay Sign Data:", signData);
-    console.log("VNPay Secret Key length:", VNPAY_CONFIG.secretKey.length);
-  }
+  // Debug log - CHI TIẾT ĐẦY ĐỦ
+  console.log(
+    "\n╔════════════════════════════════════════════════════════════════╗"
+  );
+  console.log(
+    "║           VNPay Payment Debug - FULL DETAILS                  ║"
+  );
+  console.log(
+    "╚════════════════════════════════════════════════════════════════╝"
+  );
+  console.log("\n[CONFIG]");
+  console.log("  TMN Code        :", VNPAY_CONFIG.tmnCode);
+  console.log("  Secret Key      :", VNPAY_CONFIG.secretKey);
+  console.log("  Secret Key Len  :", VNPAY_CONFIG.secretKey.length);
+  console.log("  VNPay URL       :", VNPAY_CONFIG.url);
+  console.log("  Return URL      :", VNPAY_CONFIG.returnUrl);
+
+  console.log("\n[ORDER INFO]");
+  console.log("  Order ID (raw)  :", orderId);
+  console.log("  Order ID (clean):", orderIdStr);
+  console.log("  Amount (VND)    :", amount);
+  console.log("  Amount (VNPay)  :", amountStr);
+  console.log("  Bank Code       :", bankCode || "(none)");
+  console.log("  IP Address      :", ipAddr);
+
+  console.log("\n[SORTED PARAMS]");
+  Object.keys(sortedParams).forEach((key) => {
+    console.log(`  ${key}: ${sortedParams[key]}`);
+  });
+
+  console.log("\n[SIGN DATA - RAW]");
+  console.log(signData);
+
+  console.log("\n[SIGN DATA - INFO]");
+  console.log("  Length         :", signData.length);
+  console.log("  First 100 chars:", signData.substring(0, 100));
 
   // Tạo chữ ký HMAC SHA512
   const hmac = crypto.createHmac("sha512", VNPAY_CONFIG.secretKey);
   const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
   sortedParams["vnp_SecureHash"] = signed;
 
-  // Tạo URL thanh toán - cần URL encode các giá trị
-  const paymentUrl =
-    VNPAY_CONFIG.url +
-    "?" +
-    querystring.stringify(sortedParams, { encode: true });
+  console.log("\n[SIGNATURE]");
+  console.log("  SecureHash     :", signed);
+  console.log("  Hash Length    :", signed.length, "(should be 128)");
 
-  // Debug log
-  if (process.env.NODE_ENV === "development") {
-    console.log("VNPay Payment URL:", paymentUrl.substring(0, 200) + "...");
-  }
+  // Tạo URL thanh toán - querystring.stringify tự động URL encode
+  const paymentUrl =
+    VNPAY_CONFIG.url + "?" + querystring.stringify(sortedParams);
+
+  console.log("\n[FINAL PAYMENT URL]");
+  console.log(paymentUrl);
+  console.log("\n  URL Length:", paymentUrl.length);
+
+  console.log(
+    "\n╔════════════════════════════════════════════════════════════════╗"
+  );
+  console.log(
+    "║  COPY URL TRÊN ĐỂ TEST TRONG BROWSER                         ║"
+  );
+  console.log(
+    "║  Nếu vẫn lỗi 'Invalid data format':                          ║"
+  );
+  console.log(
+    "║  1. Kiểm tra Secret Key có đúng 32 ký tự                     ║"
+  );
+  console.log(
+    "║  2. Kiểm tra TMN Code = KYM639SZ                             ║"
+  );
+  console.log(
+    "║  3. Copy Secret Key từ VNPay Portal                          ║"
+  );
+  console.log(
+    "╚════════════════════════════════════════════════════════════════╝\n"
+  );
 
   return paymentUrl;
 };

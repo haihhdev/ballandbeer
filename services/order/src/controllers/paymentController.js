@@ -20,16 +20,25 @@ exports.createPaymentUrl = async (req, res) => {
       return res.status(400).json({ message: "Order is not pending" });
     }
 
-    // Lấy IP từ request
-    const clientIp = req.ip || req.connection.remoteAddress || "127.0.0.1";
+    // Lấy IP từ request và convert IPv6 localhost thành IPv4
+    let clientIp = req.ip || req.connection.remoteAddress || "127.0.0.1";
+    // VNPay không chấp nhận IPv6, convert ::1 thành 127.0.0.1
+    if (clientIp === "::1" || clientIp === "::ffff:127.0.0.1") {
+      clientIp = "127.0.0.1";
+    }
 
     // Đảm bảo orderId là string và format đúng cho VNPay
     const orderIdStr = orderId.toString();
 
     // Log để debug
-    console.log("Creating payment URL for order:", orderIdStr);
-    console.log("Amount:", order.totalAmount);
+    console.log("\n>>> Payment Controller - Request Info <<<");
+    console.log("User ID:", userId);
+    console.log("Order ID (raw):", orderId);
+    console.log("Order ID (string):", orderIdStr);
+    console.log("Order Amount:", order.totalAmount);
     console.log("Bank Code:", bankCode);
+    console.log("Client IP:", clientIp);
+    console.log("Order Status:", order.status);
 
     // Tạo payment URL
     const paymentUrl = paymentService.createPaymentUrl(

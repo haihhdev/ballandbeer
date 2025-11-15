@@ -3,13 +3,13 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="bg-black/90 border-t-2 border-gray-800 text-white pt-8 pb-4">
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 items-start px-4">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 items-start px-4">
         {/* Logo & Description */}
         <div className="flex flex-col items-center md:items-start text-center md:text-left">
           <img
             src="/images/B&B.png"
             alt="Ball & Beer"
-            className="w-24 h-24 mb-2 object-contain rounded"
+            className="w-20 h-20 md:w-24 md:h-24 mb-2 object-contain rounded"
           />
           <div className="text-sm text-white/90 mb-2 mt-2">
             Đặt sân nhanh chóng - Cùng bạn kết nối đam mê bóng đá.
