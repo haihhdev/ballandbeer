@@ -13,7 +13,7 @@ const commonHeaders = {
 };
 
 const TEST_USERS = [];
-for (let i = 1; i <= 80; i++) {
+for (let i = 1; i <= 60; i++) {
   TEST_USERS.push({
     email: `k6user${i}@test.local`,
     password: 'K6Test2024!',
@@ -36,14 +36,68 @@ function randomItem(arr) {
 }
 
 function getUserSession() {
-  const userIndex = (__VU - 1) % TEST_USERS.length;
-  const user = TEST_USERS[userIndex];
+  const usePreAuthenUser = __VU <= 140;
   
-  return { 
-    user, 
-    token: userTokens[user.email] || null,
-    userId: user.email.replace('@test.local', '').replace('k6user', 'user'),
-  };
+  if (usePreAuthenUser) {
+    const userIndex = (__VU - 1) % TEST_USERS.length;
+    const user = TEST_USERS[userIndex];
+    
+    return { 
+      user, 
+      token: userTokens[user.email] || null,
+      userId: user.email.replace('@test.local', '').replace('k6user', 'user'),
+    };
+  } else {
+    const dynamicEmail = `k6dynamic${__VU}@test.local`;
+    const dynamicPassword = 'K6Dynamic2024!';
+    const dynamicName = `K6 Dynamic User ${__VU}`;
+    
+    let token = userTokens[dynamicEmail];
+    
+    if (!token) {
+      let res = http.post(`${BASE_URL}/api/auth/login`, JSON.stringify({
+        email: dynamicEmail,
+        password: dynamicPassword,
+      }), {
+        headers: { ...commonHeaders, 'Content-Type': 'application/json' },
+      });
+      
+      if (res.status !== 200) {
+        http.post(`${BASE_URL}/api/auth/register`, JSON.stringify({
+          email: dynamicEmail,
+          password: dynamicPassword,
+          fullName: dynamicName,
+        }), {
+          headers: { ...commonHeaders, 'Content-Type': 'application/json' },
+        });
+        
+        sleep(0.2);
+        
+        res = http.post(`${BASE_URL}/api/auth/login`, JSON.stringify({
+          email: dynamicEmail,
+          password: dynamicPassword,
+        }), {
+          headers: { ...commonHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (res.status === 200) {
+        try {
+          const body = JSON.parse(res.body);
+          token = body.token || body.accessToken;
+          if (token) {
+            userTokens[dynamicEmail] = token;
+          }
+        } catch (e) {}
+      }
+    }
+    
+    return { 
+      user: { email: dynamicEmail, password: dynamicPassword, name: dynamicName },
+      token: token || null,
+      userId: `dynamicuser${__VU}`,
+    };
+  }
 }
 
 function fetchProducts() {
@@ -383,6 +437,7 @@ export const options = {
     'http_req_duration': ['p(95)<10000'],
     'errors': ['rate<0.4'],
   },
+  setupTimeout: '90s',
 };
 
 export function dynamicMixedTraffic(data) {

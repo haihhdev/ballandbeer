@@ -65,10 +65,6 @@ class CollectorService:
             writer.writerow(metrics)
     
     def collect_metrics(self):
-        if not self.is_collection_time():
-            logger.info("Outside collection time window, skipping...")
-            return
-        
         logger.info("Starting metrics collection cycle")
         csv_path = self.get_csv_path()
         self.initialize_csv(csv_path)
