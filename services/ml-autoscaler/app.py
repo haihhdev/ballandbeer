@@ -204,13 +204,51 @@ def collect_metrics_for_service(service: str) -> Optional[Dict]:
         features['request_count_per_second_last_5_min'] = features['request_count_per_second']
         features['cpu_request'] = 0.5
         features['cpu_limit'] = 2.0
-        features['ram_request'] = 512.0
-        features['ram_limit'] = 2048.0
+        features['ram_request'] = 536870912.0  # 512MB in bytes
+        features['ram_limit'] = 1073741824.0   # 1GB in bytes
         features['queue_length'] = 0
         features['error_rate'] = 0.0
         features['pod_restart_count'] = 0
         features['node_cpu_pressure_flag'] = 0
         features['node_memory_pressure_flag'] = 0
+        
+        # Engineered features (required by model - 36 features total)
+        cpu_pct = features['cpu_usage_percent']
+        ram_pct = features['ram_usage_percent']
+        replica_count = features['replica_count']
+        req_rate = features['request_count_per_second']
+        resp_time = features['response_time_ms']
+        
+        # Utilization ratios
+        features['cpu_utilization_ratio'] = cpu_pct / 100 if cpu_pct > 0 else 0
+        features['ram_utilization_ratio'] = ram_pct / 100 if ram_pct > 0 else 0
+        
+        # Change rates (defaults as no history yet)
+        features['cpu_change_rate'] = 0.0
+        features['ram_change_rate'] = 0.0
+        features['request_change_rate'] = 0.0
+        
+        # Rolling stats (estimates based on current values)
+        features['cpu_rolling_std'] = cpu_pct * 0.1
+        features['ram_rolling_std'] = ram_pct * 0.1
+        features['request_rolling_max'] = req_rate * 1.2
+        features['response_time_rolling_p95'] = resp_time * 1.2
+        
+        # Per-replica metrics
+        features['cpu_per_replica'] = cpu_pct / max(replica_count, 1)
+        features['ram_per_replica'] = ram_pct / max(replica_count, 1)
+        features['requests_per_replica'] = req_rate / max(replica_count, 1)
+        
+        # System pressure indicator
+        pressure = 0
+        if cpu_pct > 70: pressure += 1
+        if ram_pct > 75: pressure += 1
+        if resp_time > 500: pressure += 1
+        if features['error_rate'] > 0.05: pressure += 1
+        features['system_pressure'] = pressure
+        
+        # Incident flag
+        features['is_incident'] = 0
         
         return features
         

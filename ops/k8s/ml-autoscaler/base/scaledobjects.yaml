@@ -1,17 +1,45 @@
-# KEDA ScaledObjects for ML-based Autoscaling
-# These replace traditional HPA with ML predictions from transformer model
+# KEDA ScaledObjects for ML-based Proactive Autoscaling
+
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: authen-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: authen
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  # Advanced HPA config to work alongside existing HPA
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: authen-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  # Fallback to let CPU/Memory HPA take over if ML predictions are unavailable
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -20,18 +48,45 @@ spec:
       query: |
         ml_predicted_replicas{service="authen"}
       threshold: "1"
+      activationThreshold: "2"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: booking-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: booking
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: booking-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -40,18 +95,45 @@ spec:
       query: |
         ml_predicted_replicas{service="booking"}
       threshold: "1"
+      activationThreshold: "2"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: order-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: order
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: order-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -60,18 +142,45 @@ spec:
       query: |
         ml_predicted_replicas{service="order"}
       threshold: "1"
+      activationThreshold: "2"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: product-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: product
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: product-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -80,18 +189,45 @@ spec:
       query: |
         ml_predicted_replicas{service="product"}
       threshold: "1"
+      activationThreshold: "2"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: profile-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: profile
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: profile-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -100,18 +236,45 @@ spec:
       query: |
         ml_predicted_replicas{service="profile"}
       threshold: "1"
+      activationThreshold: "2"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: frontend-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: frontend
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: frontend-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -120,18 +283,45 @@ spec:
       query: |
         ml_predicted_replicas{service="frontend"}
       threshold: "1"
+      activationThreshold: "2"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: recommender-ml-scaler
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: recommender
   minReplicaCount: 1
   maxReplicaCount: 5
   pollingInterval: 30
-  cooldownPeriod: 300
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: recommender-ml-hpa
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          selectPolicy: Min
+  fallback:
+    failureThreshold: 3
+    replicas: 2
   triggers:
   - type: prometheus
     metadata:
@@ -140,4 +330,4 @@ spec:
       query: |
         ml_predicted_replicas{service="recommender"}
       threshold: "1"
-
+      activationThreshold: "2"

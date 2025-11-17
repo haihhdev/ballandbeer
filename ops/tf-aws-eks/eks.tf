@@ -48,6 +48,7 @@ module "eks" {
   addons = {
     vpc-cni = {
       before_compute = true
+      resolve_conflicts_on_create = "OVERWRITE"
     }
     eks-pod-identity-agent = {
       before_compute = true
