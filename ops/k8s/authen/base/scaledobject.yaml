@@ -39,13 +39,14 @@ spec:
       metadata:
         value: "70"
     
-    - type: prometheus
-      metadata:
-        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-        metricName: http_requests_rate
-        query: |
-          sum(rate(nginx_ingress_controller_requests{exported_namespace="ballandbeer",service="authen"}[1m]))
-        threshold: "10"
+    # HTTP requests trigger (disabled - using pure HPA mode: CPU + Memory only)
+    # - type: prometheus
+    #   metadata:
+    #     serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+    #     metricName: http_requests_rate
+    #     query: |
+    #       sum(rate(nginx_ingress_controller_requests{exported_namespace="ballandbeer",service="authen"}[1m]))
+    #     threshold: "10"
     
     # ML-based trigger (disabled for data collection)
     # - type: prometheus
