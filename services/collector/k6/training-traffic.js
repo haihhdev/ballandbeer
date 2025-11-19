@@ -41,18 +41,20 @@ function getUserSession() {
   if (usePreAuthenUser) {
     const userIndex = (__VU - 1) % TEST_USERS.length;
     const user = TEST_USERS[userIndex];
-    
-    return { 
-      user, 
-      token: userTokens[user.email] || null,
-      userId: user.email.replace('@test.local', '').replace('k6user', 'user'),
+    const stored = userTokens[user.email];
+    return {
+      user,
+      token: stored ? stored.token : null,
+      userId: stored ? stored.userId : null,
     };
   } else {
     const dynamicEmail = `k6dynamic${__VU}@test.local`;
     const dynamicPassword = 'K6Dynamic2024!';
     const dynamicName = `K6 Dynamic User ${__VU}`;
     
-    let token = userTokens[dynamicEmail];
+    let stored = userTokens[dynamicEmail];
+    let token = stored ? stored.token : null;
+    let storedUserId = stored ? stored.userId : null;
     
     if (!token) {
       let res = http.post(`${BASE_URL}/api/auth/login`, JSON.stringify({
@@ -85,17 +87,18 @@ function getUserSession() {
         try {
           const body = JSON.parse(res.body);
           token = body.token || body.accessToken;
+          const userId = (body && (body.user && (body.user._id || body.user.id))) || body.userId || body.id || body._id || storedUserId;
           if (token) {
-            userTokens[dynamicEmail] = token;
+            userTokens[dynamicEmail] = { token, userId };
           }
         } catch (e) {}
       }
     }
     
-    return { 
+    return {
       user: { email: dynamicEmail, password: dynamicPassword, name: dynamicName },
       token: token || null,
-      userId: `dynamicuser${__VU}`,
+      userId: storedUserId || null,
     };
   }
 }
@@ -360,8 +363,9 @@ export function setup() {
       try {
         const body = JSON.parse(res.body);
         const token = body.token || body.accessToken;
+        const userId = (body && (body.user && (body.user._id || body.user.id))) || body.userId || body.id || body._id || null;
         if (token) {
-          tokens[user.email] = token;
+          tokens[user.email] = { token, userId };
           console.log(`✓ User ${i + 1}/${TEST_USERS.length} authenticated`);
         }
       } catch (e) {
@@ -376,58 +380,29 @@ export function setup() {
   return { tokens };
 }
 
-// 7-hour training pattern: 1→2→3→4→5→4→3→2→3→4→5→3→2→1
+// 5-hour training pattern: 2→3→4→5→4→3→2→3→4→5→3→2
 // Optimized for t3.medium with HPA @ CPU 65%, Memory 70%
-// Target: 600-1000 req/s at peak for balanced service scaling
+// Target: ~600-1000 req/s at peak for balanced service scaling
 export const options = {
   scenarios: {
     progressive_training: {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        // Phase 1: Ramp up 1→5 replicas (0-2.5h)
-        { duration: '15m', target: 12 },
-        { duration: '10m', target: 18 },
-        { duration: '12m', target: 45 },
-        { duration: '10m', target: 52 },
-        { duration: '8m', target: 42 },
-        { duration: '12m', target: 75 },
-        { duration: '15m', target: 85 },
-        { duration: '8m', target: 78 },
-        { duration: '12m', target: 125 },
-        { duration: '15m', target: 135 },
-        { duration: '8m', target: 128 },
-        { duration: '10m', target: 180 },
-        { duration: '15m', target: 195 },
-        
-        // Phase 2: Scale down 4→2 replicas (2.5h-4h)
-        { duration: '12m', target: 130 },
-        { duration: '10m', target: 122 },
-        { duration: '8m', target: 135 },
-        { duration: '12m', target: 80 },
-        { duration: '15m', target: 88 },
-        { duration: '8m', target: 76 },
-        { duration: '12m', target: 48 },
-        { duration: '13m', target: 55 },
-        
-        // Phase 3: Second peak 3→5 replicas (4h-6h)
-        { duration: '12m', target: 82 },
-        { duration: '10m', target: 90 },
-        { duration: '8m', target: 85 },
-        { duration: '12m', target: 128 },
-        { duration: '15m', target: 142 },
-        { duration: '8m', target: 132 },
-        { duration: '12m', target: 188 },
-        { duration: '15m', target: 205 },
-        { duration: '8m', target: 192 },
-        
-        // Phase 4: Cool down 3→1 replica (6h-7h)
-        { duration: '15m', target: 85 },
-        { duration: '15m', target: 78 },
-        { duration: '15m', target: 50 },
-        { duration: '15m', target: 42 },
-        { duration: '10m', target: 22 },
-        { duration: '10m', target: 10 },
+        // 12 stages × 25 minutes = 300 minutes (5 hours)
+        // Mapping replicas -> VU targets (approx): 2->78, 3->117, 4->156, 5->195
+        { duration: '25m', target: 78 },  // 2
+        { duration: '25m', target: 117 }, // 3
+        { duration: '25m', target: 156 }, // 4
+        { duration: '25m', target: 195 }, // 5
+        { duration: '25m', target: 156 }, // 4
+        { duration: '25m', target: 117 }, // 3
+        { duration: '25m', target: 78 },  // 2
+        { duration: '25m', target: 117 }, // 3
+        { duration: '25m', target: 156 }, // 4
+        { duration: '25m', target: 195 }, // 5
+        { duration: '25m', target: 117 }, // 3
+        { duration: '25m', target: 78 },  // 2
       ],
       gracefulStop: '30s',
       exec: 'dynamicMixedTraffic',
@@ -553,7 +528,7 @@ export function moderateMixedTraffic() {
       if (authAction < 0.5) {
         viewMyOrders(session.token);
       } else if (authAction < 0.8) {
-        createBooking(session.token);
+          manageProfile(session.token, session.userId);
       } else {
         createOrder(session.token);
       }
@@ -592,7 +567,7 @@ export function mediumMixedTraffic() {
       } else if (authAction < 0.85) {
         createOrder(session.token);
       } else {
-        manageProfile(session.token, session.user.email);
+          manageProfile(session.token, session.userId);
       }
     } else {
       viewBookings(); // Fallback
@@ -629,7 +604,7 @@ export function highMixedTraffic() {
       } else if (authAction < 0.8) {
         createOrder(session.token);
       } else {
-        manageProfile(session.token, session.user.email);
+          manageProfile(session.token, session.userId);
       }
     } else {
       browseProducts(); // Fallback
@@ -666,7 +641,7 @@ export function peakMixedTraffic() {
       } else if (authAction < 0.75) {
         createOrder(session.token);
       } else if (authAction < 0.9) {
-        manageProfile(session.token, session.user.email);
+        manageProfile(session.token, session.userId);
       } else {
         postComment(session.token);
       }
@@ -718,7 +693,7 @@ export function oscillatingTraffic() {
       } else if (authAction < 0.7) {
         createBooking(session.token);
       } else {
-        manageProfile(session.token, session.user.email);
+          manageProfile(session.token, session.userId);
       }
     } else {
       browseProducts();

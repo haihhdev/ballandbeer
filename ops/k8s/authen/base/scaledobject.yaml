@@ -1,0 +1,53 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: authen-scaledobject
+spec:
+  scaleTargetRef:
+    name: authen
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 15
+  cooldownPeriod: 60
+  
+  # KEDA sẽ tạo HPA managed với behavior này
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Pods
+            value: 1
+            periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+          selectPolicy: Min
+  
+  # Multiple triggers - KEDA scale khi BẤT KỲ trigger nào đạt ngưỡng
+  triggers:
+    # 1. CPU-based scaling (thay thế HPA CPU)
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "65"
+    
+    # 2. Memory-based scaling (thay thế HPA Memory)
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: "70"
+    
+    # 3. Traffic-based scaling (Prometheus)
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        metricName: http_requests_rate
+        query: |
+          sum(rate(nginx_ingress_controller_requests{exported_namespace="ballandbeer",service="authen"}[1m]))
+        threshold: "10"
