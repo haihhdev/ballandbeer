@@ -53,4 +53,4 @@ spec:
         metricName: ml_predicted_replicas
         query: |
           ml_predicted_replicas{service="recommender"}
-        threshold: "2"
+        threshold: "1"
