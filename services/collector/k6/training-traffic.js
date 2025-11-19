@@ -380,37 +380,45 @@ export function setup() {
   return { tokens };
 }
 
-// 5-hour training pattern: 2→3→4→5→4→3→2→3→4→5→3→2
-// Optimized for t3.medium with HPA @ CPU 65%, Memory 70%
-// Target: ~600-1000 req/s at peak for balanced service scaling
+// 6-hour data collection pattern: 2→3→4→3→2
+// Optimized for collecting clean training data with clear scaling patterns
+// Target: Smooth transitions between replica counts for ML model training
 export const options = {
   scenarios: {
-    progressive_training: {
+    data_collection_oscillation: {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        // 12 stages × 25 minutes = 300 minutes (5 hours)
-        // Mapping replicas -> VU targets (approx): 2->78, 3->117, 4->156, 5->195
-        { duration: '25m', target: 78 },  // 2
-        { duration: '25m', target: 117 }, // 3
-        { duration: '25m', target: 156 }, // 4
-        { duration: '25m', target: 195 }, // 5
-        { duration: '25m', target: 156 }, // 4
-        { duration: '25m', target: 117 }, // 3
-        { duration: '25m', target: 78 },  // 2
-        { duration: '25m', target: 117 }, // 3
-        { duration: '25m', target: 156 }, // 4
-        { duration: '25m', target: 195 }, // 5
-        { duration: '25m', target: 117 }, // 3
-        { duration: '25m', target: 78 },  // 2
+        // 5 stages × 72 minutes = 360 minutes (6 hours)
+        // Mapping replicas -> VU targets: 2->50, 3->80, 4->110
+        
+        // Stage 1: 2 replicas (72 min)
+        { duration: '12m', target: 50 },  // Ramp to 2 replicas
+        { duration: '60m', target: 50 },  // Hold at 2 replicas
+        
+        // Stage 2: 3 replicas (72 min)
+        { duration: '12m', target: 80 },  // Ramp to 3 replicas
+        { duration: '60m', target: 80 },  // Hold at 3 replicas
+        
+        // Stage 3: 4 replicas (72 min)
+        { duration: '12m', target: 110 }, // Ramp to 4 replicas
+        { duration: '60m', target: 110 }, // Hold at 4 replicas
+        
+        // Stage 4: 3 replicas (72 min)
+        { duration: '12m', target: 80 },  // Ramp down to 3 replicas
+        { duration: '60m', target: 80 },  // Hold at 3 replicas
+        
+        // Stage 5: 2 replicas (72 min)
+        { duration: '12m', target: 50 },  // Ramp down to 2 replicas
+        { duration: '60m', target: 50 },  // Hold at 2 replicas
       ],
       gracefulStop: '30s',
       exec: 'dynamicMixedTraffic',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<10000'],
-    'errors': ['rate<0.4'],
+    'http_req_duration': ['p(95)<8000'],
+    'errors': ['rate<0.35'],
   },
   setupTimeout: '90s',
 };
@@ -423,24 +431,25 @@ export function dynamicMixedTraffic(data) {
   const currentVUs = __VU;
   let sleepTime;
   
-  // Adaptive sleep: lower sleep = higher request rate = more CPU
-  if (currentVUs <= 25) {
-    sleepTime = Math.random() * 0.8 + 0.6;
-  } else if (currentVUs <= 60) {
-    sleepTime = Math.random() * 0.5 + 0.3;
-  } else if (currentVUs <= 100) {
-    sleepTime = Math.random() * 0.35 + 0.2;
-  } else if (currentVUs <= 150) {
-    sleepTime = Math.random() * 0.25 + 0.12;
+  // Adaptive sleep based on target replica count
+  // Lower VUs (2 replicas): longer sleep -> less load
+  // Higher VUs (4 replicas): shorter sleep -> more load
+  if (currentVUs <= 50) {
+    // 2 replicas target: ~50 VUs
+    sleepTime = Math.random() * 0.9 + 0.6;  // 0.6-1.5s
+  } else if (currentVUs <= 80) {
+    // 3 replicas target: ~80 VUs
+    sleepTime = Math.random() * 0.6 + 0.35; // 0.35-0.95s
   } else {
-    sleepTime = Math.random() * 0.18 + 0.08;
+    // 4 replicas target: ~110 VUs
+    sleepTime = Math.random() * 0.4 + 0.25; // 0.25-0.65s
   }
   
-  // Random traffic variations
-  if (Math.random() < 0.1) {
-    sleepTime *= 0.7;
+  // Add slight random variations for realistic patterns
+  if (Math.random() < 0.08) {
+    sleepTime *= 0.75;  // Occasional burst
   } else if (Math.random() < 0.05) {
-    sleepTime *= 1.5;
+    sleepTime *= 1.3;   // Occasional slowdown
   }
   
   const action = Math.random();
