@@ -413,8 +413,13 @@ class DataPreprocessor:
         from pathlib import Path
         
         folder = Path(folder_path)
+        
+        # If running from training/ subdirectory, go up one level
+        if not folder.exists() and Path.cwd().name == 'training':
+            folder = Path('..') / folder_path
+        
         if not folder.exists():
-            raise ValueError(f"Folder {folder_path} does not exist")
+            raise ValueError(f"Folder {folder_path} does not exist (looked in {folder.absolute()})")
         
         csv_files = list(folder.glob('*.csv'))
         if not csv_files:

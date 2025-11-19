@@ -259,7 +259,7 @@ pipeline{
             }
             steps {
                 script {
-                    def apps = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'recommender', 'infra', 'collector']
+                    def apps = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'recommender', 'infra', 'collector', 'ml-autoscaler']
                     for (svc in apps) {
                         try {
                             sh "kubectl apply -f ops/k8s/${svc}/overlays/dev/argocd-app.yaml -n argocd"

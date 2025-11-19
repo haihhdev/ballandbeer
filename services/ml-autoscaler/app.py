@@ -196,16 +196,61 @@ def collect_metrics_for_service(service: str) -> Optional[Dict]:
         # Current replicas
         features['replica_count'] = get_current_replicas(service)
         
+        # Resource requests and limits (CRITICAL: Must query actual values from K8s)
+        # Query CPU request/limit
+        cpu_req_query = f'kube_deployment_spec_container_resource_requests{{namespace="{NAMESPACE}",deployment="{service}",resource="cpu"}}'
+        cpu_req_result = query_prometheus(cpu_req_query)
+        if cpu_req_result and cpu_req_result['status'] == 'success':
+            data = cpu_req_result['data']['result']
+            features['cpu_request'] = float(data[0]['value'][1]) if data else 0.05
+        else:
+            # Fallback defaults per service (from training data)
+            features['cpu_request'] = 0.05 if service in ['authen', 'booking', 'product', 'profile', 'frontend'] else 0.1
+        
+        cpu_lim_query = f'kube_deployment_spec_container_resource_limits{{namespace="{NAMESPACE}",deployment="{service}",resource="cpu"}}'
+        cpu_lim_result = query_prometheus(cpu_lim_query)
+        if cpu_lim_result and cpu_lim_result['status'] == 'success':
+            data = cpu_lim_result['data']['result']
+            features['cpu_limit'] = float(data[0]['value'][1]) if data else 0.2
+        else:
+            # Fallback defaults per service
+            features['cpu_limit'] = 0.2 if service in ['authen', 'booking', 'product', 'profile'] else 0.3 if service == 'frontend' else 0.5
+        
+        # Query RAM request/limit (CRITICAL FIX)
+        ram_req_query = f'kube_deployment_spec_container_resource_requests{{namespace="{NAMESPACE}",deployment="{service}",resource="memory"}}'
+        ram_req_result = query_prometheus(ram_req_query)
+        if ram_req_result and ram_req_result['status'] == 'success':
+            data = ram_req_result['data']['result']
+            features['ram_request'] = float(data[0]['value'][1]) if data else 67108864.0
+        else:
+            # Fallback defaults per service (from training data)
+            if service == 'recommender':
+                features['ram_request'] = 402653184.0  # 384MB
+            elif service in ['order', 'frontend']:
+                features['ram_request'] = 134217728.0  # 128MB
+            else:
+                features['ram_request'] = 67108864.0  # 64MB
+        
+        ram_lim_query = f'kube_deployment_spec_container_resource_limits{{namespace="{NAMESPACE}",deployment="{service}",resource="memory"}}'
+        ram_lim_result = query_prometheus(ram_lim_query)
+        if ram_lim_result and ram_lim_result['status'] == 'success':
+            data = ram_lim_result['data']['result']
+            features['ram_limit'] = float(data[0]['value'][1]) if data else 134217728.0
+        else:
+            # Fallback defaults per service
+            if service == 'recommender':
+                features['ram_limit'] = 805306368.0  # 768MB
+            elif service in ['order', 'frontend']:
+                features['ram_limit'] = 268435456.0  # 256MB
+            else:
+                features['ram_limit'] = 134217728.0  # 128MB
+        
         # Fill in other required features with defaults
         features['cpu_usage_percent_last_5_min'] = features['cpu_usage_percent']
         features['cpu_usage_percent_slope'] = 0.0
         features['ram_usage_percent_last_5_min'] = features['ram_usage_percent']
         features['ram_usage_percent_slope'] = 0.0
         features['request_count_per_second_last_5_min'] = features['request_count_per_second']
-        features['cpu_request'] = 0.5
-        features['cpu_limit'] = 2.0
-        features['ram_request'] = 536870912.0  # 512MB in bytes
-        features['ram_limit'] = 1073741824.0   # 1GB in bytes
         features['queue_length'] = 0
         features['error_rate'] = 0.0
         features['pod_restart_count'] = 0
