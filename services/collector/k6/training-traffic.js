@@ -477,27 +477,38 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        // 5 stages × 72 minutes = 360 minutes (6 hours)
+        // 3 cycles × 120 min = 360 min (6 hours)
+        // Each cycle: 2→3→4→3 (30 min per stage)
         
-        // Stage 1: 2 replicas baseline (72 min) - Light traffic
-        { duration: '15m', target: 40 },   // Ramp to 40 users (~5-8 req/s)
-        { duration: '57m', target: 40 },   // Hold at 40 users
+        // Cycle 1
+        { duration: '8m', target: 60 },
+        { duration: '22m', target: 60 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
+        { duration: '8m', target: 150 },
+        { duration: '22m', target: 150 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
         
-        // Stage 2: 3 replicas (72 min) - Moderate traffic
-        { duration: '15m', target: 70 },   // Ramp to 70 users (~8-12 req/s)
-        { duration: '57m', target: 70 },   // Hold at 70 users
+        // Cycle 2
+        { duration: '8m', target: 60 },
+        { duration: '22m', target: 60 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
+        { duration: '8m', target: 150 },
+        { duration: '22m', target: 150 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
         
-        // Stage 3: 4 replicas peak (72 min) - High traffic
-        { duration: '15m', target: 120 },  // Ramp to 120 users (~12-18 req/s)
-        { duration: '57m', target: 120 },  // Hold at 120 users
-        
-        // Stage 4: 3 replicas scale down (72 min)
-        { duration: '15m', target: 70 },   // Ramp down to 70 users
-        { duration: '57m', target: 70 },   // Hold at 70 users
-        
-        // Stage 5: 2 replicas cool down (72 min)
-        { duration: '15m', target: 40 },   // Ramp down to 40 users
-        { duration: '57m', target: 40 },   // Hold at 40 users
+        // Cycle 3
+        { duration: '8m', target: 60 },
+        { duration: '22m', target: 60 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
+        { duration: '8m', target: 150 },
+        { duration: '22m', target: 150 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
       ],
       gracefulStop: '30s',
       exec: 'realisticUserFlow',
@@ -518,19 +529,19 @@ export function realisticUserFlow(data) {
   const currentVUs = __VU;
   let thinkTime;
   
-  if (currentVUs <= 40) {
-    thinkTime = Math.random() * 3 + 4;
-  } else if (currentVUs <= 70) {
-    thinkTime = Math.random() * 2.5 + 3.5;
+  if (currentVUs <= 60) {
+    thinkTime = Math.random() * 1.5 + 1.5;
+  } else if (currentVUs <= 100) {
+    thinkTime = Math.random() * 1 + 1;
   } else {
-    thinkTime = Math.random() * 2 + 3;
+    thinkTime = Math.random() * 0.8 + 0.8;
   }
   
   const userType = Math.random();
-  if (userType < 0.15) {
-    thinkTime *= 0.6;
-  } else if (userType < 0.25) {
-    thinkTime *= 1.5;
+  if (userType < 0.2) {
+    thinkTime *= 0.7;
+  } else if (userType < 0.3) {
+    thinkTime *= 1.3;
   }
   
   const action = Math.random();
@@ -558,11 +569,11 @@ export function realisticUserFlow(data) {
       verifySession(session.token);
       sleep(0.1);
       
-      if (authAction < 0.25) {
+      if (authAction < 0.35) {
         browseProducts();
         sleep(Math.random() * 2 + 1);
         
-        if (Math.random() < 0.4) {
+        if (Math.random() < 0.6) {
           createOrder(session.token);
           sleep(Math.random() * 2 + 1);
           
@@ -574,18 +585,18 @@ export function realisticUserFlow(data) {
           viewMyOrders(session.token);
           sleep(Math.random() * 1.5 + 0.5);
         }
-      } else if (authAction < 0.45) {
+      } else if (authAction < 0.60) {
         viewBookings();
         sleep(Math.random() * 2 + 1);
         
-        if (Math.random() < 0.35) {
+        if (Math.random() < 0.45) {
           createBooking(session.token);
           sleep(Math.random() * 1 + 0.5);
         }
-      } else if (authAction < 0.65) {
+      } else if (authAction < 0.72) {
         manageProfile(session.token, session.userId);
         sleep(Math.random() * 2 + 1);
-      } else if (authAction < 0.82) {
+      } else if (authAction < 0.85) {
         viewProductWithComments();
         sleep(Math.random() * 3 + 2);
         
@@ -594,7 +605,7 @@ export function realisticUserFlow(data) {
           postComment(session.token);
           sleep(0.5);
         }
-      } else if (authAction < 0.94) {
+      } else if (authAction < 0.97) {
         getRecommendations();
         sleep(Math.random() * 1.5 + 1);
         
