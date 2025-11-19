@@ -4,6 +4,7 @@ metadata:
   name: ml-autoscaler
   labels:
     app: ml-autoscaler
+    release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:
