@@ -52,5 +52,5 @@ spec:
         serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
         metricName: ml_predicted_replicas
         query: |
-          ml_predicted_replicas{service="recommender"}
+          ml_predicted_replicas{exported_service="recommender"}
         threshold: "1"
