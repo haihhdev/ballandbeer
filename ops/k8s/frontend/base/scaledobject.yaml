@@ -14,14 +14,14 @@ spec:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleUp:
-          stabilizationWindowSeconds: 30
+          stabilizationWindowSeconds: 60
           policies:
           - type: Pods
             value: 1
             periodSeconds: 60
           selectPolicy: Max
         scaleDown:
-          stabilizationWindowSeconds: 240
+          stabilizationWindowSeconds: 300
           policies:
           - type: Pods
             value: 1
@@ -32,12 +32,12 @@ spec:
     - type: cpu
       metricType: Utilization
       metadata:
-        value: "65"
+        value: "70"
     
     - type: memory
       metricType: Utilization
       metadata:
-        value: "65"
+        value: "10"
     
     # HTTP requests trigger (disabled - using pure HPA mode: CPU + Memory only)
     # - type: prometheus
