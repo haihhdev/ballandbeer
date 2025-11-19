@@ -10,7 +10,6 @@ spec:
   pollingInterval: 15
   cooldownPeriod: 60
   
-  # KEDA sẽ tạo HPA managed với behavior này
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
@@ -29,21 +28,17 @@ spec:
             periodSeconds: 60
           selectPolicy: Min
   
-  # Multiple triggers - KEDA scale khi BẤT KỲ trigger nào đạt ngưỡng
   triggers:
-    # 1. CPU-based scaling (thay thế HPA CPU)
     - type: cpu
       metricType: Utilization
       metadata:
         value: "65"
     
-    # 2. Memory-based scaling (thay thế HPA Memory)
     - type: memory
       metricType: Utilization
       metadata:
         value: "70"
     
-    # 3. Traffic-based scaling (Prometheus)
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
@@ -51,3 +46,11 @@ spec:
         query: |
           sum(rate(nginx_ingress_controller_requests{exported_namespace="ballandbeer",service="authen"}[1m]))
         threshold: "10"
+    
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        metricName: ml_predicted_replicas
+        query: |
+          ml_predicted_replicas{service="authen"}
+        threshold: "2"
