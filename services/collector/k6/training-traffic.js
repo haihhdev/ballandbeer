@@ -480,35 +480,36 @@ export const options = {
         // 3 cycles × 120 min = 360 min (6 hours)
         // Each cycle: 2→3→4→3 (30 min per stage)
         
-        // Cycle 1: 2→3→4→3 replicas pattern
-        { duration: '8m', target: 50 },   // Ramp to 2 replicas (10-40% CPU)
-        { duration: '22m', target: 50 },  // Hold at 2 replicas
-        { duration: '8m', target: 80 },   // Ramp to 3 replicas (40-70% CPU)
-        { duration: '22m', target: 80 },  // Hold at 3 replicas
-        { duration: '8m', target: 110 },  // Ramp to 4 replicas (>70% CPU)
-        { duration: '22m', target: 110 }, // Hold at 4 replicas
-        { duration: '8m', target: 80 },   // Drop to 3 replicas (40-70% CPU)
-        { duration: '22m', target: 80 },  // Hold at 3 replicas
+        // Cycle 1: 2→3→4→3 replicas pattern (threshold 40%, HPA auto-calculate)
+        // Formula: desiredReplicas = ceil(currentReplicas * currentCPU / targetCPU)
+        { duration: '8m', target: 40 },   // 2 replicas: ~40% CPU → stable
+        { duration: '22m', target: 40 },  
+        { duration: '8m', target: 70 },   // 3 replicas: 2 * 60% / 40% = 3
+        { duration: '22m', target: 70 },  
+        { duration: '8m', target: 100 },  // 4 replicas: 3 * 53% / 40% = 4
+        { duration: '22m', target: 100 }, 
+        { duration: '8m', target: 70 },   // 3 replicas: drop back
+        { duration: '22m', target: 70 },  
         
         // Cycle 2: 2→3→4→3 replicas pattern
-        { duration: '8m', target: 50 },
-        { duration: '22m', target: 50 },
-        { duration: '8m', target: 80 },
-        { duration: '22m', target: 80 },
-        { duration: '8m', target: 110 },
-        { duration: '22m', target: 110 },
-        { duration: '8m', target: 80 },
-        { duration: '22m', target: 80 },
+        { duration: '8m', target: 40 },
+        { duration: '22m', target: 40 },
+        { duration: '8m', target: 70 },
+        { duration: '22m', target: 70 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
+        { duration: '8m', target: 70 },
+        { duration: '22m', target: 70 },
         
         // Cycle 3: 2→3→4→3 replicas pattern
-        { duration: '8m', target: 50 },
-        { duration: '22m', target: 50 },
-        { duration: '8m', target: 80 },
-        { duration: '22m', target: 80 },
-        { duration: '8m', target: 110 },
-        { duration: '22m', target: 110 },
-        { duration: '8m', target: 80 },
-        { duration: '22m', target: 80 },
+        { duration: '8m', target: 40 },
+        { duration: '22m', target: 40 },
+        { duration: '8m', target: 70 },
+        { duration: '22m', target: 70 },
+        { duration: '8m', target: 100 },
+        { duration: '22m', target: 100 },
+        { duration: '8m', target: 70 },
+        { duration: '22m', target: 70 },
       ],
       gracefulStop: '30s',
       exec: 'realisticUserFlow',
@@ -529,12 +530,12 @@ export function realisticUserFlow(data) {
   const currentVUs = __VU;
   let thinkTime;
   
-  if (currentVUs <= 50) {
-    thinkTime = Math.random() * 0.5 + 0.5;  // 0.5-1s for 2 replicas (10-40% CPU)
-  } else if (currentVUs <= 80) {
-    thinkTime = Math.random() * 0.4 + 0.3;  // 0.3-0.7s for 3 replicas (40-70% CPU)
+  if (currentVUs <= 40) {
+    thinkTime = Math.random() * 0.5 + 0.5;  // 0.5-1s for 2 replicas (~40% CPU)
+  } else if (currentVUs <= 70) {
+    thinkTime = Math.random() * 0.4 + 0.3;  // 0.3-0.7s for 3 replicas (~50% CPU)
   } else {
-    thinkTime = Math.random() * 0.3 + 0.2;  // 0.2-0.5s for 4 replicas (>70% CPU)
+    thinkTime = Math.random() * 0.3 + 0.2;  // 0.2-0.5s for 4 replicas (~60% CPU)
   }
   
   const userType = Math.random();
