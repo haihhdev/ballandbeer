@@ -8,7 +8,6 @@ resources:
 - service.yaml
 - serviceaccount.yaml
 - servicemonitor.yaml
-- scaledobjects.yaml
 
 commonLabels:
   app: ml-autoscaler
