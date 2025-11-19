@@ -125,11 +125,21 @@ function fetchProducts() {
 }
 
 function browseProducts() {
+  // 30% chance to load full page (initial visit), 70% just API (SPA navigation)
+  if (Math.random() < 0.3) {
+    const pageRes = http.get(`${BASE_URL}/product`, {
+      headers: commonHeaders,
+    });
+    check(pageRes, { 'browse products page': (r) => r.status === 200 }) || errorRate.add(1);
+    sleep(0.1); // Simulate page load time
+  }
+  
+  // Always fetch API data (either from SSR or client-side)
   const res = http.get(`${BASE_URL}/api/products`, {
     headers: commonHeaders,
   });
   
-  check(res, { 'browse products': (r) => r.status === 200 }) || errorRate.add(1);
+  check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
   
   if (res.status === 200 && Math.random() < 0.2) {
     try {
@@ -139,10 +149,20 @@ function browseProducts() {
         const productId = product._id || product.id;
         
         sleep(0.2);
+        
+        // 25% load page (new tab/refresh), 75% SPA navigation (API only)
+        if (Math.random() < 0.25) {
+          const detailPageRes = http.get(`${BASE_URL}/product/${productId}`, {
+            headers: commonHeaders,
+          });
+          check(detailPageRes, { 'view product detail page': (r) => r.status === 200 });
+          sleep(0.1);
+        }
+        
         const detailRes = http.get(`${BASE_URL}/api/products/${productId}`, {
           headers: commonHeaders,
         });
-        check(detailRes, { 'view product detail': (r) => r.status === 200 });
+        check(detailRes, { 'view product detail API': (r) => r.status === 200 });
       }
     } catch (e) {}
   }
@@ -155,11 +175,20 @@ function viewProductWithComments() {
   
   const productId = randomItem(productIds);
   
-  // Get product details
+  // 35% load page (direct link/refresh), 65% API only (already on site)
+  if (Math.random() < 0.35) {
+    const pageRes = http.get(`${BASE_URL}/product/${productId}`, {
+      headers: commonHeaders,
+    });
+    check(pageRes, { 'view product page': (r) => r.status === 200 }) || errorRate.add(1);
+    sleep(0.1);
+  }
+  
+  // Get product details API
   const res = http.get(`${BASE_URL}/api/products/${productId}`, {
     headers: commonHeaders,
   });
-  check(res, { 'view product': (r) => r.status === 200 }) || errorRate.add(1);
+  check(res, { 'view product API': (r) => r.status === 200 }) || errorRate.add(1);
   
   if (res.status === 200 && Math.random() < 0.3) {
     sleep(0.2);
@@ -190,11 +219,21 @@ function viewBookings() {
   const fieldId = randomInt(1, 5);
   const date = '2025-11-15';
   
+  // 40% load page (direct access), 60% API only (SPA)
+  if (Math.random() < 0.4) {
+    const pageRes = http.get(`${BASE_URL}/booking`, {
+      headers: commonHeaders,
+    });
+    check(pageRes, { 'view bookings page': (r) => r.status === 200 }) || errorRate.add(1);
+    sleep(0.1);
+  }
+  
+  // Fetch booking data API
   const res = http.get(`${BASE_URL}/api/bookings/${fieldId}/${date}`, {
     headers: commonHeaders,
   });
   
-  check(res, { 'view bookings': (r) => r.status === 200 }) || errorRate.add(1);
+  check(res, { 'view bookings API': (r) => r.status === 200 }) || errorRate.add(1);
 }
 
 function createBooking(token) {
@@ -204,6 +243,19 @@ function createBooking(token) {
   const date = '2025-11-15';
   const startTime = randomInt(8, 20);
   
+  // 50% load page first (navigating to booking), 50% already on page
+  if (Math.random() < 0.5) {
+    const pageRes = http.get(`${BASE_URL}/booking`, {
+      headers: {
+        ...commonHeaders,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    check(pageRes, { 'load booking page': (r) => r.status === 200 });
+    sleep(0.15);
+  }
+  
+  // Create booking via API
   const res = http.post(`${BASE_URL}/api/bookings/book`, JSON.stringify({
     fieldId: fieldId,
     date: date,
@@ -225,6 +277,18 @@ function createOrder(token) {
   
   if (productIds.length === 0) {
     productIds = fetchProducts();
+  }
+  
+  // 60% load checkout page (typical flow: cart -> checkout), 40% API only
+  if (Math.random() < 0.6) {
+    const pageRes = http.get(`${BASE_URL}/checkout`, {
+      headers: {
+        ...commonHeaders,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    check(pageRes, { 'load checkout page': (r) => r.status === 200 });
+    sleep(0.2);
   }
   
   const numItems = randomInt(1, 3);
@@ -252,6 +316,19 @@ function createOrder(token) {
 function viewMyOrders(token) {
   if (!token) return;
   
+  // 35% load page (direct link), 65% API only (SPA navigation)
+  if (Math.random() < 0.35) {
+    const pageRes = http.get(`${BASE_URL}/profile/orders`, {
+      headers: {
+        ...commonHeaders,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    check(pageRes, { 'view my orders page': (r) => r.status === 200 });
+    sleep(0.1);
+  }
+  
+  // Fetch orders data API
   const res = http.get(`${BASE_URL}/api/orders/my-orders`, {
     headers: {
       ...commonHeaders,
@@ -259,7 +336,7 @@ function viewMyOrders(token) {
     },
   });
   
-  check(res, { 'view my orders': (r) => r.status === 200 }) || errorRate.add(1);
+  check(res, { 'view my orders API': (r) => r.status === 200 }) || errorRate.add(1);
 }
 
 function verifySession(token) {
@@ -278,7 +355,19 @@ function verifySession(token) {
 function manageProfile(token, userId) {
   if (!token || !userId) return;
   
-  // Get profile
+  // 45% load profile page (navigation from menu), 55% API only
+  if (Math.random() < 0.45) {
+    const pageRes = http.get(`${BASE_URL}/profile`, {
+      headers: {
+        ...commonHeaders,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    check(pageRes, { 'view profile page': (r) => r.status === 200 });
+    sleep(0.1);
+  }
+  
+  // Get profile data API
   const res = http.get(`${BASE_URL}/api/profile/id/${userId}`, {
     headers: {
       ...commonHeaders,
@@ -286,7 +375,7 @@ function manageProfile(token, userId) {
     },
   });
   
-  check(res, { 'view profile': (r) => r.status === 200 }) || errorRate.add(1);
+  check(res, { 'view profile API': (r) => r.status === 200 }) || errorRate.add(1);
   
   if (Math.random() > 0.7) {
     sleep(0.1);
@@ -380,138 +469,160 @@ export function setup() {
   return { tokens };
 }
 
-// 6-hour data collection pattern: 2→3→4→3→2
-// Optimized for collecting clean training data with clear scaling patterns
-// Target: Smooth transitions between replica counts for ML model training
+// 6-hour realistic user behavior pattern: 2→3→4→3→2 replicas
+
 export const options = {
   scenarios: {
-    data_collection_oscillation: {
+    realistic_user_behavior: {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
         // 5 stages × 72 minutes = 360 minutes (6 hours)
-        // Mapping replicas -> VU targets: 2->50, 3->80, 4->110
         
-        // Stage 1: 2 replicas (72 min)
-        { duration: '12m', target: 50 },  // Ramp to 2 replicas
-        { duration: '60m', target: 50 },  // Hold at 2 replicas
+        // Stage 1: 2 replicas baseline (72 min) - Light traffic
+        { duration: '15m', target: 40 },   // Ramp to 40 users (~5-8 req/s)
+        { duration: '57m', target: 40 },   // Hold at 40 users
         
-        // Stage 2: 3 replicas (72 min)
-        { duration: '12m', target: 80 },  // Ramp to 3 replicas
-        { duration: '60m', target: 80 },  // Hold at 3 replicas
+        // Stage 2: 3 replicas (72 min) - Moderate traffic
+        { duration: '15m', target: 70 },   // Ramp to 70 users (~8-12 req/s)
+        { duration: '57m', target: 70 },   // Hold at 70 users
         
-        // Stage 3: 4 replicas (72 min)
-        { duration: '12m', target: 110 }, // Ramp to 4 replicas
-        { duration: '60m', target: 110 }, // Hold at 4 replicas
+        // Stage 3: 4 replicas peak (72 min) - High traffic
+        { duration: '15m', target: 120 },  // Ramp to 120 users (~12-18 req/s)
+        { duration: '57m', target: 120 },  // Hold at 120 users
         
-        // Stage 4: 3 replicas (72 min)
-        { duration: '12m', target: 80 },  // Ramp down to 3 replicas
-        { duration: '60m', target: 80 },  // Hold at 3 replicas
+        // Stage 4: 3 replicas scale down (72 min)
+        { duration: '15m', target: 70 },   // Ramp down to 70 users
+        { duration: '57m', target: 70 },   // Hold at 70 users
         
-        // Stage 5: 2 replicas (72 min)
-        { duration: '12m', target: 50 },  // Ramp down to 2 replicas
-        { duration: '60m', target: 50 },  // Hold at 2 replicas
+        // Stage 5: 2 replicas cool down (72 min)
+        { duration: '15m', target: 40 },   // Ramp down to 40 users
+        { duration: '57m', target: 40 },   // Hold at 40 users
       ],
       gracefulStop: '30s',
-      exec: 'dynamicMixedTraffic',
+      exec: 'realisticUserFlow',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<8000'],
-    'errors': ['rate<0.35'],
+    'http_req_duration': ['p(95)<5000'],
+    'errors': ['rate<0.25'],
   },
   setupTimeout: '90s',
 };
 
-export function dynamicMixedTraffic(data) {
+export function realisticUserFlow(data) {
   if (data && data.tokens && Object.keys(userTokens).length === 0) {
     userTokens = data.tokens;
   }
   
   const currentVUs = __VU;
-  let sleepTime;
+  let thinkTime;
   
-  // Adaptive sleep based on target replica count
-  // Lower VUs (2 replicas): longer sleep -> less load
-  // Higher VUs (4 replicas): shorter sleep -> more load
-  if (currentVUs <= 50) {
-    // 2 replicas target: ~50 VUs
-    sleepTime = Math.random() * 0.9 + 0.6;  // 0.6-1.5s
-  } else if (currentVUs <= 80) {
-    // 3 replicas target: ~80 VUs
-    sleepTime = Math.random() * 0.6 + 0.35; // 0.35-0.95s
+  if (currentVUs <= 40) {
+    thinkTime = Math.random() * 3 + 4;
+  } else if (currentVUs <= 70) {
+    thinkTime = Math.random() * 2.5 + 3.5;
   } else {
-    // 4 replicas target: ~110 VUs
-    sleepTime = Math.random() * 0.4 + 0.25; // 0.25-0.65s
+    thinkTime = Math.random() * 2 + 3;
   }
   
-  // Add slight random variations for realistic patterns
-  if (Math.random() < 0.08) {
-    sleepTime *= 0.75;  // Occasional burst
-  } else if (Math.random() < 0.05) {
-    sleepTime *= 1.3;   // Occasional slowdown
+  const userType = Math.random();
+  if (userType < 0.15) {
+    thinkTime *= 0.6;
+  } else if (userType < 0.25) {
+    thinkTime *= 1.5;
   }
   
   const action = Math.random();
   
-  // 35% guest, 65% authenticated (realistic distribution)
-  if (action < 0.35) {
+  if (action < 0.40) {
     const guestAction = Math.random();
-    if (guestAction < 0.45) {
+    if (guestAction < 0.50) {
       browseProducts();
-    } else if (guestAction < 0.80) {
-      viewBookings();
-    } else if (guestAction < 0.95) {
-      getRecommendations();
-    } else {
+      sleep(Math.random() * 2 + 1);
+    } else if (guestAction < 0.75) {
       viewProductWithComments();
+      sleep(Math.random() * 3 + 2);
+    } else if (guestAction < 0.90) {
+      viewBookings();
+      sleep(Math.random() * 1.5 + 0.5);
+    } else {
+      getRecommendations();
+      sleep(Math.random() * 1 + 0.5);
     }
   } else {
     const session = getUserSession();
     if (session.token) {
       const authAction = Math.random();
       
-      if (authAction < 0.26) {
-        if (Math.random() < 0.7) {
+      verifySession(session.token);
+      sleep(0.1);
+      
+      if (authAction < 0.25) {
+        browseProducts();
+        sleep(Math.random() * 2 + 1);
+        
+        if (Math.random() < 0.4) {
           createOrder(session.token);
+          sleep(Math.random() * 2 + 1);
+          
+          if (Math.random() < 0.3) {
+            sleep(1);
+            viewMyOrders(session.token);
+          }
         } else {
           viewMyOrders(session.token);
+          sleep(Math.random() * 1.5 + 0.5);
         }
-      } else if (authAction < 0.50) {
-        if (Math.random() < 0.75) {
+      } else if (authAction < 0.45) {
+        viewBookings();
+        sleep(Math.random() * 2 + 1);
+        
+        if (Math.random() < 0.35) {
           createBooking(session.token);
-        } else {
-          viewBookings();
+          sleep(Math.random() * 1 + 0.5);
         }
-      } else if (authAction < 0.68) {
+      } else if (authAction < 0.65) {
         manageProfile(session.token, session.userId);
+        sleep(Math.random() * 2 + 1);
       } else if (authAction < 0.82) {
-        verifySession(session.token);
-        sleep(0.05);
-        if (Math.random() < 0.6) {
-          getRecommendations();
-        } else {
-          viewMyOrders(session.token);
-        }
-      } else if (authAction < 0.90) {
-        getRecommendations();
-      } else if (authAction < 0.96) {
-        if (Math.random() < 0.5) {
+        viewProductWithComments();
+        sleep(Math.random() * 3 + 2);
+        
+        if (Math.random() < 0.2) {
+          sleep(1);
           postComment(session.token);
-        } else {
-          viewMyOrders(session.token);
+          sleep(0.5);
+        }
+      } else if (authAction < 0.94) {
+        getRecommendations();
+        sleep(Math.random() * 1.5 + 1);
+        
+        if (Math.random() < 0.4) {
+          sleep(0.5);
+          viewProductWithComments();
+          sleep(Math.random() * 2 + 1);
         }
       } else {
-        verifySession(session.token);
-        sleep(0.05);
         viewMyOrders(session.token);
+        sleep(Math.random() * 1 + 0.5);
+        
+        if (Math.random() < 0.5) {
+          sleep(2);
+          viewMyOrders(session.token);
+        }
       }
     } else {
-      viewBookings();
+      browseProducts();
+      sleep(Math.random() * 2 + 1);
     }
   }
   
-  sleep(sleepTime);
+  sleep(thinkTime);
+}
+
+export function dynamicMixedTraffic(data) {
+  realisticUserFlow(data);
 }
 
 export function moderateMixedTraffic() {
