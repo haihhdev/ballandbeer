@@ -582,92 +582,83 @@ export function realisticUserFlow(data) {
     thinkTime *= 1.3;  // Slow users
   }
   
-  // Service-specific traffic distribution using VU modulo for balanced load
-  const vuMod = __VU % 7;
+  // Weighted random service selection - each service gets ~14.3% (1/7) of traffic
+  // This ensures balanced load distribution across all 7 services
+  const serviceSelector = Math.random();
   
-  if (vuMod === 0) {
-    // Focus on authen + order (heavy services: 500m CPU)
+  if (serviceSelector < 0.143) {
+    // Authen service - 14.3% (500m CPU) - Increased intensity
     if (session.token) {
+      verifySession(session.token);
+      sleep(0.05);
+      verifySession(session.token);
       if (Math.random() < 0.6) {
+        sleep(0.05);
         verifySession(session.token);
-        sleep(0.1);
-      }
-      if (Math.random() < 0.7) {
-        createOrder(session.token);
       }
     } else {
       browseProducts();
     }
-  } else if (vuMod === 1) {
-    // Focus on product service (200m CPU)
-    if (Math.random() < 0.5) {
-      viewProductWithComments();
-    } else {
-      browseProducts();
-    }
-    if (session.token && Math.random() < 0.3) {
-      sleep(0.1);
-      postComment(session.token);
-    }
-  } else if (vuMod === 2) {
-    // Focus on booking service (200m CPU)
+  } else if (serviceSelector < 0.286) {
+    // Booking service - 14.3% (200m CPU) - Increased intensity
     viewBookings();
-    if (Math.random() < 0.5) {
-      sleep(0.15);
+    if (Math.random() < 0.7) {
+      sleep(0.1);
+      viewBookings();
+    }
+    if (session.token && Math.random() < 0.6) {
+      sleep(0.1);
       createBooking(session.token);
     }
-  } else if (vuMod === 3) {
-    // Focus on profile service (200m CPU)
+  } else if (serviceSelector < 0.429) {
+    // Order service - 14.3% (500m CPU) - Increased intensity
+    if (session.token) {
+      if (Math.random() < 0.7) {
+        createOrder(session.token);
+      } else {
+        viewMyOrders(session.token);
+      }
+      if (Math.random() < 0.5) {
+        sleep(0.1);
+        viewMyOrders(session.token);
+      }
+    } else {
+      browseProducts();
+    }
+  } else if (serviceSelector < 0.572) {
+    // Product service - 14.3% (200m CPU) - REDUCED to single lightweight call
+    const res = http.get(`${BASE_URL}/api/products`, {
+      headers: commonHeaders,
+    });
+    check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
+  } else if (serviceSelector < 0.715) {
+    // Profile service - 14.3% (200m CPU) - Increased intensity
     if (session.token) {
       manageProfile(session.token, session.userId);
+      sleep(0.1);
+      manageProfile(session.token, session.userId);
       if (Math.random() < 0.5) {
-        sleep(0.2);
+        sleep(0.1);
         manageProfile(session.token, session.userId);
       }
     } else {
       browseProducts();
     }
-  } else if (vuMod === 4) {
-    // Focus on recommender service (500m CPU, 2Gi memory)
-    getRecommendations();
-    if (Math.random() < 0.4) {
-      sleep(0.15);
-      getRecommendations();
-    }
-  } else if (vuMod === 5) {
-    // Focus on frontend + mixed services
+  } else if (serviceSelector < 0.858) {
+    // Frontend service - 14.3% (200m CPU) - Increased intensity
     browseProducts();
-    sleep(0.1);
-    if (session.token) {
-      if (Math.random() < 0.5) {
-        createOrder(session.token);
-      } else {
-        createBooking(session.token);
-      }
+    if (Math.random() < 0.6) {
+      sleep(0.08);
+      browseProducts();
     }
   } else {
-    // Mixed workload for balanced coverage
-    const action = Math.random();
-    if (action < 0.20) {
-      browseProducts();
-    } else if (action < 0.35) {
-      viewProductWithComments();
-    } else if (action < 0.50) {
-      viewBookings();
-    } else if (action < 0.65) {
-      if (session.token) {
-        createOrder(session.token);
-      } else {
-        browseProducts();
-      }
-    } else if (action < 0.80) {
+    // Recommender service - 14.2% (500m CPU, 2Gi memory) - Increased intensity
+    getRecommendations();
+    sleep(0.1);
+    getRecommendations();
+    if (Math.random() < 0.5) {
+      sleep(0.1);
       getRecommendations();
-    } else {
-      if (session.token) {
-        manageProfile(session.token, session.userId);
-      } else {
-        viewBookings();
-      }
     }
   }
   
