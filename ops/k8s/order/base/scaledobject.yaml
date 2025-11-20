@@ -38,11 +38,11 @@ spec:
     #       sum(rate(nginx_ingress_controller_requests{exported_namespace="ballandbeer",service="order"}[1m]))
     #     threshold: "10"
   
-    # ML-based trigger (disabled for data collection)
-    # - type: prometheus
-    #   metadata:
-    #     serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-    #     metricName: ml_predicted_replicas
-    #     query: |
-    #       ml_predicted_replicas{exported_service="order"}
-    #     threshold: "1"
+    # ML-based trigger
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        metricName: ml_predicted_replicas
+        query: |
+          ml_predicted_replicas{exported_service="order"}
+        threshold: "1"
