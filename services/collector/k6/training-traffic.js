@@ -587,7 +587,7 @@ export function realisticUserFlow(data) {
   const serviceSelector = Math.random();
   
   if (serviceSelector < 0.143) {
-    // Authen service - 14.3% (500m CPU) - Increased intensity
+    // Authen service - 14.3% (500m CPU)
     if (session.token) {
       verifySession(session.token);
       sleep(0.05);
@@ -600,66 +600,61 @@ export function realisticUserFlow(data) {
       browseProducts();
     }
   } else if (serviceSelector < 0.286) {
-    // Booking service - 14.3% (200m CPU) - Increased intensity
+    // Booking service - 14.3%
     viewBookings();
-    if (Math.random() < 0.7) {
-      sleep(0.1);
+    sleep(0.05);
+    viewBookings();
+    if (session.token) {
+      sleep(0.05);
+      createBooking(session.token);
+    } else {
+      sleep(0.05);
       viewBookings();
     }
-    if (session.token && Math.random() < 0.6) {
-      sleep(0.1);
-      createBooking(session.token);
-    }
   } else if (serviceSelector < 0.429) {
-    // Order service - 14.3% (500m CPU) - Increased intensity
+    // Order service - 14.3%
     if (session.token) {
-      if (Math.random() < 0.7) {
-        createOrder(session.token);
-      } else {
-        viewMyOrders(session.token);
-      }
-      if (Math.random() < 0.5) {
-        sleep(0.1);
-        viewMyOrders(session.token);
-      }
+      createOrder(session.token);
+      sleep(0.05);
+      viewMyOrders(session.token);
+      sleep(0.05);
+      viewMyOrders(session.token);
     } else {
+      browseProducts();
+      sleep(0.05);
       browseProducts();
     }
   } else if (serviceSelector < 0.572) {
-    // Product service - 14.3% (200m CPU) - REDUCED to single lightweight call
+    // Product service - 14.3% (200m CPU)
     const res = http.get(`${BASE_URL}/api/products`, {
       headers: commonHeaders,
     });
     check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
   } else if (serviceSelector < 0.715) {
-    // Profile service - 14.3% (200m CPU) - Increased intensity
+    // Profile service - 14.3% - Keep moderate (already scaling OK)
     if (session.token) {
       manageProfile(session.token, session.userId);
       sleep(0.1);
       manageProfile(session.token, session.userId);
-      if (Math.random() < 0.5) {
-        sleep(0.1);
-        manageProfile(session.token, session.userId);
-      }
     } else {
       browseProducts();
     }
   } else if (serviceSelector < 0.858) {
-    // Frontend service - 14.3% (200m CPU) - Increased intensity
+    // Frontend service - 14.3%
     browseProducts();
-    if (Math.random() < 0.6) {
-      sleep(0.08);
-      browseProducts();
-    }
+    sleep(0.05);
+    browseProducts();
+    sleep(0.05);
+    viewProductWithComments();
+    sleep(0.05);
+    browseProducts();
   } else {
-    // Recommender service - 14.2% (500m CPU, 2Gi memory) - Increased intensity
+    // Recommender service - 14.2%
     getRecommendations();
-    sleep(0.1);
+    sleep(0.05);
     getRecommendations();
-    if (Math.random() < 0.5) {
-      sleep(0.1);
-      getRecommendations();
-    }
+    sleep(0.05);
+    getRecommendations();
   }
   
   sleep(thinkTime);
