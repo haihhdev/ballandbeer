@@ -51,11 +51,10 @@ spec:
         command:
           - k6
           - run
-          - --out
-          - json=/data/k6-results.json
-          - --env
-          - BASE_URL=
-          - /scripts/training-diverse-traffic.js
+          - /scripts/training-traffic.js
+        env:
+        - name: BASE_URL
+          value: "http://ingress-nginx-controller.ingress-nginx.svc.cluster.local"
         
         resources:
           requests:

@@ -14,9 +14,9 @@ spec:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleUp:
-          stabilizationWindowSeconds: 180
+          stabilizationWindowSeconds: 60
         scaleDown:
-          stabilizationWindowSeconds: 180
+          stabilizationWindowSeconds: 120
   
   triggers:
     - type: cpu

@@ -469,7 +469,9 @@ export function setup() {
   return { tokens };
 }
 
-// 6-hour realistic user behavior pattern: 2→3→4→3→2 replicas
+// 6-hour balanced load pattern: 1→2→3→4→5 replicas evenly distributed
+// Goal: 20% data for each replica count (1,2,3,4,5) per service
+// Strategy: Controlled VU levels with gradual transitions
 
 export const options = {
   scenarios: {
@@ -477,47 +479,70 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0m',
       stages: [
-        // 3 cycles × 120 min = 360 min (6 hours)
-        // Each cycle: 2→3→4→3 (30 min per stage)
+        // 3 complete cycles over 6 hours (2 hours per cycle)
+        // Each replica level gets ~20 minutes stable time for balanced data
         
-        // Cycle 1: 2→3→4→3 replicas pattern (threshold 40%, HPA auto-calculate)
-        // Formula: desiredReplicas = ceil(currentReplicas * currentCPU / targetCPU)
-        { duration: '8m', target: 40 },   // 2 replicas: ~40% CPU → stable
-        { duration: '22m', target: 40 },  
-        { duration: '8m', target: 70 },   // 3 replicas: 2 * 60% / 40% = 3
-        { duration: '22m', target: 70 },  
-        { duration: '8m', target: 100 },  // 4 replicas: 3 * 53% / 40% = 4
-        { duration: '22m', target: 100 }, 
-        { duration: '8m', target: 70 },   // 3 replicas: drop back
-        { duration: '22m', target: 70 },  
+        // CYCLE 1: 1→2→3→4→5→4→3→2 replicas
+        { duration: '5m', target: 20 },    // 1 replica: minimal load
+        { duration: '15m', target: 20 },   // stable at 1 replica
+        { duration: '5m', target: 40 },    // 2 replicas: light load
+        { duration: '15m', target: 40 },   // stable at 2 replicas
+        { duration: '5m', target: 60 },    // 3 replicas: moderate load
+        { duration: '15m', target: 60 },   // stable at 3 replicas
+        { duration: '5m', target: 80 },    // 4 replicas: high load
+        { duration: '15m', target: 80 },   // stable at 4 replicas
+        { duration: '5m', target: 100 },   // 5 replicas: peak load
+        { duration: '15m', target: 100 },  // stable at 5 replicas
+        { duration: '5m', target: 80 },    // 4 replicas: scale down
+        { duration: '10m', target: 80 },   // stable at 4 replicas
+        { duration: '5m', target: 60 },    // 3 replicas
+        { duration: '10m', target: 60 },   // stable at 3 replicas
+        { duration: '5m', target: 40 },    // 2 replicas
+        { duration: '10m', target: 40 },   // stable at 2 replicas
         
-        // Cycle 2: 2→3→4→3 replicas pattern
-        { duration: '8m', target: 40 },
-        { duration: '22m', target: 40 },
-        { duration: '8m', target: 70 },
-        { duration: '22m', target: 70 },
-        { duration: '8m', target: 100 },
-        { duration: '22m', target: 100 },
-        { duration: '8m', target: 70 },
-        { duration: '22m', target: 70 },
+        // CYCLE 2: Repeat pattern
+        { duration: '5m', target: 20 },
+        { duration: '15m', target: 20 },
+        { duration: '5m', target: 40 },
+        { duration: '15m', target: 40 },
+        { duration: '5m', target: 60 },
+        { duration: '15m', target: 60 },
+        { duration: '5m', target: 80 },
+        { duration: '15m', target: 80 },
+        { duration: '5m', target: 100 },
+        { duration: '15m', target: 100 },
+        { duration: '5m', target: 80 },
+        { duration: '10m', target: 80 },
+        { duration: '5m', target: 60 },
+        { duration: '10m', target: 60 },
+        { duration: '5m', target: 40 },
+        { duration: '10m', target: 40 },
         
-        // Cycle 3: 2→3→4→3 replicas pattern
-        { duration: '8m', target: 40 },
-        { duration: '22m', target: 40 },
-        { duration: '8m', target: 70 },
-        { duration: '22m', target: 70 },
-        { duration: '8m', target: 100 },
-        { duration: '22m', target: 100 },
-        { duration: '8m', target: 70 },
-        { duration: '22m', target: 70 },
+        // CYCLE 3: Final repeat
+        { duration: '5m', target: 20 },
+        { duration: '15m', target: 20 },
+        { duration: '5m', target: 40 },
+        { duration: '15m', target: 40 },
+        { duration: '5m', target: 60 },
+        { duration: '15m', target: 60 },
+        { duration: '5m', target: 80 },
+        { duration: '15m', target: 80 },
+        { duration: '5m', target: 100 },
+        { duration: '15m', target: 100 },
+        { duration: '5m', target: 80 },
+        { duration: '10m', target: 80 },
+        { duration: '5m', target: 60 },
+        { duration: '10m', target: 60 },
+        { duration: '5m', target: 40 },
+        { duration: '10m', target: 40 },
       ],
       gracefulStop: '30s',
       exec: 'realisticUserFlow',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<5000'],
-    'errors': ['rate<0.25'],
+    'http_req_duration': ['p(95)<8000'],
+    'errors': ['rate<0.30'],
   },
   setupTimeout: '90s',
 };
@@ -528,86 +553,121 @@ export function realisticUserFlow(data) {
   }
   
   const currentVUs = __VU;
-  let thinkTime;
+  const session = getUserSession();
   
-  if (currentVUs <= 40) {
-    thinkTime = Math.random() * 0.5 + 0.5;  // 0.5-1s for 2 replicas (~40% CPU)
-  } else if (currentVUs <= 70) {
-    thinkTime = Math.random() * 0.4 + 0.3;  // 0.3-0.7s for 3 replicas (~50% CPU)
+  // Adaptive think time based on VU count for balanced replica distribution
+  let thinkTime;
+  if (currentVUs <= 20) {
+    // 1 replica: very slow traffic
+    thinkTime = Math.random() * 2 + 1.5;  // 1.5-3.5s
+  } else if (currentVUs <= 40) {
+    // 2 replicas: slow traffic
+    thinkTime = Math.random() * 1.5 + 1;  // 1-2.5s
+  } else if (currentVUs <= 60) {
+    // 3 replicas: moderate traffic
+    thinkTime = Math.random() * 1 + 0.5;  // 0.5-1.5s
+  } else if (currentVUs <= 80) {
+    // 4 replicas: fast traffic
+    thinkTime = Math.random() * 0.6 + 0.3;  // 0.3-0.9s
   } else {
-    thinkTime = Math.random() * 0.3 + 0.2;  // 0.2-0.5s for 4 replicas (~60% CPU)
+    // 5 replicas: very fast traffic
+    thinkTime = Math.random() * 0.4 + 0.2;  // 0.2-0.6s
   }
   
+  // User behavior variation
   const userType = Math.random();
   if (userType < 0.2) {
-    thinkTime *= 0.7;
+    thinkTime *= 0.7;  // Fast users
   } else if (userType < 0.3) {
-    thinkTime *= 1.3;
+    thinkTime *= 1.3;  // Slow users
   }
   
-  const action = Math.random();
+  // Service-specific traffic distribution using VU modulo for balanced load
+  const vuMod = __VU % 7;
   
-  if (action < 0.40) {
-    const guestAction = Math.random();
-    if (guestAction < 0.50) {
-      browseProducts();
-    } else if (guestAction < 0.75) {
-      viewProductWithComments();
-    } else if (guestAction < 0.90) {
-      viewBookings();
+  if (vuMod === 0) {
+    // Focus on authen + order (heavy services: 500m CPU)
+    if (session.token) {
+      if (Math.random() < 0.6) {
+        verifySession(session.token);
+        sleep(0.1);
+      }
+      if (Math.random() < 0.7) {
+        createOrder(session.token);
+      }
     } else {
+      browseProducts();
+    }
+  } else if (vuMod === 1) {
+    // Focus on product service (200m CPU)
+    if (Math.random() < 0.5) {
+      viewProductWithComments();
+    } else {
+      browseProducts();
+    }
+    if (session.token && Math.random() < 0.3) {
+      sleep(0.1);
+      postComment(session.token);
+    }
+  } else if (vuMod === 2) {
+    // Focus on booking service (200m CPU)
+    viewBookings();
+    if (Math.random() < 0.5) {
+      sleep(0.15);
+      createBooking(session.token);
+    }
+  } else if (vuMod === 3) {
+    // Focus on profile service (200m CPU)
+    if (session.token) {
+      manageProfile(session.token, session.userId);
+      if (Math.random() < 0.5) {
+        sleep(0.2);
+        manageProfile(session.token, session.userId);
+      }
+    } else {
+      browseProducts();
+    }
+  } else if (vuMod === 4) {
+    // Focus on recommender service (500m CPU, 2Gi memory)
+    getRecommendations();
+    if (Math.random() < 0.4) {
+      sleep(0.15);
       getRecommendations();
     }
-  } else {
-    const session = getUserSession();
+  } else if (vuMod === 5) {
+    // Focus on frontend + mixed services
+    browseProducts();
+    sleep(0.1);
     if (session.token) {
-      const authAction = Math.random();
-      
-      // Only verify session 30% of the time to reduce authen load
-      if (Math.random() < 0.30) {
-        verifySession(session.token);
-      }
-      
-      if (authAction < 0.35) {
-        browseProducts();
-        
-        if (Math.random() < 0.75) {
-          createOrder(session.token);
-          
-          if (Math.random() < 0.3) {
-            viewMyOrders(session.token);
-          }
-        } else {
-          viewMyOrders(session.token);
-        }
-      } else if (authAction < 0.60) {
-        viewBookings();
-        
-        if (Math.random() < 0.65) {
-          createBooking(session.token);
-        }
-      } else if (authAction < 0.72) {
-        manageProfile(session.token, session.userId);
-        viewProductWithComments();
-        
-        if (Math.random() < 0.2) {
-          postComment(session.token);
-        }
-      } else if (authAction < 0.97) {
-        getRecommendations();
-        
-        if (Math.random() < 0.4) {
-          viewProductWithComments();
-        }
+      if (Math.random() < 0.5) {
+        createOrder(session.token);
       } else {
-        viewMyOrders(session.token);
-        
-        if (Math.random() < 0.5) {
-          viewMyOrders(session.token);
-        }
+        createBooking(session.token);
       }
-    } else {
+    }
+  } else {
+    // Mixed workload for balanced coverage
+    const action = Math.random();
+    if (action < 0.20) {
       browseProducts();
+    } else if (action < 0.35) {
+      viewProductWithComments();
+    } else if (action < 0.50) {
+      viewBookings();
+    } else if (action < 0.65) {
+      if (session.token) {
+        createOrder(session.token);
+      } else {
+        browseProducts();
+      }
+    } else if (action < 0.80) {
+      getRecommendations();
+    } else {
+      if (session.token) {
+        manageProfile(session.token, session.userId);
+      } else {
+        viewBookings();
+      }
     }
   }
   
