@@ -39,10 +39,10 @@ tf.random.set_seed(config.RANDOM_STATE)
 class ServiceAwareTransformer:
     """Transformer that learns service-specific patterns via service encoding features"""
     
-    def __init__(self, n_features=34, sequence_length=12, d_model=64, num_heads=4, 
+    def __init__(self, n_features=34, sequence_length=40, d_model=64, num_heads=4, 
                  dff=128, num_blocks=2, dropout=0.2):
         self.n_features = n_features
-        self.sequence_length = sequence_length
+        self.sequence_length = sequence_length  # 40 timesteps = 20 minutes at 30s interval
         self.d_model = d_model
         self.num_heads = num_heads
         self.dff = dff
@@ -129,16 +129,36 @@ class ServiceAwareTransformer:
         
         return np.array(sequences), np.array(targets)
     
+    def asymmetric_loss(self, y_true, y_pred):
+        """
+        Custom loss that penalizes under-prediction slightly more than over-prediction
+        Under-prediction (y_pred < y_true) is 1.3x more costly
+        Over-prediction is also penalized to avoid unnecessary scaling
+        """
+        error = y_true - y_pred
+        
+        # Moderate underprediction penalty: 1.3x weight
+        underprediction_mask = tf.cast(error > 0, tf.float32)
+        overprediction_mask = tf.cast(error <= 0, tf.float32)
+        
+        squared_error = tf.square(error)
+        
+        # Apply moderate asymmetric weights
+        loss = (underprediction_mask * 1.3 * squared_error + 
+                overprediction_mask * 1.0 * squared_error)
+        
+        return tf.reduce_mean(loss)
+    
     def train(self, X_train, y_train, X_val, y_val, class_weights=None):
         """Train the model"""
         
         if self.model is None:
             self.build_model()
         
-        # Compile
+        # Compile with custom asymmetric loss
         self.model.compile(
             optimizer=optimizers.Adam(learning_rate=0.001),
-            loss='mse',
+            loss=self.asymmetric_loss,
             metrics=['mae']
         )
         
@@ -172,10 +192,26 @@ class ServiceAwareTransformer:
         
         return self.history
     
-    def predict(self, X):
-        """Predict replica counts"""
+    def predict(self, X, rounding_mode='normal'):
+        """
+        Predict replica counts with configurable rounding
+        
+        Args:
+            X: Input features
+            rounding_mode: 'normal' (0.5), 'conservative' (0.4), 'strict' (0.6)
+        """
         predictions = self.model.predict(X, verbose=0).flatten()
-        predictions = np.clip(np.round(predictions), 1, 10)
+        
+        if rounding_mode == 'conservative':
+            # Round up at 0.4 threshold - moderate preference for scaling up
+            predictions = np.floor(predictions) + (predictions % 1 >= 0.4).astype(float)
+        elif rounding_mode == 'strict':
+            # Round up at 0.6 threshold - require strong signal to scale up
+            predictions = np.floor(predictions) + (predictions % 1 >= 0.6).astype(float)
+        else:  # normal
+            predictions = np.round(predictions)
+        
+        predictions = np.clip(predictions, 1, 10)
         return predictions.astype(int)
     
     def evaluate(self, X_test, y_test, service_names_test):
@@ -462,11 +498,19 @@ def main():
     
     logger.info(f"Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
     
-    # Compute class weights
+    # Compute class weights - moderate boosting only
     unique_classes = np.unique(y_train)
     class_weights_array = compute_class_weight('balanced', classes=unique_classes, y=y_train)
     class_weights = {int(c): w for c, w in zip(unique_classes, class_weights_array)}
-    logger.info(f"Class weights: {class_weights}")
+    
+    # MODERATE boost for replica 2+ to avoid over-prediction
+    # Only boost by 1.2x to reduce bias without being too aggressive
+    for replica_count in class_weights.keys():
+        if replica_count > 1:
+            class_weights[replica_count] *= 1.2
+    
+    logger.info(f"Original class weights (balanced): {dict(zip(unique_classes, class_weights_array))}")
+    logger.info(f"Boosted class weights (1.2x): {class_weights}")
     
     logger.info("\n[3/6] Creating sequences...")
     model = ServiceAwareTransformer(n_features=X_array.shape[1])
@@ -491,8 +535,21 @@ def main():
     model.train(X_train_seq, y_train_seq, X_val_seq, y_val_seq, class_weights)
     
     logger.info("\n[5/6] Evaluating...")
-    predictions = model.predict(X_test_seq)
+    
+    # Test all rounding strategies
+    logger.info("\n--- Normal Rounding (0.5 threshold) ---")
+    predictions_normal = model.predict(X_test_seq, rounding_mode='normal')
+    metrics_normal = model.evaluate(X_test_seq, y_test_seq, service_test_seq)
+    
+    logger.info("\n--- Conservative Rounding (0.4 threshold - moderate) ---")
+    predictions_conservative = model.predict(X_test_seq, rounding_mode='conservative')
+    metrics_conservative = model.evaluate(X_test_seq, y_test_seq, service_test_seq)
+    
+    logger.info("\n--- Strict Rounding (0.6 threshold - require strong signal) ---")
+    predictions = model.predict(X_test_seq, rounding_mode='strict')
     metrics = model.evaluate(X_test_seq, y_test_seq, service_test_seq)
+    
+    logger.info("\n✓ Using STRICT rounding (0.6) for plots - requires strong scaling signal")
     
     logger.info("\n[6/6] Saving...")
     model.save_model(model_dir)

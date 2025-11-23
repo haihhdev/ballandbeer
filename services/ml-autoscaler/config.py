@@ -15,6 +15,11 @@ AWS_REGION = 'ap-southeast-1'
 SERVICES = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'recommender']
 
 # Features to use (excluding time-based features as per requirement)
+# Removed features that are unreliable or rarely change:
+# - queue_length: Not per-service, measures total nginx connections
+# - pod_restart_count: Rarely changes
+# - node_cpu_pressure_flag: Rarely occurs
+# - node_memory_pressure_flag: Rarely occurs
 FEATURE_COLUMNS = [
     # CPU metrics
     'cpu_usage_percent',
@@ -38,13 +43,7 @@ FEATURE_COLUMNS = [
     'ram_limit',
     
     # Application metrics
-    'queue_length',
     'error_rate',
-    'pod_restart_count',
-    
-    # Node pressure flags
-    'node_cpu_pressure_flag',
-    'node_memory_pressure_flag',
 ]
 
 # Target column
@@ -60,8 +59,8 @@ PCA_PARAMS = {
 
 # Transformer Configuration
 TRANSFORMER_PARAMS = {
-    'sequence_length': 12,      # Use last 12 time steps (6 minutes at 30s interval)
-    'lookahead': 20,            # Predict 20 steps ahead (10 minutes)
+    'sequence_length': 40,      # Use last 40 time steps (20 minutes at 30s interval)
+    'lookahead': 10,            # Predict 10 steps ahead (5 minutes)
     'd_model': 128,             # Model dimension
     'num_heads': 4,             # Number of attention heads
     'num_layers': 3,            # 3 layers for better feature extraction

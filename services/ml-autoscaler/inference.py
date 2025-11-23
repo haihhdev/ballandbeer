@@ -347,9 +347,9 @@ class K8sAutoScalingPredictor:
         # Prepare full feature set matching training (34 features after removing constant ones)
         # Order must match training: config.FEATURE_COLUMNS + engineered features + service dummies
         
-        # Base features from config.FEATURE_COLUMNS (excluding removed constant features)
-        # Removed: cpu_request, cpu_limit, pod_restart_count, node_cpu_pressure_flag, 
-        #          node_memory_pressure_flag, is_unstable
+        # Base features from config.FEATURE_COLUMNS
+        # Note: Removed unreliable features: queue_length, pod_restart_count, 
+        #       node_cpu_pressure_flag, node_memory_pressure_flag
         feature_list = []
         
         # CPU metrics
@@ -368,13 +368,16 @@ class K8sAutoScalingPredictor:
         feature_list.append(features.get('response_time_ms', 200))
         
         # Resource limits (normalized to GB)
+        cpu_request = features.get('cpu_request', 0.1) / 1.0  # Keep as ratio
+        cpu_limit = features.get('cpu_limit', 0.5) / 1.0
         ram_request = features.get('ram_request', 536870912) / (1024**3)
         ram_limit = features.get('ram_limit', 1073741824) / (1024**3)
+        feature_list.append(cpu_request)
+        feature_list.append(cpu_limit)
         feature_list.append(ram_request)
         feature_list.append(ram_limit)
         
         # Application metrics
-        feature_list.append(features.get('queue_length', 0))
         feature_list.append(features.get('error_rate', 0))
         
         # Engineered features - compute or use defaults
@@ -409,9 +412,6 @@ class K8sAutoScalingPredictor:
         if features.get('response_time_ms', 0) > 500: pressure += 1
         if features.get('error_rate', 0) > 0.05: pressure += 1
         feature_list.append(pressure)
-        
-        # Incident flag
-        feature_list.append(features.get('is_incident', 0))
         
         # Service one-hot encoding (7 services)
         services = ['authen', 'booking', 'frontend', 'order', 'product', 'profile', 'recommender']
@@ -450,8 +450,15 @@ class K8sAutoScalingPredictor:
         # Predict
         prediction = self.model.predict(sequence, verbose=0)[0][0]
         
+        # STRICT rounding: Round up only if prediction >= X.6 (require strong signal)
+        # This prevents over-prediction when there's no clear scaling signal
+        # Example: 1.6 -> 2, 1.5 -> 1, 2.7 -> 3, 2.4 -> 2
+        replica_float = np.floor(prediction) + (prediction % 1 >= 0.6).astype(float)
+        
         # Clip to valid range (1-5 to match HPA maxReplicas)
-        replica_count = int(np.clip(np.round(prediction), 1, 5))
+        replica_count = int(np.clip(replica_float, 1, 5))
+        
+        logger.info(f"Raw prediction: {prediction:.2f}, Strict rounding (0.6): {replica_float:.0f}, Final: {replica_count}")
         
         return replica_count
     
@@ -594,13 +601,11 @@ def example_usage():
         'hour_cos': 0.866,
         'cpu_request': 0.5,
         'cpu_limit': 2.0,
+        'cpu_request': 0.1,
+        'cpu_limit': 0.5,
         'ram_request': 512.0,
         'ram_limit': 2048.0,
-        'queue_length': 15,
         'error_rate': 0.02,
-        'pod_restart_count': 0,
-        'node_cpu_pressure_flag': 0,
-        'node_memory_pressure_flag': 0,
         'is_holiday': 0,
         'is_weekend': 0,
         # Engineered features

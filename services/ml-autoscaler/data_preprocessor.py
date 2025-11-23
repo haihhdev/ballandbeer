@@ -158,17 +158,8 @@ class DataPreprocessor:
                     if service_zero_mask.sum() > 0:
                         logger.info(f"  Filled {service_zero_mask.sum()} zero resource rows for {service}")
         
-        # Rule 3: Flag (not remove) high restart counts - add as feature
-        df['is_unstable'] = (df['pod_restart_count'] > 3).astype(int)
-        high_restart_count = df['is_unstable'].sum()
-        if high_restart_count > 0:
-            logger.info(f"Flagged {high_restart_count} rows with high restart count (will be used as feature)")
-        
-        # Rule 4: Flag incident periods (extreme error rates)
-        df['is_incident'] = (df['error_rate'] > 30.0).astype(int)
-        incident_count = df['is_incident'].sum()
-        if incident_count > 0:
-            logger.info(f"Flagged {incident_count} rows as incident periods (will be used as feature)")
+        # Note: Removed is_unstable (depends on pod_restart_count which is unreliable)
+        # Note: Removed is_incident (extreme error rates are rare)
         
         # Rule 5: Remove rows where service has all-zero metrics (collector error)
         null_metrics_mask = (
@@ -279,9 +270,7 @@ class DataPreprocessor:
                 (service_df['cpu_usage_percent'] > 70).astype(int) +
                 (service_df['ram_usage_percent'] > 75).astype(int) +
                 (service_df['response_time_ms'] > 500).astype(int) +
-                (service_df['error_rate'] > 0.05).astype(int) +
-                service_df['node_cpu_pressure_flag'] +
-                service_df['node_memory_pressure_flag']
+                (service_df['error_rate'] > 0.05).astype(int)
             )
         
         # Fill NaN values from diff and rolling operations
@@ -373,9 +362,7 @@ class DataPreprocessor:
             'cpu_rolling_std', 'ram_rolling_std',
             'request_rolling_max', 'response_time_rolling_p95',
             'cpu_per_replica', 'ram_per_replica', 'requests_per_replica',
-            'system_pressure',
-            'is_unstable',
-            'is_incident'
+            'system_pressure'
         ]
         
         all_features.extend(engineered_features)

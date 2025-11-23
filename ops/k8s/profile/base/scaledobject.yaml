@@ -27,8 +27,7 @@ spec:
     - type: memory
       metricType: Utilization
       metadata:
-        value: "40"
-    
+        value: "40"    
     # HTTP requests trigger (disabled - using pure HPA mode: CPU + Memory only)
     # - type: prometheus
     #   metadata:
@@ -46,3 +45,4 @@ spec:
         query: |
           ml_predicted_replicas{exported_service="profile"}
         threshold: "1"
+
