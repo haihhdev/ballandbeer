@@ -453,59 +453,81 @@ export function setup() {
   return { tokens };
 }
 
-// 7-hour training pattern: 1→2→3→4→5→4→3→2→3→4→3→2→3→4→5→4→3→2→1
-// Target: 2-4 replicas (75%), threshold: CPU/Memory > 40%
+// 7-hour balanced training for even replica distribution across services
+// Target distribution for most services (authen,booking,order,product,frontend,recommender): 
+//   rep1: 15%, rep2: 25%, rep3: 25%, rep4: 25%, rep5: 10%
+// Profile service only: rep1: 33%, rep2: 34%, rep3: 33%
+// Total: 420 minutes = 7 hours
 export const options = {
   scenarios: {
     balanced_training_7h: {
       executor: 'ramping-vus',
       startTime: '0s',
       stages: [
-        // Cycle 1: Full range 1-5 (0-175 min = 2h55m)
-        { duration: '3m', target: 15 },    // 00:00-03 Ramp to 1 replica
-        { duration: '12m', target: 15 },   // 03:00-15 Stable 1 replica (12 min)
-        { duration: '3m', target: 35 },    // 15:00-18 Ramp to 2 replicas
-        { duration: '20m', target: 35 },   // 18:00-38 Stable 2 replicas (20 min)
-        { duration: '3m', target: 60 },    // 38:00-41 Ramp to 3 replicas
-        { duration: '30m', target: 60 },   // 41:00-71 Stable 3 replicas (30 min) ← PEAK
-        { duration: '3m', target: 90 },    // 71:00-74 Ramp to 4 replicas
-        { duration: '24m', target: 90 },   // 74:00-98 Stable 4 replicas (24 min)
-        { duration: '3m', target: 130 },   // 98:00-101 Ramp to 5 replicas
-        { duration: '15m', target: 130 },  // 101-116 Stable 5 replicas (15 min)
+        // Block 1: rep1->2->3->4->5 (0-70min)
+        { duration: '2m', target: 25 },    // 0-2: ramp to rep1
+        { duration: '10m', target: 25 },   // 2-12: rep1 stable (10min)
+        { duration: '2m', target: 55 },    // 12-14: ramp to rep2
+        { duration: '18m', target: 55 },   // 14-32: rep2 stable (18min)
+        { duration: '2m', target: 90 },    // 32-34: ramp to rep3
+        { duration: '16m', target: 90 },   // 34-50: rep3 stable (16min)
+        { duration: '2m', target: 140 },   // 50-52: ramp to rep4
+        { duration: '8m', target: 140 },   // 52-60: rep4 stable (8min)
+        { duration: '2m', target: 200 },   // 60-62: ramp to rep5
+        { duration: '8m', target: 200 },   // 62-70: rep5 stable (8min)
         
-        // Scale down gradually (116-200 min)
-        { duration: '3m', target: 90 },    // 116-119 Down to 4
-        { duration: '20m', target: 90 },   // 119-139 Stable 4 replicas (20 min)
-        { duration: '3m', target: 60 },    // 139-142 Down to 3
-        { duration: '30m', target: 60 },   // 142-172 Stable 3 replicas (30 min) ← PEAK
-        { duration: '3m', target: 35 },    // 172-175 Down to 2
-        { duration: '25m', target: 35 },   // 175-200 Stable 2 replicas (25 min)
+        // Block 2: rep5->4->3->2 (70-126min)
+        { duration: '2m', target: 140 },   // 70-72: down to rep4
+        { duration: '18m', target: 140 },  // 72-90: rep4 stable (18min)
+        { duration: '2m', target: 90 },    // 90-92: down to rep3
+        { duration: '18m', target: 90 },   // 92-110: rep3 stable (18min)
+        { duration: '2m', target: 55 },    // 110-112: down to rep2
+        { duration: '14m', target: 55 },   // 112-126: rep2 stable (14min)
         
-        // Cycle 2: Focus on 2-4 (200-286 min = 1h26m)
-        { duration: '3m', target: 60 },    // 200-203 Ramp to 3
-        { duration: '30m', target: 60 },   // 203-233 Stable 3 replicas (30 min) ← PEAK
-        { duration: '3m', target: 90 },    // 233-236 Ramp to 4
-        { duration: '24m', target: 90 },   // 236-260 Stable 4 replicas (24 min)
-        { duration: '3m', target: 60 },    // 260-263 Down to 3
-        { duration: '20m', target: 60 },   // 263-283 Stable 3 replicas (20 min)
-        { duration: '3m', target: 35 },    // 283-286 Down to 2
-        { duration: '19m', target: 35 },   // 286-305 Stable 2 replicas (19 min)
+        // Block 3: rep2->3->4->3 (126-188min)
+        { duration: '2m', target: 90 },    // 126-128: ramp to rep3
+        { duration: '20m', target: 90 },   // 128-148: rep3 stable (20min)
+        { duration: '2m', target: 140 },   // 148-150: ramp to rep4
+        { duration: '18m', target: 140 },  // 150-168: rep4 stable (18min)
+        { duration: '2m', target: 90 },    // 168-170: down to rep3
+        { duration: '18m', target: 90 },   // 170-188: rep3 stable (18min)
         
-        // Cycle 3: Final push 3-5 then cool down (305-420 min = 1h55m)
-        { duration: '3m', target: 60 },    // 305-308 Ramp to 3
-        { duration: '20m', target: 60 },   // 308-328 Stable 3 replicas (20 min)
-        { duration: '3m', target: 90 },    // 328-331 Ramp to 4
-        { duration: '17m', target: 90 },   // 331-348 Stable 4 replicas (17 min)
-        { duration: '3m', target: 130 },   // 348-351 Ramp to 5
-        { duration: '15m', target: 130 },  // 351-366 Stable 5 replicas (15 min)
-        { duration: '3m', target: 90 },    // 366-369 Down to 4
-        { duration: '17m', target: 90 },   // 369-386 Stable 4 replicas (17 min)
-        { duration: '3m', target: 60 },    // 386-389 Down to 3
-        { duration: '15m', target: 60 },   // 389-404 Stable 3 replicas (15 min)
-        { duration: '3m', target: 35 },    // 404-407 Down to 2
-        { duration: '5m', target: 35 },    // 407-412 Stable 2 replicas (5 min)
-        { duration: '5m', target: 15 },    // 412-417 Cool down to 1
-        { duration: '3m', target: 15 },    // 417-420 Final stable 1 replica (3 min)
+        // Block 4: rep3->2->1->2 (188-238min)
+        { duration: '2m', target: 55 },    // 188-190: down to rep2
+        { duration: '20m', target: 55 },   // 190-210: rep2 stable (20min)
+        { duration: '2m', target: 25 },    // 210-212: down to rep1
+        { duration: '12m', target: 25 },   // 212-224: rep1 stable (12min)
+        { duration: '2m', target: 55 },    // 224-226: ramp to rep2
+        { duration: '12m', target: 55 },   // 226-238: rep2 stable (12min)
+        
+        // Block 5: rep2->3->4->5->4 (238-294min)
+        { duration: '2m', target: 90 },    // 238-240: ramp to rep3
+        { duration: '16m', target: 90 },   // 240-256: rep3 stable (16min)
+        { duration: '2m', target: 140 },   // 256-258: ramp to rep4
+        { duration: '16m', target: 140 },  // 258-274: rep4 stable (16min)
+        { duration: '2m', target: 200 },   // 274-276: ramp to rep5
+        { duration: '6m', target: 200 },   // 276-282: rep5 stable (6min)
+        { duration: '2m', target: 140 },   // 282-284: down to rep4
+        { duration: '10m', target: 140 },  // 284-294: rep4 stable (10min)
+        
+        // Block 6: rep4->3->2->3 (294-348min)
+        { duration: '2m', target: 90 },    // 294-296: down to rep3
+        { duration: '18m', target: 90 },   // 296-314: rep3 stable (18min)
+        { duration: '2m', target: 55 },    // 314-316: down to rep2
+        { duration: '16m', target: 55 },   // 316-332: rep2 stable (16min)
+        { duration: '2m', target: 90 },    // 332-334: ramp to rep3
+        { duration: '14m', target: 90 },   // 334-348: rep3 stable (14min)
+        
+        // Block 7: rep3->4->3->2->1 (348-420min) - final cooldown
+        { duration: '2m', target: 140 },   // 348-350: ramp to rep4
+        { duration: '14m', target: 140 },  // 350-364: rep4 stable (14min)
+        { duration: '2m', target: 90 },    // 364-366: down to rep3
+        { duration: '14m', target: 90 },   // 366-380: rep3 stable (14min)
+        { duration: '2m', target: 55 },    // 380-382: down to rep2
+        { duration: '18m', target: 55 },   // 382-400: rep2 stable (18min)
+        { duration: '2m', target: 25 },    // 400-402: down to rep1
+        { duration: '13m', target: 25 },   // 402-415: rep1 stable (13min)
+        { duration: '5m', target: 10 },    // 415-420: final cooldown
       ],
       gracefulStop: '30s',
       exec: 'balancedTrafficFlow',
@@ -526,106 +548,117 @@ export function balancedTrafficFlow(data) {
   const currentVUs = __VU;
   const session = getUserSession();
   
-  // Very aggressive traffic to trigger 40% CPU with reduced requests
+  // Adaptive load based on VU count to trigger proper scaling
+  // VU ranges calibrated for CPU thresholds: authen(20m), booking(20m), order(30m), product(200m), profile(10m), frontend(40m), recommender(40m)
   let thinkTime;
-  let requestIntensity;
+  let loadMultiplier;
   
-  if (currentVUs <= 20) {
-    // 1 replica: push to 40%+ CPU (booking needs 20m, order needs 30m, recommender needs 40m)
-    thinkTime = Math.random() * 0.4 + 0.2;  // 0.2-0.6s
-    requestIntensity = 4;
-  } else if (currentVUs <= 40) {
-    // 2 replicas: push to 50%+ CPU per pod
-    thinkTime = Math.random() * 0.25 + 0.15;  // 0.15-0.4s
-    requestIntensity = 5;
-  } else if (currentVUs <= 70) {
-    // 3 replicas: push to 60%+ CPU per pod
-    thinkTime = Math.random() * 0.2 + 0.1;  // 0.1-0.3s
-    requestIntensity = 6;
+  if (currentVUs <= 30) {
+    // Target: 1 replica (low load, just above idle)
+    thinkTime = Math.random() * 0.8 + 0.5;  // 0.5-1.3s think time
+    loadMultiplier = 0.5;
+  } else if (currentVUs <= 60) {
+    // Target: 2 replicas (moderate load, ~50% CPU per pod)
+    thinkTime = Math.random() * 0.5 + 0.3;  // 0.3-0.8s think time
+    loadMultiplier = 1.0;
   } else if (currentVUs <= 100) {
-    // 4 replicas: push to 70%+ CPU per pod
-    thinkTime = Math.random() * 0.15 + 0.08;  // 0.08-0.23s
-    requestIntensity = 7;
+    // Target: 3 replicas (high load, ~60% CPU per pod)
+    thinkTime = Math.random() * 0.3 + 0.2;  // 0.2-0.5s think time
+    loadMultiplier = 1.5;
+  } else if (currentVUs <= 150) {
+    // Target: 4 replicas (very high load, ~70% CPU per pod)
+    thinkTime = Math.random() * 0.2 + 0.1;  // 0.1-0.3s think time
+    loadMultiplier = 2.0;
   } else {
-    // 5 replicas: peak load >80% CPU per pod
-    thinkTime = Math.random() * 0.12 + 0.05;  // 0.05-0.17s
-    requestIntensity = 8;
+    // Target: 5 replicas (extreme load, >80% CPU per pod)
+    thinkTime = Math.random() * 0.15 + 0.05; // 0.05-0.2s think time
+    loadMultiplier = 2.5;
   }
   
-  // Execute multiple requests to increase CPU load
-  for (let i = 0; i < requestIntensity; i++) {
-    const serviceSelector = Math.random();
-    
-    if (serviceSelector < 0.14) {
-      // Authen service - lightweight (50-150m CPU)
+  // Distribute traffic across services with proper weighting
+  const serviceSelector = Math.random();
+  
+  if (serviceSelector < 0.15) {
+    // Authen service (request: 50m, need 20m for scale)
+    // Lightweight - increase from 2x to 2.5x for better scaling
+    const iterations = Math.ceil(2.5 * loadMultiplier);
+    for (let i = 0; i < iterations; i++) {
       if (session.token) {
-        verifySession(session.token);
-        verifySession(session.token);
         verifySession(session.token);
       } else {
         browseProducts();
-        browseProducts();
       }
-    } else if (serviceSelector < 0.28) {
-      // Booking service - INCREASED LOAD (CPU request 50m, need 20m for 40%)
-      viewBookings();
-      viewBookings();
-      viewBookings();
-      if (session.token) {
-        createBooking(session.token);
-        viewBookings();
-        if (Math.random() < 0.5) {
-          createBooking(session.token);
-        }
-      }
-    } else if (serviceSelector < 0.42) {
-      // Order service - INCREASED LOAD (CPU request 75m, need 30m for 40%)
-      if (session.token) {
-        createOrder(session.token);
-        viewMyOrders(session.token);
-        viewMyOrders(session.token);
-        if (Math.random() < 0.7) {
-          createOrder(session.token);
-        }
-      } else {
-        browseProducts();
-        viewProductWithComments();
-        browseProducts();
-      }
-    } else if (serviceSelector < 0.56) {
-      // Product service - HEAVY (500-1000m CPU) - needs most load
-      browseProducts();
-      viewProductWithComments();
-      browseProducts();
-      viewProductWithComments();
-    } else if (serviceSelector < 0.70) {
-      // Profile service - very lightweight (25-100m CPU)
-      if (session.token) {
-        manageProfile(session.token, session.userId);
-        manageProfile(session.token, session.userId);
-      } else {
-        browseProducts();
-      }
-    } else if (serviceSelector < 0.84) {
-      // Frontend service - medium (100-150m CPU)
-      browseProducts();
-      viewProductWithComments();
-      browseProducts();
-    } else {
-      // Recommender service - HEAVY COMPUTE (CPU request 100m, need 40m for 40%)
-      // ML inference with Keras model - very CPU intensive
-      getRecommendations();
-      getRecommendations();
-      getRecommendations();
-      getRecommendations();
-      if (Math.random() < 0.6) {
-        getRecommendations();
-        getRecommendations();
-      }
+      if (i < iterations - 1) sleep(0.05);
     }
-    
-    if (i < requestIntensity - 1) {
-      sleep(0.05);
+  } else if (serviceSelector < 0.30) {
+    // Booking service (request: 50m, need 20m for scale) - 15%
+    // Moderate - 3-4 calls per iteration
+    const iterations = Math.ceil(2.5 * loadMultiplier);
+    for (let i = 0; i < iterations; i++) {
+      viewBookings();
+      if (session.token && Math.random() < 0.4) {
+        createBooking(session.token);
+      }
+      if (i < iterations - 1) sleep(0.08);
+    }
+  } else if (serviceSelector < 0.375) {
+    // Order service (request: 75m, need 30m for scale) - 7.5% (REDUCED from 15%)
+    // Extreme CPU intensive: Both writes and reads are expensive
+    const iterations = Math.ceil(0.4 * loadMultiplier);
+    for (let i = 0; i < iterations; i++) {
+      if (session.token) {
+        if (Math.random() < 0.05) {
+          createOrder(session.token);
+        } else {
+          viewMyOrders(session.token);
+        }
+      } else {
+        viewProductWithComments();
+      }
+      if (i < iterations - 1) sleep(0.1);
+    }
+  } else if (serviceSelector < 0.525) {
+    // Product service (request: 500m, need 200m for scale) - 15%
+    // VERY CPU intensive - reduce to 5x to maintain rep 2 at VU=55
+    const iterations = Math.ceil(5 * loadMultiplier);
+    for (let i = 0; i < iterations; i++) {
+      if (Math.random() < 0.5) {
+        browseProducts();
+      } else {
+        viewProductWithComments();
+      }
+      if (i < iterations - 1) sleep(0.03);
+    }
+  } else if (serviceSelector < 0.625) {
+    // Profile service (request: 25m, need 10m for scale) - 10%
+    // Very lightweight - 1-2 calls, target max 3 replicas
+    const iterations = Math.min(Math.ceil(1 * loadMultiplier), 3);
+    for (let i = 0; i < iterations; i++) {
+      if (session.token) {
+        manageProfile(session.token, session.userId);
+      } else {
+        browseProducts();
+      }
+      if (i < iterations - 1) sleep(0.1);
+    }
+  } else if (serviceSelector < 0.775) {
+    // Frontend service (request: 100m, need 40m for scale) - 15%
+    // Moderate Next.js SSR - 3-4 calls per iteration
+    const iterations = Math.ceil(3 * loadMultiplier);
+    for (let i = 0; i < iterations; i++) {
+      browseProducts();
+      if (Math.random() < 0.3) {
+        viewProductWithComments();
+      }
+      if (i < iterations - 1) sleep(0.06);
+    }
+  } else {
+    // Recommender service (request: 100m, need 40m for scale) - 22.5% (increased from 15%)
+    // ML inference - increase from 5x to 6x for better scaling
+    const iterations = Math.ceil(6 * loadMultiplier);
+    for (let i = 0; i < iterations; i++) {
+      getRecommendations();
+      if (i < iterations - 1) sleep(0.04);
     }
   }
   
