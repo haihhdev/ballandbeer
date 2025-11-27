@@ -124,7 +124,7 @@ function fetchProducts() {
 }
 
 function browseProducts() {
-  if (Math.random() < 0.5) {
+  if (Math.random() < 0.3) {
     const pageRes = http.get(`${BASE_URL}/product`, {
       headers: commonHeaders,
     });
@@ -132,35 +132,38 @@ function browseProducts() {
     sleep(0.1);
   }
   
-  const res = http.get(`${BASE_URL}/api/products`, {
-    headers: commonHeaders,
-  });
-  
-  check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
-  
-  if (res.status === 200 && Math.random() < 0.2) {
-    try {
-      const products = JSON.parse(res.body);
-      if (Array.isArray(products) && products.length > 0) {
-        const product = randomItem(products);
-        const productId = product._id || product.id;
-        
-        sleep(0.2);
-        
-        if (Math.random() < 0.25) {
-          const detailPageRes = http.get(`${BASE_URL}/product/${productId}`, {
+  // Only call API 80% of time (increased from 50% for Stage 5)
+  if (Math.random() < 0.8) {
+    const res = http.get(`${BASE_URL}/api/products`, {
+      headers: commonHeaders,
+    });
+    
+    check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
+    
+    if (res.status === 200 && Math.random() < 0.1) {
+      try {
+        const products = JSON.parse(res.body);
+        if (Array.isArray(products) && products.length > 0) {
+          const product = randomItem(products);
+          const productId = product._id || product.id;
+          
+          sleep(0.2);
+          
+          if (Math.random() < 0.25) {
+            const detailPageRes = http.get(`${BASE_URL}/product/${productId}`, {
+              headers: commonHeaders,
+            });
+            check(detailPageRes, { 'view product detail page': (r) => r.status === 200 });
+            sleep(0.1);
+          }
+          
+          const detailRes = http.get(`${BASE_URL}/api/products/${productId}`, {
             headers: commonHeaders,
           });
-          check(detailPageRes, { 'view product detail page': (r) => r.status === 200 });
-          sleep(0.1);
+          check(detailRes, { 'view product detail API': (r) => r.status === 200 });
         }
-        
-        const detailRes = http.get(`${BASE_URL}/api/products/${productId}`, {
-          headers: commonHeaders,
-        });
-        check(detailRes, { 'view product detail API': (r) => r.status === 200 });
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
   }
 }
 
@@ -269,7 +272,7 @@ function createOrder(token) {
     productIds = fetchProducts();
   }
   
-  if (Math.random() < 0.4) {
+  if (Math.random() < 0.7) {
     const pageRes = http.get(`${BASE_URL}/checkout`, {
       headers: {
         ...commonHeaders,
@@ -497,82 +500,52 @@ export const options = {
       executor: 'ramping-vus',
       startTime: '0s',
       stages: [
-        // COMMENTED - Stage 1: All rep1 (TESTED - OK)
-        // { duration: '1m', target: 25 },    // 0-1: ramp to low load
-        // { duration: '14m', target: 25 },   // 1-15: rep1 stable
+        // Block 1: rep1->2->3->4->5 (0-125min) - Initial scale up with gradual transitions
+        { duration: '2m', target: 25 },    // 0-2: ramp to rep1
+        { duration: '23m', target: 25 },   // 2-25: rep1 stable (23min)
+        { duration: '3m', target: 65 },    // 25-28: slow ramp to rep2 (3min for scale down)
+        { duration: '22m', target: 65 },   // 28-50: rep2 stable (22min)
+        { duration: '3m', target: 95 },    // 50-53: slow ramp to rep3 (3min for scale down)
+        { duration: '22m', target: 95 },   // 53-75: rep3 stable (22min)
+        { duration: '3m', target: 145 },   // 75-78: slow ramp to rep4 (3min for scale down)
+        { duration: '22m', target: 145 },  // 78-100: rep4 stable (22min)
+        { duration: '3m', target: 160 },   // 100-103: slow ramp to rep5 (3min for scale down)
+        { duration: '22m', target: 160 },  // 103-125: rep5 stable (22min)
         
-        // COMMENTED - Stage 2: Authen 1, Profile 1, others 2 (TESTED - OK)
-        // { duration: '1m', target: 65 },    // 0-1: ramp to moderate
-        // { duration: '14m', target: 65 },   // 1-15: rep2 stable
+        // Block 2: rep5->4->3->2->1 (125-235min) - Gradual scale down with longer low traffic
+        { duration: '3m', target: 145 },   // 125-128: down to rep4 (3min transition)
+        { duration: '22m', target: 145 },  // 128-150: rep4 stable (22min)
+        { duration: '3m', target: 95 },    // 150-153: down to rep3 (3min transition)
+        { duration: '22m', target: 95 },   // 153-175: rep3 stable (22min)
+        { duration: '3m', target: 65 },    // 175-178: down to rep2 (3min transition)
+        { duration: '22m', target: 65 },   // 178-200: rep2 stable (22min)
+        { duration: '4m', target: 25 },    // 200-204: down to rep1 (4min for scale down)
+        { duration: '31m', target: 25 },   // 204-235: rep1 stable (31min - long for scale down)
         
-        // COMMENTED - Stage 3: Authen 2, Profile 1, others 3 (TESTED)
-        // { duration: '1m', target: 95 },    // 0-1: ramp to high
-        // { duration: '14m', target: 95 },   // 1-15: rep3 stable
+        // Block 3: rep1->2->3->4->2 (235-310min) - Smooth progression
+        { duration: '3m', target: 65 },    // 235-238: ramp to rep2
+        { duration: '22m', target: 65 },   // 238-260: rep2 stable (22min)
+        { duration: '3m', target: 95 },    // 260-263: ramp to rep3
+        { duration: '22m', target: 95 },   // 263-285: rep3 stable (22min)
+        { duration: '3m', target: 145 },   // 285-288: ramp to rep4
+        { duration: '22m', target: 145 },  // 288-310: rep4 stable (22min)
         
-        // Stage 4: Authen 3, Profile 2, others 4 (0-15min)
-        { duration: '1m', target: 140 },   // 0-1: ramp to very high
-        { duration: '14m', target: 140 },  // 1-15: rep4 stable
+        // Block 4: rep4->3->5->3 (310-385min) - High load pattern
+        { duration: '3m', target: 95 },    // 310-313: down to rep3
+        { duration: '22m', target: 95 },   // 313-335: rep3 stable (22min)
+        { duration: '3m', target: 160 },   // 335-338: ramp to rep5
+        { duration: '22m', target: 160 },  // 338-360: rep5 stable (22min)
+        { duration: '3m', target: 95 },    // 360-363: down to rep3
+        { duration: '22m', target: 95 },   // 363-385: rep3 stable (22min)
         
-        // COMMENTED - Stage 5: Authen 3, Profile 2, others 5
-        // { duration: '1m', target: 160 },   // ramp to max
-        // { duration: '14m', target: 160 },  // rep5 stable
+        // Block 5: rep3->2->1 (385-415min) - Final scale down with long low traffic
+        { duration: '3m', target: 65 },    // 385-388: down to rep2
+        { duration: '7m', target: 65 },    // 388-395: rep2 stable (7min)
+        { duration: '4m', target: 25 },    // 395-399: down to rep1 (4min transition)
+        { duration: '16m', target: 25 },   // 399-415: rep1 stable (16min - long for scale down)
         
-        // Cooldown
-        { duration: '2m', target: 10 },    // cooldown
-        
-        // COMMENTED OUT - All other blocks
-        // // Block 2: rep5->4->3->2 (70-126min)
-        // { duration: '2m', target: 140 },   // 70-72: down to rep4
-        // { duration: '18m', target: 140 },  // 72-90: rep4 stable (18min)
-        // { duration: '2m', target: 90 },    // 90-92: down to rep3
-        // { duration: '18m', target: 90 },   // 92-110: rep3 stable (18min)
-        // { duration: '2m', target: 55 },    // 110-112: down to rep2
-        // { duration: '14m', target: 55 },   // 112-126: rep2 stable (14min)
-        // 
-        // // Block 3: rep2->3->4->3 (126-188min)
-        // { duration: '2m', target: 90 },    // 126-128: ramp to rep3
-        // { duration: '20m', target: 90 },   // 128-148: rep3 stable (20min)
-        // { duration: '2m', target: 140 },   // 148-150: ramp to rep4
-        // { duration: '18m', target: 140 },  // 150-168: rep4 stable (18min)
-        // { duration: '2m', target: 90 },    // 168-170: down to rep3
-        // { duration: '18m', target: 90 },   // 170-188: rep3 stable (18min)
-        // 
-        // // Block 4: rep3->2->1->2 (188-238min)
-        // { duration: '2m', target: 55 },    // 188-190: down to rep2
-        // { duration: '20m', target: 55 },   // 190-210: rep2 stable (20min)
-        // { duration: '2m', target: 25 },    // 210-212: down to rep1
-        // { duration: '12m', target: 25 },   // 212-224: rep1 stable (12min)
-        // { duration: '2m', target: 55 },    // 224-226: ramp to rep2
-        // { duration: '12m', target: 55 },   // 226-238: rep2 stable (12min)
-        // 
-        // // Block 5: rep2->3->4->5->4 (238-294min)
-        // { duration: '2m', target: 90 },    // 238-240: ramp to rep3
-        // { duration: '16m', target: 90 },   // 240-256: rep3 stable (16min)
-        // { duration: '2m', target: 140 },   // 256-258: ramp to rep4
-        // { duration: '16m', target: 140 },  // 258-274: rep4 stable (16min)
-        // { duration: '2m', target: 200 },   // 274-276: ramp to rep5
-        // { duration: '6m', target: 200 },   // 276-282: rep5 stable (6min)
-        // { duration: '2m', target: 140 },   // 282-284: down to rep4
-        // { duration: '10m', target: 140 },  // 284-294: rep4 stable (10min)
-        // 
-        // // Block 6: rep4->3->2->3 (294-348min)
-        // { duration: '2m', target: 90 },    // 294-296: down to rep3
-        // { duration: '18m', target: 90 },   // 296-314: rep3 stable (18min)
-        // { duration: '2m', target: 55 },    // 314-316: down to rep2
-        // { duration: '16m', target: 55 },   // 316-332: rep2 stable (16min)
-        // { duration: '2m', target: 90 },    // 332-334: ramp to rep3
-        // { duration: '14m', target: 90 },   // 334-348: rep3 stable (14min)
-        // 
-        // // Block 7: rep3->4->3->2->1 (348-420min) - final cooldown
-        // { duration: '2m', target: 140 },   // 348-350: ramp to rep4
-        // { duration: '14m', target: 140 },  // 350-364: rep4 stable (14min)
-        // { duration: '2m', target: 90 },    // 364-366: down to rep3
-        // { duration: '14m', target: 90 },   // 366-380: rep3 stable (14min)
-        // { duration: '2m', target: 55 },    // 380-382: down to rep2
-        // { duration: '18m', target: 55 },   // 382-400: rep2 stable (18min)
-        // { duration: '2m', target: 25 },    // 400-402: down to rep1
-        // { duration: '13m', target: 25 },   // 402-415: rep1 stable (13min)
-        // { duration: '5m', target: 10 },    // 415-420: final cooldown
+        // Final cooldown
+        { duration: '5m', target: 10 },    // 415-420: final cooldown (7 hours total)
       ],
       gracefulStop: '30s',
       exec: 'balancedTrafficFlow',
@@ -608,8 +581,8 @@ export function balancedTrafficFlow(data) {
     getRecommendations();
     sleep(0.05);
     
-    // Authenticated users can create order (30% unified)
-    if (session.token && Math.random() < 0.3) {
+    // Authenticated users can create order (25% for Stage 5 - reduced from 40%)
+    if (session.token && Math.random() < 0.25) {
       verifySession(session.token);
       sleep(0.05);
       createOrder(session.token);
@@ -625,7 +598,9 @@ export function balancedTrafficFlow(data) {
       verifySession(session.token);
       sleep(0.05);
       
-      // View and update profile (3 calls for rep2)
+      // View and update profile (4 calls for Stage 5 rep2)
+      manageProfile(session.token, session.userId);
+      sleep(0.07);
       manageProfile(session.token, session.userId);
       sleep(0.07);
       manageProfile(session.token, session.userId);
@@ -642,13 +617,13 @@ export function balancedTrafficFlow(data) {
         postComment(session.token);
       }
       
-      // Change password (unified 45%)
-      if (Math.random() < 0.45) {
+      // Change password (40% for Stage 5 - reduced from 50%)
+      if (Math.random() < 0.4) {
         changePassword(session.token);
       }
       
-      // Extra verify session (unified 40%)
-      if (Math.random() < 0.4) {
+      // Extra verify session (35% for Stage 5 - reduced from 45%)
+      if (Math.random() < 0.35) {
         verifySession(session.token);
       }
     }
@@ -660,14 +635,14 @@ export function balancedTrafficFlow(data) {
     
     // Always load booking page for frontend
     http.get(`${BASE_URL}/booking`, { headers: commonHeaders });
-    sleep(0.1);
+    sleep(0.12);
     
     // View available bookings (reduced to 1 call)
     viewBookings();
     sleep(0.1);
     
-    // Authenticated users can create booking (unified 70%)
-    if (session.token && Math.random() < 0.7) {
+    // Authenticated users can create booking (40% for Stage 5 - reduced from 60%)
+    if (session.token && Math.random() < 0.4) {
       createBooking(session.token);
       sleep(0.1);
       
@@ -684,18 +659,14 @@ export function balancedTrafficFlow(data) {
     browseProducts();
     sleep(0.05);
     
-    // Get recommendations (unified 4 calls)
-    getRecommendations();
-    sleep(0.05);
-    getRecommendations();
-    sleep(0.05);
+    // Get recommendations (2 calls for Stage 5 - reduced from 4)
     getRecommendations();
     sleep(0.05);
     getRecommendations();
     sleep(0.05);
     
-    // View product details (unified 5% to reduce product)
-    if (Math.random() < 0.05) {
+    // View product details (8% for Stage 5 - increased from 3%)
+    if (Math.random() < 0.08) {
       viewProductWithComments();
       sleep(0.05);
       getRecommendations();
@@ -710,10 +681,12 @@ export function balancedTrafficFlow(data) {
     sleep(Math.random() * 0.3 + 0.5);  // 0.5-0.8s for stage 2 (rep2) - threshold increased to 65
   } else if (currentVUs <= 95) {
     sleep(Math.random() * 0.15 + 0.2);  // 0.2-0.35s for stage 3 (rep3)
-  } else if (currentVUs <= 140) {
+  } else if (currentVUs <= 145) {
     sleep(Math.random() * 0.15 + 0.2);  // 0.2-0.35s for stage 4 (rep4)
-  } else {
+  } else if (currentVUs <= 160) {
     sleep(Math.random() * 0.1 + 0.1);  // 0.1-0.2s for stage 5 (rep5)
+  } else {
+    sleep(Math.random() * 0.05 + 0.05);  // 0.05-0.1s for higher stages
   }
 }
 

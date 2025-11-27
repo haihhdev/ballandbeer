@@ -27,7 +27,7 @@ spec:
     - type: memory
       metricType: Utilization
       metadata:
-        value: "40"    
+        value: "60"    
     # HTTP requests trigger (disabled - using pure HPA mode: CPU + Memory only)
     # - type: prometheus
     #   metadata:
