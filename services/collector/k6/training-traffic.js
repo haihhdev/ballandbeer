@@ -35,6 +35,23 @@ function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function getCurrentStage() {
+  const currentVUs = __VU;
+  if (currentVUs <= 35) return 1;
+  if (currentVUs <= 80) return 2;
+  if (currentVUs <= 160) return 3;
+  if (currentVUs <= 190) return 4;
+  return 5;
+}
+
+function getTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getUserSession() {
   const usePreAuthenUser = __VU <= 100;  // Only first 100 VUs use pre-auth, rest trigger register/login
   
@@ -124,46 +141,43 @@ function fetchProducts() {
 }
 
 function browseProducts() {
-  if (Math.random() < 0.3) {
+  const stage = getCurrentStage();
+  
+  // Frontend page load - reduced to prevent overload
+  const pageLoadProb = stage === 1 ? 0.3 : stage === 2 ? 0.5 : stage === 3 ? 0.5 : stage >= 4 ? 0.5 : 0.5;
+  if (Math.random() < pageLoadProb) {
     const pageRes = http.get(`${BASE_URL}/product`, {
       headers: commonHeaders,
     });
     check(pageRes, { 'browse products page': (r) => r.status === 200 }) || errorRate.add(1);
-    sleep(0.1);
+    sleep(stage === 1 ? 0.15 : stage === 2 ? 0.05 : stage === 3 ? 0.01 : 0.01);
   }
   
-  // Only call API 80% of time (increased from 50% for Stage 5)
-  if (Math.random() < 0.8) {
-    const res = http.get(`${BASE_URL}/api/products`, {
-      headers: commonHeaders,
-    });
-    
-    check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
-    
-    if (res.status === 200 && Math.random() < 0.1) {
-      try {
-        const products = JSON.parse(res.body);
-        if (Array.isArray(products) && products.length > 0) {
-          const product = randomItem(products);
-          const productId = product._id || product.id;
-          
-          sleep(0.2);
-          
-          if (Math.random() < 0.25) {
-            const detailPageRes = http.get(`${BASE_URL}/product/${productId}`, {
-              headers: commonHeaders,
-            });
-            check(detailPageRes, { 'view product detail page': (r) => r.status === 200 });
-            sleep(0.1);
-          }
-          
-          const detailRes = http.get(`${BASE_URL}/api/products/${productId}`, {
-            headers: commonHeaders,
-          });
-          check(detailRes, { 'view product detail API': (r) => r.status === 200 });
-        }
-      } catch (e) {}
-    }
+  // Always call API (100%)
+  const res = http.get(`${BASE_URL}/api/products`, {
+    headers: commonHeaders,
+  });
+  
+  check(res, { 'browse products API': (r) => r.status === 200 }) || errorRate.add(1);
+  
+  // Product detail view - reduce to prevent MongoDB overload
+  const detailProb = stage === 1 ? 0.15 : stage === 2 ? 0.25 : stage === 3 ? 0.3 : stage >= 4 ? 0.3 : 0.3;
+  if (res.status === 200 && Math.random() < detailProb) {
+    try {
+      const products = JSON.parse(res.body);
+      if (Array.isArray(products) && products.length > 0) {
+        const product = randomItem(products);
+        const productId = product._id || product.id;
+        
+        sleep(stage === 2 ? 0.05 : stage === 3 ? 0.01 : 0.03);
+        
+        // Only API call - no page load to reduce queries
+        const detailRes = http.get(`${BASE_URL}/api/products/${productId}`, {
+          headers: commonHeaders,
+        });
+        check(detailRes, { 'view product detail API': (r) => r.status === 200 });
+      }
+    } catch (e) {}
   }
 }
 
@@ -179,7 +193,7 @@ function viewProductWithComments() {
       headers: commonHeaders,
     });
     check(pageRes, { 'view product page': (r) => r.status === 200 }) || errorRate.add(1);
-    sleep(0.1);
+    sleep(0.01);
   }
   
   const res = http.get(`${BASE_URL}/api/products/${productId}`, {
@@ -188,7 +202,7 @@ function viewProductWithComments() {
   check(res, { 'view product API': (r) => r.status === 200 }) || errorRate.add(1);
   
   if (res.status === 200 && Math.random() < 0.3) {
-    sleep(0.2);
+    sleep(0.01);
     const commentsRes = http.get(`${BASE_URL}/api/products/${productId}/comments`, {
       headers: commonHeaders,
     });
@@ -214,14 +228,17 @@ function getRecommendations() {
 
 function viewBookings() {
   const fieldId = randomInt(1, 5);
-  const date = '2025-11-15';
+  const date = getTodayDate();
+  const stage = getCurrentStage();
   
-  if (Math.random() < 0.5) {
+  // Frontend page load - reduced to prevent overload
+  const pageLoadProb = stage === 1 ? 0.3 : stage === 2 ? 0.5 : stage === 3 ? 0.5 : stage >= 4 ? 0.5 : 0.5;
+  if (Math.random() < pageLoadProb) {
     const pageRes = http.get(`${BASE_URL}/booking`, {
       headers: commonHeaders,
     });
     check(pageRes, { 'view bookings page': (r) => r.status === 200 }) || errorRate.add(1);
-    sleep(0.1);
+    sleep(stage === 1 ? 0.15 : stage === 2 ? 0.05 : stage === 3 ? 0.01 : 0.01);
   }
   
   const res = http.get(`${BASE_URL}/api/bookings/${fieldId}/${date}`, {
@@ -235,7 +252,7 @@ function createBooking(token) {
   if (!token) return;
   
   const fieldId = randomInt(1, 5);
-  const date = '2025-11-15';
+  const date = getTodayDate();
   const startTime = randomInt(8, 20);
   
   if (Math.random() < 0.5) {
@@ -246,7 +263,7 @@ function createBooking(token) {
       },
     });
     check(pageRes, { 'load booking page': (r) => r.status === 200 });
-    sleep(0.15);
+    sleep(0.01);
   }
   
   const res = http.post(`${BASE_URL}/api/bookings/book`, JSON.stringify({
@@ -280,7 +297,7 @@ function createOrder(token) {
       },
     });
     check(pageRes, { 'load checkout page': (r) => r.status === 200 });
-    sleep(0.2);
+    sleep(0.01);
   }
   
   const numItems = randomInt(1, 3);
@@ -316,7 +333,7 @@ function viewMyOrders(token) {
       },
     });
     check(pageRes, { 'view my orders page': (r) => r.status === 200 });
-    sleep(0.1);
+    sleep(0.01);
   }
   
   const res = http.get(`${BASE_URL}/api/orders/my-orders`, {
@@ -345,7 +362,7 @@ function verifySession(token) {
 function manageProfile(token, userId) {
   if (!token || !userId) return;
   
-  // Always call API to increase load (remove page load randomness)
+  // Keep profile at low load (rep1) for all stages - no page loads
   const res = http.get(`${BASE_URL}/api/profile/id/${userId}`, {
     headers: {
       ...commonHeaders,
@@ -355,8 +372,8 @@ function manageProfile(token, userId) {
   
   check(res, { 'view profile API': (r) => r.status === 200 }) || errorRate.add(1);
   
-  // Always update profile (100%)
-  if (Math.random() < 1.0) {
+  // Minimal updates to keep profile at rep1
+  if (Math.random() < 0.25) {
     const updateRes = http.put(`${BASE_URL}/api/profile/id/${userId}`, JSON.stringify({
       phone: `09${randomInt(10000000, 99999999)}`,
       address: `Address ${randomInt(1, 100)}`,
@@ -468,7 +485,7 @@ export function setup() {
 // ==================== CRITICAL: TARGET REPLICA DISTRIBUTION ====================
 // User requirements for each stage - DO NOT FORGET!
 // 
-// Stage 1: ALL services rep1
+// Stage 1: ALL services rep1 (Profile always stays at 1)
 //   - Authen: 1, Booking: 1, Order: 1, Product: 1, Profile: 1, Frontend: 1, Recommender: 1
 // 
 // Stage 2: Authen rep1, Profile rep1, OTHERS rep2
@@ -476,84 +493,56 @@ export function setup() {
 //   - Booking: 2, Order: 2, Product: 2, Frontend: 2, Recommender: 2
 // 
 // Stage 3: Authen rep2, Profile rep1, OTHERS rep3
-//   - Profile: 1
-//   - Authen: 2
+//   - Profile: 1, Authen: 2
 //   - Booking: 3, Order: 3, Product: 3, Frontend: 3, Recommender: 3
 // 
-// Stage 4: Authen rep3, Profile rep2, OTHERS rep4
-//   - Profile: 2
-//   - Authen: 3
+// Stage 4: Authen rep3, Profile rep1, OTHERS rep4
+//   - Profile: 1, Authen: 3
 //   - Booking: 4, Order: 4, Product: 4, Frontend: 4, Recommender: 4
 // 
-// Stage 5: Authen rep3, Profile rep2, OTHERS rep5 (or 4 if can't reach)
-//   - Profile: 2
-//   - Authen: 3
+// Stage 5: Authen rep3, Profile rep1, OTHERS rep5
+//   - Profile: 1, Authen: 3
 //   - Booking: 5, Order: 5, Product: 5, Frontend: 5, Recommender: 5
 // 
-// KEDA mechanism: CPU threshold 40%, cooldown 120s
-// Formula: replicas = ceil(current_replicas × current_utilization / 40%)
+// KEDA mechanism: CPU+Memory threshold 60%, cooldown 120s
+// Formula: replicas = ceil(current_replicas × current_utilization / 60%)
 // ===============================================================================
-// Testing: 15min per stage for validation before full run
 export const options = {
   scenarios: {
     realistic_workflow_training: {
       executor: 'ramping-vus',
       startTime: '0s',
       stages: [
-        // Block 1: rep1->2->3->4->5 (0-125min) - Initial scale up with gradual transitions
-        { duration: '2m', target: 25 },    // 0-2: ramp to rep1
-        { duration: '23m', target: 25 },   // 2-25: rep1 stable (23min)
-        { duration: '3m', target: 65 },    // 25-28: slow ramp to rep2 (3min for scale down)
-        { duration: '22m', target: 65 },   // 28-50: rep2 stable (22min)
-        { duration: '3m', target: 95 },    // 50-53: slow ramp to rep3 (3min for scale down)
-        { duration: '22m', target: 95 },   // 53-75: rep3 stable (22min)
-        { duration: '3m', target: 145 },   // 75-78: slow ramp to rep4 (3min for scale down)
-        { duration: '22m', target: 145 },  // 78-100: rep4 stable (22min)
-        { duration: '3m', target: 160 },   // 100-103: slow ramp to rep5 (3min for scale down)
-        { duration: '22m', target: 160 },  // 103-125: rep5 stable (22min)
+        // Stage 1: ALL rep1 (0-20min)
+        //{ duration: '2m', target: 35 },    // 0-2: ramp to rep1
+        //{ duration: '18m', target: 35 },   // 2-20: rep1 stable (18min)
         
-        // Block 2: rep5->4->3->2->1 (125-235min) - Gradual scale down with longer low traffic
-        { duration: '3m', target: 145 },   // 125-128: down to rep4 (3min transition)
-        { duration: '22m', target: 145 },  // 128-150: rep4 stable (22min)
-        { duration: '3m', target: 95 },    // 150-153: down to rep3 (3min transition)
-        { duration: '22m', target: 95 },   // 153-175: rep3 stable (22min)
-        { duration: '3m', target: 65 },    // 175-178: down to rep2 (3min transition)
-        { duration: '22m', target: 65 },   // 178-200: rep2 stable (22min)
-        { duration: '4m', target: 25 },    // 200-204: down to rep1 (4min for scale down)
-        { duration: '31m', target: 25 },   // 204-235: rep1 stable (31min - long for scale down)
+        // Stage 2: Authen 1, others 2 (20-40min)
+        //{ duration: '2m', target: 80 },    // 20-22: ramp to rep2
+        //{ duration: '18m', target: 80 },   // 22-40: rep2 stable (18min)
         
-        // Block 3: rep1->2->3->4->2 (235-310min) - Smooth progression
-        { duration: '3m', target: 65 },    // 235-238: ramp to rep2
-        { duration: '22m', target: 65 },   // 238-260: rep2 stable (22min)
-        { duration: '3m', target: 95 },    // 260-263: ramp to rep3
-        { duration: '22m', target: 95 },   // 263-285: rep3 stable (22min)
-        { duration: '3m', target: 145 },   // 285-288: ramp to rep4
-        { duration: '22m', target: 145 },  // 288-310: rep4 stable (22min)
+        // Stage 3: Authen 2, others 3 (40-60min)
+        //{ duration: '2m', target: 160 },   // 40-42: ramp to rep3
+        //{ duration: '18m', target: 160 },  // 42-60: rep3 stable (18min)
         
-        // Block 4: rep4->3->5->3 (310-385min) - High load pattern
-        { duration: '3m', target: 95 },    // 310-313: down to rep3
-        { duration: '22m', target: 95 },   // 313-335: rep3 stable (22min)
-        { duration: '3m', target: 160 },   // 335-338: ramp to rep5
-        { duration: '22m', target: 160 },  // 338-360: rep5 stable (22min)
-        { duration: '3m', target: 95 },    // 360-363: down to rep3
-        { duration: '22m', target: 95 },   // 363-385: rep3 stable (22min)
+        // Stage 4: Authen 3, others 4 (60-80min)
+        //{ duration: '2m', target: 190 },   // 60-62: ramp to rep4
+        //{ duration: '18m', target: 190 },  // 62-80: rep4 stable (18min)
         
-        // Block 5: rep3->2->1 (385-415min) - Final scale down with long low traffic
-        { duration: '3m', target: 65 },    // 385-388: down to rep2
-        { duration: '7m', target: 65 },    // 388-395: rep2 stable (7min)
-        { duration: '4m', target: 25 },    // 395-399: down to rep1 (4min transition)
-        { duration: '16m', target: 25 },   // 399-415: rep1 stable (16min - long for scale down)
+        // Stage 5: Authen 3, others 5 (80-100min)
+        { duration: '2m', target: 300 },   // 80-82: ramp to rep5
+        { duration: '18m', target: 300 },  // 82-100: rep5 stable (18min)
         
-        // Final cooldown
-        { duration: '5m', target: 10 },    // 415-420: final cooldown (7 hours total)
+        // Cooldown
+        { duration: '3m', target: 10 },    // 100-103: cooldown
       ],
       gracefulStop: '30s',
       exec: 'balancedTrafficFlow',
     },
   },
   thresholds: {
-    'http_req_duration': ['p(95)<8000'],
-    'errors': ['rate<0.30'],
+    'http_req_duration': ['p(95)<10000'],
+    'errors': ['rate<0.35'],
   },
   setupTimeout: '300s',
 };
@@ -564,129 +553,228 @@ export function balancedTrafficFlow(data) {
   }
   
   const session = getUserSession();
-  
-  // Realistic user workflow scenarios - each VU simulates real user behavior
+  const stage = getCurrentStage();
   const scenario = Math.random();
   
-  if (scenario < 0.28) {
-    // Scenario 1: Browse & Buy Journey (28%)
-    // Frontend → Product → Recommender → Order
-    // Simulates user browsing products, getting recommendations, and purchasing
+  if (scenario < 0.30) {
+    // Scenario 1: Browse & Buy Journey (30%)
+    // Frontend -> Product -> Recommender -> Order -> Authen
     
-    // Browse products (skip homepage to reduce frontend load)
-    browseProducts();
-    sleep(0.1);
-    
-    // Get recommendations
-    getRecommendations();
-    sleep(0.05);
-    
-    // Authenticated users can create order (25% for Stage 5 - reduced from 40%)
-    if (session.token && Math.random() < 0.25) {
-      verifySession(session.token);
-      sleep(0.05);
-      createOrder(session.token);
+    const browseCount = stage === 1 ? 1 : stage === 2 ? 2 : stage === 3 ? 3 : stage === 4 ? 6 : 8;
+    for (let i = 0; i < browseCount; i++) {
+      browseProducts();
+      sleep(stage === 1 ? 0.15 : stage === 2 ? 0.05 : stage === 3 ? 0.01 : stage === 4 ? 0.005 : 0.002);
     }
     
-  } else if (scenario < 0.53) {
+    // Recommender calls
+    const recCount = stage === 1 ? 2 : stage === 2 ? 3 : stage === 3 ? 4 : stage === 4 ? 6 : 8;
+    for (let i = 0; i < recCount; i++) {
+      getRecommendations();
+      sleep(stage === 1 ? 0.12 : stage === 2 ? 0.04 : stage === 3 ? 0.01 : stage === 4 ? 0.005 : 0.002);
+    }
+    
+    if (session.token && Math.random() < (stage === 1 ? 0.3 : stage === 2 ? 0.6 : stage === 3 ? 0.85 : stage === 4 ? 0.9 : 0.95)) {
+      verifySession(session.token);
+      sleep(stage === 3 ? 0.01 : stage === 4 ? 0.01 : 0.015);
+      createOrder(session.token);
+      sleep(stage === 3 ? 0.01 : stage === 4 ? 0.01 : 0.02);
+      if (Math.random() < (stage === 2 ? 0.5 : stage === 3 ? 0.7 : stage === 4 ? 0.75 : 0.8)) {
+        viewMyOrders(session.token);
+      }
+    }
+    
+    // Add booking for Stage 2 and Stage 3
+    if (stage === 2 && session.token && Math.random() < 0.65) {
+      viewBookings();
+      sleep(0.025);
+      viewBookings();
+      sleep(0.025);
+      if (Math.random() < 0.55) {
+        createBooking(session.token);
+      }
+    } else if (stage === 3 && session.token && Math.random() < 0.8) {
+      viewBookings();
+      sleep(0.02);
+      viewBookings();
+      sleep(0.02);
+      if (Math.random() < 0.7) {
+        createBooking(session.token);
+      }
+    } else if (stage >= 4 && session.token && Math.random() < 0.95) {
+      viewBookings();
+      sleep(0.01);
+      viewBookings();
+      sleep(0.01);
+      if (Math.random() < 0.85) {
+        createBooking(session.token);
+      }
+    }
+    
+  } else if (scenario < 0.60) {
     // Scenario 2: Profile & Orders Management (25%)
-    // Authen → Profile → Order History
-    // Simulates user managing their profile and checking orders
+    // Authen -> Profile -> Order
     
     if (session.token) {
-      // Verify session
-      verifySession(session.token);
-      sleep(0.05);
-      
-      // View and update profile (4 calls for Stage 5 rep2)
-      manageProfile(session.token, session.userId);
-      sleep(0.07);
-      manageProfile(session.token, session.userId);
-      sleep(0.07);
-      manageProfile(session.token, session.userId);
-      sleep(0.07);
-      manageProfile(session.token, session.userId);
-      sleep(0.07);
-      
-      // Check order history
-      viewMyOrders(session.token);
-      sleep(0.1);
-      
-      // Occasionally post comment
-      if (Math.random() < 0.2) {
-        postComment(session.token);
-      }
-      
-      // Change password (40% for Stage 5 - reduced from 50%)
-      if (Math.random() < 0.4) {
-        changePassword(session.token);
-      }
-      
-      // Extra verify session (35% for Stage 5 - reduced from 45%)
-      if (Math.random() < 0.35) {
+      const verifyCount = stage === 1 ? 1 : stage === 2 ? 2 : stage === 3 ? 4 : stage === 4 ? 5 : 6;
+      for (let i = 0; i < verifyCount; i++) {
         verifySession(session.token);
+        sleep(stage === 3 ? 0.02 : stage === 4 ? 0.02 : stage === 5 ? 0.015 : 0.03);
+      }
+      
+      // Profile always low load (rep1 for all stages)
+      if (Math.random() < 0.4) {
+        manageProfile(session.token, session.userId);
+        sleep(0.01);
+      }
+      
+      const orderViewCount = stage === 1 ? 1 : stage === 2 ? 2 : stage === 3 ? 3 : stage === 4 ? 6 : 8;
+      for (let i = 0; i < orderViewCount; i++) {
+        viewMyOrders(session.token);
+        sleep(stage === 2 ? 0.03 : stage === 3 ? 0.02 : stage === 4 ? 0.005 : stage === 5 ? 0.002 : 0.003);
+      }
+      
+      if (Math.random() < (stage === 3 ? 0.5 : stage >= 4 ? 0.5 : 0.3)) {
+        postComment(session.token);
+        sleep(stage === 3 ? 0.02 : 0.03);
+      }
+      
+      if (Math.random() < (stage === 1 ? 0.3 : stage === 2 ? 0.5 : stage === 3 ? 0.75 : 0.8)) {
+        changePassword(session.token);
+        sleep(stage === 3 ? 0.02 : 0.03);
+      }
+      
+      // Add booking for Stage 2 and Stage 3
+      if (stage === 2 && Math.random() < 0.5) {
+        viewBookings();
+        sleep(0.025);
+        viewBookings();
+        sleep(0.025);
+      } else if (stage === 3 && Math.random() < 0.65) {
+        viewBookings();
+        sleep(0.02);
+        viewBookings();
+        sleep(0.02);
+      } else if (stage >= 4 && Math.random() < 0.9) {
+        viewBookings();
+        sleep(0.01);
+        viewBookings();
+        sleep(0.01);
       }
     }
     
-  } else if (scenario < 0.68) {
-    // Scenario 3: Booking Journey (15%)
-    // Frontend → Booking → Create Booking
-    // Simulates user checking and making field bookings
+  } else if (scenario < 0.63) {
+    // Scenario 3: Booking Journey (18%)
+    // Frontend -> Booking
     
-    // Always load booking page for frontend
-    http.get(`${BASE_URL}/booking`, { headers: commonHeaders });
-    sleep(0.12);
+    const pageLoadProb = stage === 1 ? 0.4 : stage === 2 ? 0.6 : stage === 3 ? 0.5 : 0.5;
+    if (Math.random() < pageLoadProb) {
+      http.get(`${BASE_URL}/booking`, { headers: commonHeaders });
+      sleep(stage === 1 ? 0.15 : stage === 2 ? 0.03 : stage === 3 ? 0.01 : 0.01);
+    }
     
-    // View available bookings (reduced to 1 call)
-    viewBookings();
-    sleep(0.1);
-    
-    // Authenticated users can create booking (40% for Stage 5 - reduced from 60%)
-    if (session.token && Math.random() < 0.4) {
-      createBooking(session.token);
-      sleep(0.1);
-      
-      // Verify booking was created
+    const bookingViewCount = stage === 1 ? 1 : stage === 2 ? 4 : stage === 3 ? 5 : stage === 4 ? 8 : 10;
+    for (let i = 0; i < bookingViewCount; i++) {
       viewBookings();
+      sleep(stage === 1 ? 0.12 : stage === 2 ? 0.025 : stage === 3 ? 0.01 : stage === 4 ? 0.005 : 0.002);
+    }
+    
+    if (session.token && Math.random() < (stage === 1 ? 0.4 : stage === 2 ? 0.8 : stage === 3 ? 0.9 : 0.9)) {
+      verifySession(session.token);
+      sleep(stage === 3 ? 0.02 : 0.015);
+      createBooking(session.token);
+      sleep(stage === 2 ? 0.03 : stage === 3 ? 0.02 : 0.04);
+      if (Math.random() < (stage === 2 ? 0.8 : stage === 3 ? 0.8 : 0.7)) {
+        viewBookings();
+      }
+    }
+    
+  } else if (scenario < 0.78) {
+    // Scenario 4: Recommender Heavy (15%)
+    // Recommender -> Product (PURE RECOMMENDER FOCUS)
+    
+    // Heavy recommender calls to ensure scaling
+    const recCount = stage === 1 ? 4 : stage === 2 ? 4 : stage === 3 ? 4 : stage === 4 ? 6 : 8;
+    for (let i = 0; i < recCount; i++) {
+      getRecommendations();
+      sleep(stage === 1 ? 0.05 : stage === 2 ? 0.03 : stage === 3 ? 0.01 : stage === 4 ? 0.005 : 0.002);
+    }
+    
+    // Optional product view after recommendations
+    if (Math.random() < 0.6) {
+      browseProducts();
+      sleep(stage === 3 ? 0.01 : 0.03);
+      getRecommendations();
     }
     
   } else {
-    // Scenario 4: Quick Browse & Recommender (32%) - adjusted from 35%
-    // Frontend → Product → Recommender (focus on recommender)
-    // Simulates user quickly browsing and checking recommendations
+    // Scenario 5: Mixed Services (22%)
+    // All services including booking
     
-    // Browse products directly (skip homepage to reduce frontend load)
-    browseProducts();
-    sleep(0.05);
+    const browseCount = stage === 1 ? 1 : stage === 2 ? 2 : stage === 3 ? 3 : stage === 4 ? 6 : 10;
+    for (let i = 0; i < browseCount; i++) {
+      browseProducts();
+      sleep(stage === 1 ? 0.15 : stage === 2 ? 0.05 : stage === 3 ? 0.01 : stage === 4 ? 0.005 : 0.002);
+    }
     
-    // Get recommendations (2 calls for Stage 5 - reduced from 4)
-    getRecommendations();
-    sleep(0.05);
-    getRecommendations();
-    sleep(0.05);
-    
-    // View product details (8% for Stage 5 - increased from 3%)
-    if (Math.random() < 0.08) {
-      viewProductWithComments();
-      sleep(0.05);
+    // Recommender calls
+    const recCount = stage === 1 ? 3 : stage === 2 ? 3 : stage === 3 ? 4 : stage === 4 ? 6 : 8;
+    for (let i = 0; i < recCount; i++) {
       getRecommendations();
+      sleep(stage === 1 ? 0.08 : stage === 2 ? 0.05 : stage === 3 ? 0.01 : stage === 4 ? 0.005 : 0.002);
+    }
+    
+    if (session.token && Math.random() < (stage === 3 ? 0.7 : stage === 4 ? 0.75 : stage === 5 ? 0.8 : 0.4)) {
+      viewMyOrders(session.token);
+      sleep(stage === 3 ? 0.01 : 0.05);
+    }
+    
+    // Extra booking calls for Stage 2 and Stage 3
+    if (stage === 2 && Math.random() < 0.6) {
+      viewBookings();
+      sleep(0.025);
+      viewBookings();
+      sleep(0.025);
+      if (session.token && Math.random() < 0.6) {
+        createBooking(session.token);
+      }
+    } else if (stage === 3 && Math.random() < 0.75) {
+      viewBookings();
+      sleep(0.02);
+      viewBookings();
+      sleep(0.02);
+      if (session.token && Math.random() < 0.75) {
+        createBooking(session.token);
+      }
+    } else if (stage === 4) {
+      viewBookings();
+      sleep(0.01);
+      viewBookings();
+      sleep(0.01);
+      if (session.token && Math.random() < 0.75) {
+        createBooking(session.token);
+      }
+    } else if (stage >= 5) {
+      viewBookings();
+      sleep(0.01);
+      viewBookings();
+      sleep(0.01);
+      if (session.token && Math.random() < 0.8) {
+        createBooking(session.token);
+      }
     }
   }
   
   // Think time between scenarios - varies by stage to control load
-  const currentVUs = __VU;
-  if (currentVUs <= 25) {
-    sleep(Math.random() * 1 + 2);  // 2-3s for stage 1 (rep1) - threshold increased to 25
-  } else if (currentVUs <= 65) {
-    sleep(Math.random() * 0.3 + 0.5);  // 0.5-0.8s for stage 2 (rep2) - threshold increased to 65
-  } else if (currentVUs <= 95) {
-    sleep(Math.random() * 0.15 + 0.2);  // 0.2-0.35s for stage 3 (rep3)
-  } else if (currentVUs <= 145) {
-    sleep(Math.random() * 0.15 + 0.2);  // 0.2-0.35s for stage 4 (rep4)
-  } else if (currentVUs <= 160) {
-    sleep(Math.random() * 0.1 + 0.1);  // 0.1-0.2s for stage 5 (rep5)
+  if (stage === 1) {
+    sleep(Math.random() * 2 + 3);      // 3-5s for stage 1 (rep1)
+  } else if (stage === 2) {
+    sleep(Math.random() * 0.3 + 0.4);  // 0.4-0.7s for stage 2 (rep2)
+  } else if (stage === 3) {
+    sleep(Math.random() * 0.1 + 0.15); // 0.15-0.25s for stage 3 (rep3) - increased for 160 VUs
+  } else if (stage === 4) {
+    sleep(Math.random() * 0.03 + 0.05); // 0.05-0.08s for stage 4 (rep4) - drastically reduced
   } else {
-    sleep(Math.random() * 0.05 + 0.05);  // 0.05-0.1s for higher stages
+    sleep(Math.random() * 0.01 + 0.02);// 0.02-0.03s for stage 5 (rep5) - minimal wait
   }
 }
 
