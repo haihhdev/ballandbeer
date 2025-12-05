@@ -1,5 +1,6 @@
 const Product = require("../models/productModel");
 const Order = require("../models/orderModel");
+const mongoose = require("mongoose");
 
 exports.createOrder = async (orderData) => {
   try {
@@ -37,9 +38,26 @@ exports.createOrder = async (orderData) => {
 
 exports.getOrdersByUser = async (userId) => {
   try {
-    const orders = await Order.find({ userId });
+    // Convert userId to ObjectId if it's a string
+    // Mongoose 8.x uses mongoose.Types.ObjectId.isValid() and new mongoose.Types.ObjectId()
+    let userIdObjectId = userId;
+
+    if (typeof userId === "string") {
+      // Check if it's a valid ObjectId string
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        userIdObjectId = new mongoose.Types.ObjectId(userId);
+      } else {
+        console.error("Invalid ObjectId format:", userId);
+        return { status: 400, message: "Invalid user ID format" };
+      }
+    }
+
+    const orders = await Order.find({ userId: userIdObjectId });
     return { status: 200, data: orders };
   } catch (err) {
+    console.error("Error in getOrdersByUser:", err);
+    console.error("UserId received:", userId, "Type:", typeof userId);
+    console.error("Error details:", err.message, err.stack);
     return { status: 500, message: err.message };
   }
 };
