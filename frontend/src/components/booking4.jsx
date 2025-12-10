@@ -62,12 +62,9 @@ export default function Booking() {
   // Fetch booked slots from the API
   const fetchBookedSlots = async (date, fieldId) => {
     try {
-      const response = await fetch(
-        `/api/bookings/${fieldId}/${date}`,
-        {
-          method: "GET",
-        }
-      );
+      const response = await fetch(`/api/bookings/${fieldId}/${date}`, {
+        method: "GET",
+      });
       if (response.ok) {
         const data = await response.json();
         setBookedSlots((prev) => ({
@@ -127,7 +124,8 @@ export default function Booking() {
     );
   };
 
-  // Submit selected slots to the API
+  // Submit selected slots - Chỉ lưu thông tin và chuyển đến thanh toán
+  // Việc đặt sân thực sự sẽ được thực hiện SAU KHI thanh toán VNPay thành công
   const handleSubmit = async () => {
     try {
       // Kiểm tra xem đã chọn sân chưa
@@ -151,92 +149,52 @@ export default function Booking() {
 
       const date = selectedDate.split("/").reverse().join("-");
 
-      // Nhóm các slot theo fieldId
-      const fieldSlotMap = {};
+      // Lưu thông tin chi tiết cho hiển thị và API call sau khi thanh toán
+      const fieldSlotMapForBooking = {};
       selectedSlots.forEach((slot) => {
         const [fieldId, time] = slot.split("-");
-        const hour = time ? parseInt(time.split(":")[0]) : null;
-        if (!hour && hour !== 0) return;
-        if (!fieldSlotMap[fieldId]) fieldSlotMap[fieldId] = [];
-        fieldSlotMap[fieldId].push(hour);
+        const court = courts.find((c) => c.id === fieldId);
+        const startHour = parseInt(time);
+        const endHour = startHour + 1;
+        const timeRange = `${startHour}:00 - ${endHour}:00`;
+        if (!fieldSlotMapForBooking[fieldId]) {
+          fieldSlotMapForBooking[fieldId] = {
+            fieldId: fieldId,
+            courtName: court?.name || "",
+            courtImage: court?.image || "",
+            date: selectedDate,
+            dateForApi: date, // Format YYYY-MM-DD cho API
+            times: [],
+            hours: [], // Hours cho API booking
+            price: 0,
+          };
+        }
+        fieldSlotMapForBooking[fieldId].times.push(timeRange);
+        fieldSlotMapForBooking[fieldId].hours.push(startHour);
+        fieldSlotMapForBooking[fieldId].price += courtPrices[fieldId] || 0;
       });
 
-      // Gửi 1 request cho mỗi sân với tất cả các giờ đã chọn
-      const requests = Object.entries(fieldSlotMap).map(([fieldId, hours]) =>
-        fetch("/api/bookings/book", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            fieldId: fieldId,
-            date: date,
-            hours: hours,
-          }),
+      const bookingDetails = Object.values(fieldSlotMapForBooking);
+      const totalPrice = selectedSlots.reduce((sum, slot) => {
+        const [fieldId] = slot.split("-");
+        return sum + (courtPrices[fieldId] || 0);
+      }, 0);
+
+      // Lưu thông tin đặt sân vào localStorage (CHƯA gọi API book)
+      // API book sẽ được gọi sau khi thanh toán VNPay thành công
+      localStorage.setItem(
+        "pendingBooking",
+        JSON.stringify({
+          bookings: bookingDetails,
+          totalPrice,
         })
       );
 
-      const responses = await Promise.all(requests);
-      const failedRequests = await Promise.all(
-        responses.map(async (res) => (res.ok ? null : await res.json()))
-      );
-
-      const failedSlots = failedRequests.filter((res) => res !== null);
-
-      if (failedSlots.length === 0) {
-        setSelectedSlots([]);
-        courts.forEach((court) => fetchBookedSlots(date, court.id));
-        toast.success("Đặt sân thành công!");
-
-        // Lưu toàn bộ thông tin các slot đã đặt vào localStorage, group theo sân
-        const fieldSlotMap = {};
-        selectedSlots.forEach((slot) => {
-          const [fieldId, time] = slot.split("-");
-          const court = courts.find((c) => c.id === fieldId);
-          const startHour = parseInt(time);
-          const endHour = startHour + 1;
-          const timeRange = `${startHour}:00 - ${endHour}:00`;
-          if (!fieldSlotMap[fieldId]) {
-            fieldSlotMap[fieldId] = {
-              courtName: court?.name || "",
-              courtImage: court?.image || "",
-              date: selectedDate,
-              times: [],
-              price: 0, // tổng tiền cho tất cả times
-            };
-          }
-          fieldSlotMap[fieldId].times.push(timeRange);
-          fieldSlotMap[fieldId].price += courtPrices[fieldId] || 0;
-        });
-        const bookingDetails = Object.values(fieldSlotMap);
-        const totalPrice = selectedSlots.reduce((sum, slot) => {
-          const [fieldId] = slot.split("-");
-          return sum + (courtPrices[fieldId] || 0);
-        }, 0);
-        localStorage.setItem(
-          "pendingBooking",
-          JSON.stringify({
-            bookings: bookingDetails,
-            totalPrice,
-          })
-        );
-        window.location.href = `/payment?amount=${totalPrice}`;
-      } else {
-        console.error("Failed to book the following slots:", failedSlots);
-        alert(
-          `Failed to book the following slots:\n${failedSlots
-            .map(
-              (slot) =>
-                `Hour: ${slot?.hour ?? "N/A"}, Error: ${
-                  slot?.error ?? "Unknown"
-                }`
-            )
-            .join("\n")}`
-        );
-      }
+      // Chuyển đến trang thanh toán (KHÔNG hiển thị toast, KHÔNG đổi màu sân)
+      window.location.href = `/payment?amount=${totalPrice}`;
     } catch (error) {
-      console.error("Failed to submit booking:", error);
+      console.error("Failed to prepare booking:", error);
+      toast.error("Có lỗi xảy ra, vui lòng thử lại!");
     }
   };
 

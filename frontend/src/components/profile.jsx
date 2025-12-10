@@ -42,9 +42,7 @@ export default function Profile() {
   // Thêm hàm fetch chi tiết sản phẩm
   const fetchProductDetail = async (productId) => {
     try {
-      const res = await fetch(
-        `/api/products/${productId}`
-      );
+      const res = await fetch(`/api/products/${productId}`);
       if (!res.ok) return null;
       const data = await res.json();
       return data;
@@ -97,9 +95,11 @@ export default function Profile() {
         .then(async (data) => {
           let orders = [];
           if (data && data.data && Array.isArray(data.data)) {
+            // Lọc chỉ lấy đơn hàng sản phẩm (product), không lấy booking orders
             orders = data.data.filter(
               (order) =>
-                order.status === "complete" || order.status === "completed"
+                (order.status === "complete" || order.status === "completed") &&
+                order.orderType !== "booking" // Loại bỏ booking orders
             );
           }
           // Fetch chi tiết ảnh cho từng sản phẩm trong từng order
@@ -122,11 +122,54 @@ export default function Profile() {
               return { ...order, products: productsWithImages };
             })
           );
-          setOrderHistory(ordersWithImages);
+
+          // Sắp xếp orders theo thứ tự mới nhất trước (createdAt giảm dần)
+          const sortedOrders = ordersWithImages.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA; // Sắp xếp giảm dần (mới nhất trước)
+          });
+
+          setOrderHistory(sortedOrders);
         })
         .catch((error) => {
           console.error("Error fetching orders:", error);
           setOrderHistory([]);
+        });
+
+      // Fetch booking history from booking service
+      fetch("/api/bookings/my-bookings", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.success && Array.isArray(data.data)) {
+            // Format date từ YYYY-MM-DD sang DD/MM/YYYY
+            const formattedBookings = data.data.map((booking) => {
+              const dateParts = booking.date.split("-");
+              const formattedDate =
+                dateParts.length === 3
+                  ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`
+                  : booking.date;
+              return {
+                ...booking,
+                date: formattedDate,
+                status: "Đã thanh toán",
+                paymentDate: booking.createdAt
+                  ? formatDate(booking.createdAt)
+                  : "-",
+              };
+            });
+            setBookingHistory(formattedBookings);
+          } else {
+            setBookingHistory([]);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching booking history:", error);
+          setBookingHistory([]);
         });
     } else {
       setLoading(false);
@@ -139,9 +182,47 @@ export default function Profile() {
     setOrderHistory([]); // Cập nhật state để làm mới giao diện
   };
 
-  const handleClearBookingHistory = () => {
+  const handleClearBookingHistory = async () => {
+    // Xóa localStorage nếu có dữ liệu cũ
     localStorage.removeItem("bookingHistory");
-    setBookingHistory([]);
+
+    // Refresh lại dữ liệu từ API
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const res = await fetch("/api/bookings/my-bookings", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.data)) {
+          const formattedBookings = data.data.map((booking) => {
+            const dateParts = booking.date.split("-");
+            const formattedDate =
+              dateParts.length === 3
+                ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`
+                : booking.date;
+            return {
+              ...booking,
+              date: formattedDate,
+              status: "Đã thanh toán",
+              paymentDate: booking.createdAt
+                ? formatDate(booking.createdAt)
+                : "-",
+            };
+          });
+          setBookingHistory(formattedBookings);
+        } else {
+          setBookingHistory([]);
+        }
+      } catch (error) {
+        console.error("Error refreshing booking history:", error);
+        setBookingHistory([]);
+      }
+    } else {
+      setBookingHistory([]);
+    }
   };
 
   const handleChange = (e) => {
@@ -159,14 +240,11 @@ export default function Profile() {
       return;
     }
     try {
-      const res = await fetch(
-        `/api/profile/id/${userId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(user),
-        }
-      );
+      const res = await fetch(`/api/profile/id/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(user),
+      });
       const data = await res.json();
       if (res.ok) {
         toast.success("Cập nhật thành công!");

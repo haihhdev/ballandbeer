@@ -6,139 +6,109 @@ import "react-toastify/dist/ReactToastify.css";
 
 const PAYMENT_METHODS = [
   {
-    key: "momo",
-    label: "MOMO",
-    logo: "/images/momo.webp",
-    bank: "Ví MoMo",
-    bankCode: "momo",
-    account: "0900000000",
-    owner: "NGUYEN VAN A",
-    content: "BALLANDBEER_PRODUCT",
-    type: "wallet",
-  },
-  {
     key: "vcb",
     label: "Vietcombank",
     logo: "/images/vcb.png",
     bank: "Ngân hàng TMCP Ngoại thương Việt Nam",
-    bankCode: "vcb",
-    account: "100000000000000",
-    owner: "NGUYEN VAN A",
-    content: "BALLANDBEER_PRODUCT",
-    type: "bank",
+    bankCode: "VNBANK",
+    type: "vnpay",
   },
   {
-    key: "vietinbank",
-    label: "Vietinbank",
-    logo: "/images/vietinbank.png",
-    bank: "Ngân hàng TMCP Công thương Việt Nam",
-    bankCode: "vietinbank",
-    account: "0000000000000000",
-    owner: "NGUYEN VAN A",
-    content: "BALLANDBEER_PRODUCT",
-    type: "bank",
+    key: "bidv",
+    label: "BIDV",
+    logo: "/images/bidv.png",
+    bank: "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam",
+    bankCode: "BIDV",
+    type: "vnpay",
   },
 ];
 
-function getQRUrl(method) {
-  if (method.type === "bank") {
-    // Sử dụng VietQR
-    return `https://img.vietqr.io/image/${method.bankCode}-${
-      method.account
-    }-compact2.png?amount=${method.amount}&addInfo=${encodeURIComponent(
-      method.content
-    )}&accountName=${encodeURIComponent(method.owner)}`;
-  } else {
-    // Sử dụng qrserver cho ví điện tử
-    const text = `Chuyen ${method.amount} VND toi ${method.owner} (${method.account}) voi noi dung: ${method.content}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-      text
-    )}`;
-  }
-}
-
-export default function PaymentQR() {
+export default function PaymentProduct() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const amount = searchParams.get("amount") || "0";
-  const date = searchParams.get("date") || "";
-  const time = searchParams.get("time") || "";
-  const courtName = searchParams.get("courtName") || "";
-  const courtImage = searchParams.get("courtImage") || "/images/san5.jpg";
 
-  const [selected, setSelected] = useState({
-    ...PAYMENT_METHODS[0],
-    amount: amount,
-  });
+  const [selected, setSelected] = useState(PAYMENT_METHODS[0]);
+  const [loading, setLoading] = useState(false);
+  const [orderInfo, setOrderInfo] = useState(null);
 
-  // Update amount when URL changes
+  // Load order info from localStorage
   useEffect(() => {
-    setSelected((prev) => ({
-      ...prev,
-      amount: amount,
-    }));
-  }, [amount]);
+    const pendingOrder = localStorage.getItem("pendingOrder");
+    if (pendingOrder) {
+      try {
+        const order = JSON.parse(pendingOrder);
+        setOrderInfo(order);
+      } catch (e) {
+        console.error("Error parsing pendingOrder:", e);
+      }
+    }
+  }, []);
 
-  const handlePaymentSuccess = async () => {
-    // Get pending order from localStorage
-    const pendingOrder = JSON.parse(
-      localStorage.getItem("pendingOrder") || "{}"
-    );
+  const handlePayment = async () => {
+    setLoading(true);
+    try {
+      const orderId = localStorage.getItem("pendingOrderId");
+      const userToken = localStorage.getItem("token");
 
-    // Gửi API cập nhật trạng thái đơn hàng
-    const orderId = localStorage.getItem("pendingOrderId");
-    const userToken = localStorage.getItem("token");
-    if (orderId && userToken) {
-      await fetch(`/api/orders/${orderId}`, {
-        method: "PUT",
+      if (!orderId || !userToken) {
+        toast.error("Không tìm thấy thông tin đơn hàng", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Gọi API để tạo payment URL từ VNPay
+      const response = await fetch("/api/payment/create-url", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${userToken}`,
         },
-        body: JSON.stringify({ status: "complete" }),
+        body: JSON.stringify({
+          orderId: orderId,
+          bankCode: selected.bankCode,
+        }),
       });
-    }
 
-    // Get existing order history
-    const orderHistory = JSON.parse(localStorage.getItem("orderHistory")) || [];
+      const data = await response.json();
 
-    // Add new order to history
-    if (pendingOrder && (pendingOrder.items || []).length > 0) {
-      orderHistory.unshift({
-        ...pendingOrder,
-        status: "Đã thanh toán",
-        paymentDate: new Date().toLocaleDateString("vi-VN"),
+      if (data.success && data.paymentUrl) {
+        // Redirect đến VNPay để thanh toán
+        window.location.href = data.paymentUrl;
+      } else {
+        toast.error(data.message || "Không thể tạo link thanh toán", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Error creating payment:", error);
+      toast.error("Có lỗi xảy ra khi tạo thanh toán", {
+        position: "top-right",
+        autoClose: 3000,
       });
-      localStorage.setItem("orderHistory", JSON.stringify(orderHistory));
-      localStorage.removeItem("pendingOrder");
+      setLoading(false);
     }
-
-    toast.success("Thanh toán thành công", {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-    });
-    setTimeout(() => {
-      router.push("/profile?tab=history");
-    }, 2000);
   };
-
-  const qrUrl = getQRUrl(selected);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8f7f4] py-12 px-2">
       <div className="bg-white rounded-2xl shadow-2xl p-10 md:p-14 max-w-4xl w-full flex flex-col gap-8 border border-gray-200">
-        {/* Bank/Wallet buttons - TOP */}
+        {/* Header */}
         <h2 className="text-2xl font-bold text-[#5c3613]">
           Chọn phương thức thanh toán
         </h2>
+
+        {/* Bank buttons */}
         <div className="flex items-center gap-6 mb-2 justify-center">
           {PAYMENT_METHODS.map((method) => (
             <button
               key={method.key}
-              onClick={() => setSelected({ ...method, amount: amount })}
+              onClick={() => setSelected(method)}
               className={`h-12 p-2 border rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none
                 ${
                   selected.key === method.key
@@ -157,63 +127,90 @@ export default function PaymentQR() {
             </button>
           ))}
         </div>
-        {/* QR + Transfer info row */}
-        <div className="flex flex-col md:flex-row gap-10 items-start justify-center w-full">
-          {/* QR Code */}
-          <div className="flex-shrink-0 flex items-center justify-center w-full md:w-auto">
-            <div className="border border-[#f0932b] rounded-xl bg-white flex items-center justify-center w-72 h-72 md:w-80 md:h-80">
-              <img
-                src={qrUrl}
-                alt="QR Code"
-                className="w-60 h-60 md:w-72 md:h-72 object-contain"
-              />
+
+        {/* Order Details */}
+        {orderInfo && orderInfo.items && orderInfo.items.length > 0 && (
+          <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+            <div className="font-bold text-[#5c3613] text-lg mb-3">
+              🛒 CHI TIẾT ĐƠN HÀNG
             </div>
-          </div>
-          {/* Transfer info */}
-          <div className="flex-1 w-full self-start">
-            <div className="bg-gray-50 rounded-xl p-6 border border-[#f0932b] mb-4">
-              <div className="font-bold text-gray-700 text-xl mb-2">
-                THÔNG TIN CHUYỂN KHOẢN
-              </div>
-              <div className="text-lg text-gray-700 mb-1">
-                <span className="font-semibold">Ngân hàng:</span>{" "}
-                {selected.bank}
-              </div>
-              <div className="text-lg text-gray-700 mb-1">
-                <span className="font-semibold">Số tài khoản:</span>{" "}
-                {selected.account}
-              </div>
-              <div className="text-lg text-gray-700 mb-1">
-                <span className="font-semibold">Chủ tài khoản:</span>{" "}
-                {selected.owner}
-              </div>
-              <div className="text-lg text-gray-700 mb-1">
-                <span className="font-semibold">Số tiền:</span>{" "}
-                <span className="text-red-600 font-bold text-xl">
-                  {Number(selected.amount).toLocaleString()}đ
-                </span>
-              </div>
-              <div className="text-lg text-gray-700 mb-1 flex items-center">
-                <span className="font-semibold">Nội dung thanh toán:</span>
-                <span className="ml-3 bg-[#f6f6f6] border border-red-400 text-red-600 px-3 py-1 rounded font-mono font-bold text-lg">
-                  {selected.content}
-                </span>
-              </div>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {orderInfo.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 bg-white p-3 rounded-lg border border-orange-100"
+                >
+                  <img
+                    src={item.image || "/icons/no-image.png"}
+                    alt={item.name}
+                    className="w-16 h-16 object-cover rounded-lg"
+                  />
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800">{item.name}</p>
+                    <p className="text-sm text-gray-500">
+                      Số lượng: {item.quantity}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Đơn giá: {Number(item.price).toLocaleString()}đ
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-red-600">
+                      {(item.price * item.quantity).toLocaleString()}đ
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="text-base text-gray-500 mt-2">
-              Vui lòng chuyển khoản đúng nội dung{" "}
-              <span className="font-bold text-blue-700">
-                {selected.content}
+            <div className="mt-3 pt-3 border-t border-orange-200 flex justify-between items-center">
+              <span className="font-semibold text-gray-700">
+                Tổng số sản phẩm:
               </span>
-              , để chúng tôi kích hoạt đơn hàng
+              <span className="font-bold text-[#5c3613]">
+                {orderInfo.items.reduce((sum, item) => sum + item.quantity, 0)}{" "}
+                sản phẩm
+              </span>
             </div>
-            <button
-              className="bg-[#f0932b] hover:bg-[#f0932b]/80 text-white px-4 py-2 rounded-md mt-4 w-full"
-              onClick={handlePaymentSuccess}
-            >
-              Xác nhận thanh toán
-            </button>
           </div>
+        )}
+
+        {/* Payment Info */}
+        <div className="flex flex-col gap-6 items-center justify-center w-full">
+          <div className="bg-gray-50 rounded-xl p-6 border border-[#f0932b] w-full">
+            <div className="font-bold text-gray-700 text-xl mb-4 text-center">
+              THÔNG TIN THANH TOÁN
+            </div>
+            <div className="text-lg text-gray-700 mb-3">
+              <span className="font-semibold">Phương thức:</span>{" "}
+              <span className="text-[#f0932b] font-bold">{selected.label}</span>
+            </div>
+            <div className="text-lg text-gray-700 mb-3">
+              <span className="font-semibold">Tổng tiền:</span>{" "}
+              <span className="text-red-600 font-bold text-xl">
+                {Number(amount).toLocaleString()}đ
+              </span>
+            </div>
+            <div className="text-base text-gray-500 mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="font-semibold text-blue-800 mb-1">
+                ⚠️ Lưu ý quan trọng:
+              </p>
+              <p className="text-sm">
+                Bạn sẽ được chuyển đến trang thanh toán VNPay Sandbox. Đây là
+                môi trường test, không sử dụng tiền thật.
+              </p>
+              <p className="text-sm mt-2">
+                Sau khi thanh toán thành công, đơn hàng sẽ được lưu vào lịch sử
+                và bạn sẽ được chuyển về trang chủ.
+              </p>
+            </div>
+          </div>
+          <button
+            className="bg-[#f0932b] hover:bg-[#f0932b]/80 text-white px-8 py-3 rounded-md w-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handlePayment}
+            disabled={loading}
+          >
+            {loading ? "Đang xử lý..." : "Thanh toán qua VNPay"}
+          </button>
         </div>
       </div>
       <ToastContainer />
