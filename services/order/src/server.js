@@ -1,5 +1,6 @@
-// Load .env file nếu có (cho local development)
-require("dotenv").config({ path: "./vnpay.env" });
+// Load .env file (cho local development)
+require("dotenv").config();
+// Load Vault secrets (cho production)
 require("dotenv").config({ path: "/vault/secrets/env" });
 const express = require("express");
 const mongoose = require("mongoose");
@@ -79,6 +80,11 @@ app.get(
 
 // WRITE API
 app.post("/api/orders", verifyToken, orderController.createOrder);
+app.post(
+  "/api/orders/booking",
+  verifyToken,
+  orderController.createBookingOrder
+); // Tạo booking order cho VNPay
 app.put("/api/orders/:orderId", verifyToken, orderController.updateOrder);
 
 // PAYMENT API

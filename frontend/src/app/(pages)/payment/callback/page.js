@@ -8,41 +8,170 @@ export default function PaymentCallback() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState("loading");
+  const [orderType, setOrderType] = useState(null); // "booking" hoặc "product"
 
   useEffect(() => {
-    const success = searchParams.get("success");
-    const orderId = searchParams.get("orderId");
-    const message = searchParams.get("message");
+    const processCallback = async () => {
+      const success = searchParams.get("success");
+      const orderId = searchParams.get("orderId");
+      const message = searchParams.get("message");
 
-    if (success === "true") {
-      setStatus("success");
+      console.log("=== PAYMENT CALLBACK ===");
+      console.log("success:", success);
+      console.log("orderId:", orderId);
+      console.log("message:", message);
 
-      // Xóa pending order từ localStorage
-      localStorage.removeItem("pendingOrder");
-      localStorage.removeItem("pendingOrderId");
+      if (success === "true") {
+        // Kiểm tra xem đây là thanh toán đặt sân hay mua hàng
+        const pendingBooking = localStorage.getItem("pendingBooking");
 
-      toast.success("Thanh toán thành công!", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+        console.log("pendingBooking exists:", !!pendingBooking);
+        console.log("pendingBooking value:", pendingBooking);
 
-      // Chuyển về trang profile sau 3 giây
-      setTimeout(() => {
-        router.push("/profile?tab=history");
-      }, 3000);
-    } else {
-      setStatus("failed");
-      toast.error(message || "Thanh toán thất bại", {
-        position: "top-right",
-        autoClose: 5000,
-      });
+        if (pendingBooking) {
+          // Đây là thanh toán đặt sân
+          console.log(">>> Processing as BOOKING payment");
+          setOrderType("booking");
+          await handleBookingSuccess(pendingBooking);
+        } else {
+          // Đây là thanh toán mua hàng
+          console.log(">>> Processing as PRODUCT payment");
+          setOrderType("product");
+          handleProductSuccess();
+        }
 
-      // Cho phép quay lại trang thanh toán
-      setTimeout(() => {
-        router.push("/paymentproduct");
-      }, 5000);
-    }
+        setStatus("success");
+
+        // Chuyển về trang chủ sau 2 giây
+        setTimeout(() => {
+          router.push("/");
+        }, 2000);
+      } else {
+        setStatus("failed");
+        toast.error(message || "Thanh toán thất bại", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    };
+
+    processCallback();
   }, [searchParams, router]);
+
+  // Xử lý khi thanh toán đặt sân thành công
+  const handleBookingSuccess = async (pendingBookingStr) => {
+    try {
+      console.log("=== BOOKING SUCCESS HANDLER ===");
+      console.log("Raw pendingBooking:", pendingBookingStr);
+
+      const pendingBooking = JSON.parse(pendingBookingStr);
+      const token = localStorage.getItem("token");
+
+      console.log("Parsed pendingBooking:", pendingBooking);
+      console.log("Token exists:", !!token);
+      console.log("Bookings array:", pendingBooking.bookings);
+
+      if (!token || !pendingBooking.bookings) {
+        throw new Error("Missing booking data");
+      }
+
+      // Gọi API để thực sự đặt sân (lưu vào database)
+      // Sau khi booking thành công, dữ liệu sẽ hiển thị trong /api/bookings/my-bookings
+      const bookingPromises = pendingBooking.bookings.map((booking) => {
+        console.log("Calling booking API for:", {
+          fieldId: booking.fieldId,
+          date: booking.dateForApi,
+          hours: booking.hours,
+        });
+        return fetch("/api/bookings/book", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fieldId: booking.fieldId,
+            date: booking.dateForApi,
+            hours: booking.hours,
+          }),
+        });
+      });
+
+      const responses = await Promise.all(bookingPromises);
+      const results = await Promise.all(
+        responses.map(async (res) => ({
+          ok: res.ok,
+          status: res.status,
+          data: await res.json().catch((e) => ({ parseError: e.message })),
+        }))
+      );
+
+      console.log("=== BOOKING API RESULTS ===");
+      results.forEach((result, index) => {
+        console.log(`Booking ${index + 1}:`, {
+          ok: result.ok,
+          status: result.status,
+          data: result.data,
+        });
+      });
+
+      const allSuccess = results.every((r) => r.ok);
+      console.log("All bookings successful:", allSuccess);
+
+      if (allSuccess) {
+        // Booking đã được lưu vào database qua API
+        // Profile sẽ load từ /api/bookings/my-bookings
+        console.log("✅ Booking saved successfully!");
+        toast.success("Đặt sân thành công!", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } else {
+        // Log lỗi chi tiết
+        console.error("❌ Booking API errors:");
+        results.forEach((r, i) => {
+          if (!r.ok) {
+            console.error(`  Booking ${i + 1} failed:`, r.data);
+          }
+        });
+        toast.warning(
+          "Thanh toán thành công nhưng có lỗi khi xác nhận đặt sân. Vui lòng liên hệ hỗ trợ.",
+          {
+            position: "top-right",
+            autoClose: 5000,
+          }
+        );
+      }
+
+      // Xóa pending data
+      localStorage.removeItem("pendingBooking");
+      localStorage.removeItem("pendingBookingOrderId");
+    } catch (error) {
+      console.error("Error processing booking success:", error);
+      toast.warning(
+        "Thanh toán thành công nhưng có lỗi xử lý. Vui lòng liên hệ hỗ trợ.",
+        {
+          position: "top-right",
+          autoClose: 5000,
+        }
+      );
+      // Vẫn xóa pending data
+      localStorage.removeItem("pendingBooking");
+      localStorage.removeItem("pendingBookingOrderId");
+    }
+  };
+
+  // Xử lý khi thanh toán mua hàng thành công
+  const handleProductSuccess = () => {
+    // Xóa pending order
+    localStorage.removeItem("pendingOrder");
+    localStorage.removeItem("pendingOrderId");
+
+    toast.success("Thanh toán thành công!", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8f7f4] py-12 px-2">
@@ -74,14 +203,16 @@ export default function PaymentCallback() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-green-600">
-              Thanh toán thành công!
+              {orderType === "booking"
+                ? "Đặt sân thành công!"
+                : "Thanh toán thành công!"}
             </h2>
             <p className="text-gray-600 text-center">
-              Đơn hàng của bạn đã được xác nhận thanh toán thành công.
+              {orderType === "booking"
+                ? "Đơn đặt sân của bạn đã được xác nhận và lưu vào lịch sử."
+                : "Đơn hàng của bạn đã được xác nhận thanh toán thành công."}
             </p>
-            <p className="text-sm text-gray-500">
-              Đang chuyển về trang lịch sử đơn hàng...
-            </p>
+            <p className="text-sm text-gray-500">Đang chuyển về trang chủ...</p>
           </>
         )}
 
@@ -108,12 +239,20 @@ export default function PaymentCallback() {
             <p className="text-gray-600 text-center">
               Có lỗi xảy ra trong quá trình thanh toán. Vui lòng thử lại.
             </p>
-            <button
-              onClick={() => router.push("/paymentproduct")}
-              className="bg-[#f0932b] hover:bg-[#f0932b]/80 text-white px-6 py-2 rounded-md mt-4"
-            >
-              Quay lại trang thanh toán
-            </button>
+            <div className="flex gap-4 mt-4">
+              <button
+                onClick={() => router.push("/")}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md"
+              >
+                Về trang chủ
+              </button>
+              <button
+                onClick={() => router.back()}
+                className="bg-[#f0932b] hover:bg-[#f0932b]/80 text-white px-6 py-2 rounded-md"
+              >
+                Thử lại
+              </button>
+            </div>
           </>
         )}
       </div>

@@ -23,8 +23,10 @@ const loadSecrets = async () => {
     if (data.VNPAY_TMN_CODE) process.env.VNPAY_TMN_CODE = data.VNPAY_TMN_CODE;
     if (data.VNPAY_SECRET_KEY)
       process.env.VNPAY_SECRET_KEY = data.VNPAY_SECRET_KEY;
+    if (data.VNPAY_URL) process.env.VNPAY_URL = data.VNPAY_URL;
     if (data.VNPAY_RETURN_URL)
       process.env.VNPAY_RETURN_URL = data.VNPAY_RETURN_URL;
+    if (data.VNPAY_API_URL) process.env.VNPAY_API_URL = data.VNPAY_API_URL;
     if (data.FRONTEND_URL) process.env.FRONTEND_URL = data.FRONTEND_URL;
 
     console.log("Vault secrets loaded successfully");

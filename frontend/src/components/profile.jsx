@@ -95,9 +95,11 @@ export default function Profile() {
         .then(async (data) => {
           let orders = [];
           if (data && data.data && Array.isArray(data.data)) {
+            // Lọc chỉ lấy đơn hàng sản phẩm (product), không lấy booking orders
             orders = data.data.filter(
               (order) =>
-                order.status === "complete" || order.status === "completed"
+                (order.status === "complete" || order.status === "completed") &&
+                order.orderType !== "booking" // Loại bỏ booking orders
             );
           }
           // Fetch chi tiết ảnh cho từng sản phẩm trong từng order

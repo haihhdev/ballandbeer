@@ -40,18 +40,24 @@ exports.createPaymentUrl = async (req, res) => {
     console.log("Client IP:", clientIp);
     console.log("Order Status:", order.status);
 
-    // Tạo payment URL
-    const paymentUrl = paymentService.createPaymentUrl(
+    // Tạo payment URL (không có dấu cách, dùng underscore)
+    const paymentResult = paymentService.createPaymentUrl(
       orderIdStr,
       order.totalAmount,
       bankCode,
-      `Thanh toan don hang ${orderIdStr}`,
+      `Thanh_toan_don_hang_${orderIdStr}`,
       clientIp
     );
 
+    // Lưu TxnRef vào order để có thể tìm lại khi callback
+    order.vnpTxnRef = paymentResult.txnRef;
+    await order.save();
+
+    console.log("Saved TxnRef to order:", paymentResult.txnRef);
+
     res.json({
       success: true,
-      paymentUrl: paymentUrl,
+      paymentUrl: paymentResult.paymentUrl,
       orderId: orderId,
     });
   } catch (error) {
@@ -65,10 +71,19 @@ exports.createPaymentUrl = async (req, res) => {
  */
 exports.handlePaymentCallback = async (req, res) => {
   try {
-    const vnpParams = req.query;
+    console.log("\n>>> VNPay Callback Received <<<");
+    console.log("Query params:", JSON.stringify(req.query, null, 2));
+
+    // Copy query params vào plain object để tránh lỗi hasOwnProperty
+    const vnpParams = { ...req.query };
+    console.log("VNP Params (copied):", JSON.stringify(vnpParams, null, 2));
 
     // Xác thực callback
     const paymentResult = paymentService.verifyPaymentCallback(vnpParams);
+    console.log(
+      "Payment verification result:",
+      JSON.stringify(paymentResult, null, 2)
+    );
 
     if (!paymentResult.isValid) {
       return res.redirect(
@@ -78,34 +93,49 @@ exports.handlePaymentCallback = async (req, res) => {
       );
     }
 
-    if (paymentResult.isSuccess) {
-      // Tìm order và cập nhật
-      const order = await Order.findById(paymentResult.orderId);
-      if (order) {
-        order.status = "complete";
-        order.paymentTransaction = {
-          transactionId: paymentResult.transactionId,
-          bankCode: paymentResult.bankCode,
-          paymentDate: new Date(),
-          vnpResponseCode: paymentResult.responseCode,
-        };
-        order.paymentMethod = paymentResult.bankCode || "VNPay";
-        await order.save();
+    // Tìm order theo TxnRef (vnp_TxnRef là mã duy nhất cho mỗi lần thanh toán)
+    const txnRef = paymentResult.orderId; // vnp_TxnRef được trả về trong orderId
+    console.log("Looking for order with vnpTxnRef:", txnRef);
 
-        return res.redirect(
-          `${
-            process.env.FRONTEND_URL || "http://localhost:3000"
-          }/payment/callback?success=true&orderId=${paymentResult.orderId}`
-        );
-      }
+    const order = await Order.findOne({ vnpTxnRef: txnRef });
+
+    if (!order) {
+      console.log("Order not found with TxnRef:", txnRef);
+      return res.redirect(
+        `${
+          process.env.FRONTEND_URL || "http://localhost:3000"
+        }/payment/callback?success=false&message=Order not found`
+      );
+    }
+
+    if (paymentResult.isSuccess) {
+      // Cập nhật order thành công
+      order.status = "complete";
+      order.paymentTransaction = {
+        transactionId: paymentResult.transactionId,
+        bankCode: paymentResult.bankCode,
+        paymentDate: new Date(),
+        vnpResponseCode: paymentResult.responseCode,
+      };
+      order.paymentMethod = paymentResult.bankCode || "VNPay";
+      await order.save();
+
+      console.log("Payment successful, order updated:", order._id);
+
+      return res.redirect(
+        `${
+          process.env.FRONTEND_URL || "http://localhost:3000"
+        }/payment/callback?success=true&orderId=${order._id}`
+      );
     }
 
     // Thanh toán thất bại
+    console.log("Payment failed for order:", order._id);
     return res.redirect(
       `${
         process.env.FRONTEND_URL || "http://localhost:3000"
       }/payment/callback?success=false&message=Payment failed&orderId=${
-        paymentResult.orderId
+        order._id
       }`
     );
   } catch (error) {

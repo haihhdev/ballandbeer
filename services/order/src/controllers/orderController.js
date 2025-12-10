@@ -1,5 +1,49 @@
 const orderService = require("../services/orderService");
 const { sendEvent } = require("../producers/orderProducer");
+const Order = require("../models/orderModel");
+
+/**
+ * Tạo đơn hàng đặt sân (booking order)
+ * Trả về orderId để frontend dùng cho VNPay payment
+ */
+exports.createBookingOrder = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { bookings, totalPrice } = req.body;
+
+    if (!bookings || !Array.isArray(bookings) || bookings.length === 0) {
+      return res.status(400).json({ message: "Booking info is required" });
+    }
+
+    if (!totalPrice || totalPrice <= 0) {
+      return res.status(400).json({ message: "Invalid total price" });
+    }
+
+    // Tạo booking order
+    const order = new Order({
+      userId,
+      orderType: "booking",
+      bookingInfo: { bookings },
+      totalAmount: totalPrice,
+      status: "pending",
+      paymentMethod: "VNPay",
+    });
+
+    await order.save();
+
+    console.log("Created booking order:", order._id);
+
+    res.status(201).json({
+      success: true,
+      message: "Booking order created",
+      orderId: order._id,
+      totalAmount: order.totalAmount,
+    });
+  } catch (error) {
+    console.error("Error creating booking order:", error);
+    res.status(500).json({ message: "Failed to create booking order" });
+  }
+};
 
 exports.createOrder = async (req, res) => {
   const userId = req.user.id;
