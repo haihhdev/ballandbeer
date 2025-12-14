@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: k6-training-diverse
+  name: k6-training-job
   namespace: ballandbeer
   labels:
     purpose: ml-training-data-collection
@@ -41,8 +41,6 @@ spec:
                   operator: In
                   values:
                   - collector
-                  - k6-weekday
-                  - k6-weekend
               topologyKey: kubernetes.io/hostname
       
       containers:
