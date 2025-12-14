@@ -205,7 +205,7 @@ def collect_metrics_for_service(service: str) -> Optional[Dict]:
             features['cpu_request'] = float(data[0]['value'][1]) if data else 0.05
         else:
             # Fallback defaults per service (from training data)
-            features['cpu_request'] = 0.05 if service in ['authen', 'booking', 'product', 'profile', 'frontend'] else 0.1
+            features['cpu_request'] = 0.05 if service in ['authen', 'booking', 'product', 'frontend'] else 0.1
         
         cpu_lim_query = f'kube_deployment_spec_container_resource_limits{{namespace="{NAMESPACE}",deployment="{service}",resource="cpu"}}'
         cpu_lim_result = query_prometheus(cpu_lim_query)
@@ -214,7 +214,7 @@ def collect_metrics_for_service(service: str) -> Optional[Dict]:
             features['cpu_limit'] = float(data[0]['value'][1]) if data else 0.2
         else:
             # Fallback defaults per service
-            features['cpu_limit'] = 0.2 if service in ['authen', 'booking', 'product', 'profile'] else 0.3 if service == 'frontend' else 0.5
+            features['cpu_limit'] = 0.2 if service in ['authen', 'booking', 'product'] else 0.3 if service == 'frontend' else 0.5
         
         # Query RAM request/limit (CRITICAL FIX)
         ram_req_query = f'kube_deployment_spec_container_resource_requests{{namespace="{NAMESPACE}",deployment="{service}",resource="memory"}}'

@@ -119,7 +119,7 @@ module "ec2_instance" {
 
   instance_type               = var.instance_type
   ami                         = local.ami_id
-  key_name                    = "${var.project_name}kp"
+  key_name                    = "bnbkp"
   monitoring                  = true
   vpc_security_group_ids      = [module.sg.security_group_id]
   subnet_id                   = module.vpc.public_subnets[0]

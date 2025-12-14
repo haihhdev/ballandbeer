@@ -67,10 +67,22 @@ recommender/product_model.keras
 ml-autoscaler/__pycache__/
 ml-autoscaler/training/__pycache__/
 ml-autoscaler/metrics/
-ml-autoscaler/models/
-ml-autoscaler/plots/
 ml-autoscaler/evaluation/
 ml-autoscaler/training/comparison_results/
+
+# ML Autoscaler - Models (do not push trained models)
+ml-autoscaler/models/
+ml-autoscaler/models/**
+*.keras
+*.cbm
+*.joblib
+*.h5
+
+# ML Autoscaler - Plots (do not push generated plots)
+ml-autoscaler/plots/
+ml-autoscaler/plots/**
+ml-autoscaler/plots/transformer/
+ml-autoscaler/plots/catboost/
 
 # Jupyter notebooks
 .ipynb_checkpoints/
@@ -79,6 +91,9 @@ build-and-push.sh
 
 # Local development notes
 NOTES.md
+
+# Vietnamese README (not needed in repo)
+ml-autoscaler/README_VI.md
 
 #Config files
 setup-vault-secrets.sh

@@ -12,7 +12,8 @@ S3_PREFIX = 'metrics/'
 AWS_REGION = 'ap-southeast-1'
 
 # Data Configuration
-SERVICES = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'recommender']
+# Profile service excluded - rarely scales, not worth predicting
+SERVICES = ['authen', 'booking', 'order', 'product', 'frontend', 'recommender']
 
 # Features to use (excluding time-based features as per requirement)
 # Removed features that are unreliable or rarely change:
@@ -20,6 +21,7 @@ SERVICES = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'rec
 # - pod_restart_count: Rarely changes
 # - node_cpu_pressure_flag: Rarely occurs
 # - node_memory_pressure_flag: Rarely occurs
+# - error_rate: Not reliable for scaling decisions (removed)
 FEATURE_COLUMNS = [
     # CPU metrics
     'cpu_usage_percent',
@@ -41,9 +43,6 @@ FEATURE_COLUMNS = [
     'cpu_limit',
     'ram_request',
     'ram_limit',
-    
-    # Application metrics
-    'error_rate',
 ]
 
 # Target column
@@ -70,7 +69,8 @@ TRANSFORMER_PARAMS = {
     'batch_size': 64,           # Batch size for stability
     'epochs': 100,
     'early_stopping_patience': 20,
-    'discrete_penalty': 0.5     # Penalty weight for non-integer predictions (encourage integers)
+    'discrete_penalty': 0.3,    # Reduced penalty for non-integer predictions
+    'class_weight_boost': 1.15  # Moderate boost for minority classes (replica > 1)
 }
 
 # Training Configuration
@@ -100,6 +100,6 @@ SCALE_DOWN_THRESHOLDS = {
 }
 
 # Proactive scaling parameters
-LOOKAHEAD_MINUTES = 10           # Predict 10 minutes into the future
-LOOKAHEAD_SAMPLES = 20           # At 30s interval, 20 samples = 10 minutes
+LOOKAHEAD_MINUTES = 5            # Predict 5 minutes into the future
+LOOKAHEAD_SAMPLES = 10           # At 30s interval, 10 samples = 5 minutes
 

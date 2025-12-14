@@ -344,12 +344,12 @@ class K8sAutoScalingPredictor:
         if service_name not in self.sequence_buffer:
             self.sequence_buffer[service_name] = []
         
-        # Prepare full feature set matching training (34 features after removing constant ones)
+        # Prepare full feature set matching training (33 features after removing error_rate)
         # Order must match training: config.FEATURE_COLUMNS + engineered features + service dummies
         
-        # Base features from config.FEATURE_COLUMNS
+        # Base features from config.FEATURE_COLUMNS (13 features)
         # Note: Removed unreliable features: queue_length, pod_restart_count, 
-        #       node_cpu_pressure_flag, node_memory_pressure_flag
+        #       node_cpu_pressure_flag, node_memory_pressure_flag, error_rate
         feature_list = []
         
         # CPU metrics
@@ -377,9 +377,6 @@ class K8sAutoScalingPredictor:
         feature_list.append(ram_request)
         feature_list.append(ram_limit)
         
-        # Application metrics
-        feature_list.append(features.get('error_rate', 0))
-        
         # Engineered features - compute or use defaults
         cpu_pct = features.get('cpu_usage_percent', 0)
         ram_pct = features.get('ram_usage_percent', 0)
@@ -405,12 +402,11 @@ class K8sAutoScalingPredictor:
         feature_list.append(ram_pct / max(replica_count, 1))
         feature_list.append(features.get('request_count_per_second', 0) / max(replica_count, 1))
         
-        # System pressure
+        # System pressure (based on CPU, RAM, response time only)
         pressure = 0
         if cpu_pct > 70: pressure += 1
         if ram_pct > 75: pressure += 1
         if features.get('response_time_ms', 0) > 500: pressure += 1
-        if features.get('error_rate', 0) > 0.05: pressure += 1
         feature_list.append(pressure)
         
         # Service one-hot encoding (7 services)
