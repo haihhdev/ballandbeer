@@ -746,7 +746,7 @@ export default function AdminPage() {
                               colSpan="6"
                               className="p-8 text-center text-gray-500"
                             >
-                              No products found. Click "Add New Product" to
+                              No products found. Click &quot;Add New Product&quot; to
                               create one.
                             </td>
                           </tr>
