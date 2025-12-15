@@ -68,7 +68,7 @@ ml-autoscaler/__pycache__/
 ml-autoscaler/training/__pycache__/
 ml-autoscaler/metrics/
 ml-autoscaler/evaluation/
-ml-autoscaler/training/comparison_results/
+ml-autoscaler/training/catboost_info/
 
 # ML Autoscaler - Models (do not push trained models)
 ml-autoscaler/models/

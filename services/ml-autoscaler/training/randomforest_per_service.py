@@ -14,6 +14,8 @@ import joblib
 import logging
 from pathlib import Path
 import json
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend to avoid tkinter issues
 import matplotlib.pyplot as plt
 
 import sys
@@ -135,7 +137,7 @@ class ServiceRandomForest:
         return self.model.predict_proba(X)
     
     def evaluate(self, X_test, y_test):
-        """Evaluate model"""
+        """Evaluate model with per-class accuracy"""
         predictions = self.predict(X_test)
         
         mae = mean_absolute_error(y_test, predictions)
@@ -144,13 +146,23 @@ class ServiceRandomForest:
         exact_acc = accuracy_score(y_test, predictions)
         within_1 = (np.abs(y_test - predictions) <= 1).mean()
         
+        # Per-class accuracy for each replica level
+        per_class_acc = {}
+        for replica in range(MIN_REPLICA, MAX_REPLICA + 1):
+            mask = y_test == replica
+            if np.sum(mask) > 0:
+                class_acc = accuracy_score(y_test[mask], predictions[mask])
+                per_class_acc[f'replica_{replica}_acc'] = float(class_acc)
+                per_class_acc[f'replica_{replica}_samples'] = int(np.sum(mask))
+        
         return {
             'mae': float(mae),
             'rmse': float(rmse),
             'r2': float(r2),
             'exact_accuracy': float(exact_acc),
             'within_1_accuracy': float(within_1),
-            'samples': len(y_test)
+            'samples': len(y_test),
+            'per_class_accuracy': per_class_acc
         }
     
     def save_model(self, model_dir):
@@ -321,6 +333,57 @@ def plot_all_services(results, plots_dir):
     plt.savefig(plots_dir / 'feature_importance.png', dpi=150, bbox_inches='tight')
     logger.info("Saved feature importance plot")
     plt.close()
+    
+    # 5. Per-class accuracy (showing R1-R5 for each service)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows))
+    axes = axes.flatten() if n_services > 1 else [axes]
+    
+    for i, service in enumerate(services):
+        if service not in results:
+            continue
+        
+        metrics = results[service]['metrics']
+        per_class = metrics.get('per_class_accuracy', {})
+        
+        if per_class:
+            replicas = []
+            accuracies = []
+            sample_counts = []
+            
+            for replica_num in range(MIN_REPLICA, MAX_REPLICA + 1):
+                key = f'replica_{replica_num}_acc'
+                count_key = f'replica_{replica_num}_samples'
+                if key in per_class:
+                    replicas.append(f'R{replica_num}')
+                    accuracies.append(per_class[key])
+                    sample_counts.append(per_class.get(count_key, 0))
+            
+            if replicas:
+                colors = ['#E57373', '#FFB74D', '#FFF176', '#81C784', '#4CAF50'][:len(replicas)]
+                bars = axes[i].bar(replicas, accuracies, color=colors, edgecolor='black', linewidth=1.5)
+                
+                # Add value labels with sample counts
+                for j, bar in enumerate(bars):
+                    height = bar.get_height()
+                    axes[i].text(bar.get_x() + bar.get_width()/2., height,
+                                f'{height:.1%}\n(n={sample_counts[j]})', 
+                                ha='center', va='bottom', fontsize=7)
+                
+                axes[i].set_ylabel('Accuracy', fontsize=9)
+                axes[i].set_xlabel('Replica Count', fontsize=9)
+                axes[i].set_title(f'{service.capitalize()}\nOverall: {metrics["exact_accuracy"]:.1%}', 
+                                 fontsize=10, fontweight='bold')
+                axes[i].set_ylim(0, 1.1)
+                axes[i].grid(True, alpha=0.3, axis='y')
+    
+    for j in range(n_services, len(axes)):
+        axes[j].remove()
+    
+    plt.suptitle('Random Forest: Per-Class Accuracy by Service (R1-R5)', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(plots_dir / 'per_class_accuracy.png', dpi=150, bbox_inches='tight')
+    logger.info("Saved per-class accuracy plot")
+    plt.close()
 
 
 def main():
@@ -388,14 +451,30 @@ def main():
         logger.info(f"[{service}] Samples: {len(X_service)}")
         logger.info(f"[{service}] Replica distribution: {dict(zip(*np.unique(y_service, return_counts=True)))}")
         
-        # Split data
-        test_split_idx = int(len(X_service) * 0.8)
-        X_train_val = X_service[:test_split_idx]
-        y_train_val = y_service[:test_split_idx]
-        X_test = X_service[test_split_idx:]
-        y_test = y_service[test_split_idx:]
+        # IMPROVED: Split by DAYS instead of by samples
+        # This ensures test set contains complete days with full replica distribution
+        # Assuming ~1700 samples per service per day (12000 rows / 7 services)
+        samples_per_day = 1700
+        total_days = len(X_service) // samples_per_day
         
-        # TimeSeriesSplit
+        if total_days >= 10:
+            # Use last 20% of DAYS as test (at least 2 days)
+            test_days = max(2, int(total_days * 0.2))
+            test_start_idx = len(X_service) - (test_days * samples_per_day)
+            
+            X_train_val = X_service[:test_start_idx]
+            y_train_val = y_service[:test_start_idx]
+            X_test = X_service[test_start_idx:]
+            y_test = y_service[test_start_idx:]
+        else:
+            # Fallback to 80/20 split if not enough days
+            test_split_idx = int(len(X_service) * 0.8)
+            X_train_val = X_service[:test_split_idx]
+            y_train_val = y_service[:test_split_idx]
+            X_test = X_service[test_split_idx:]
+            y_test = y_service[test_split_idx:]
+        
+        # TimeSeriesSplit for train/val
         n_splits = 3
         tscv = TimeSeriesSplit(n_splits=n_splits)
         
@@ -405,7 +484,10 @@ def main():
             X_val = X_train_val[val_idx]
             y_val = y_train_val[val_idx]
         
+        # Log test set replica distribution
+        test_replica_dist = dict(zip(*np.unique(y_test, return_counts=True)))
         logger.info(f"[{service}] Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
+        logger.info(f"[{service}] Test set replica distribution: {test_replica_dist}")
         
         # Create model
         model = ServiceRandomForest(service, n_features=X_no_service.shape[1])
@@ -478,7 +560,21 @@ def main():
     logger.info(f"Plots directory: {plots_dir}")
     logger.info("\nPer-Service Performance:")
     for service, metrics in all_metrics.items():
-        logger.info(f"  {service:12s}: Exact={metrics['exact_accuracy']:.1%}, MAE={metrics['mae']:.3f}, R²={metrics['r2']:.3f}")
+        logger.info(f"  {service:12s}: Exact={metrics['exact_accuracy']:.1%}, Within-1={metrics['within_1_accuracy']:.1%}, MAE={metrics['mae']:.3f}, R²={metrics['r2']:.3f}")
+        
+        # Log per-class accuracy to show full R1-R5 coverage
+        per_class = metrics.get('per_class_accuracy', {})
+        if per_class:
+            class_accs = []
+            for r in range(MIN_REPLICA, MAX_REPLICA + 1):
+                key = f'replica_{r}_acc'
+                count_key = f'replica_{r}_samples'
+                if key in per_class:
+                    acc = per_class[key]
+                    count = per_class.get(count_key, 0)
+                    class_accs.append(f"R{r}:{acc:.0%}(n={count})")
+            if class_accs:
+                logger.info(f"               Per-class: {', '.join(class_accs)}")
     logger.info("="*80)
 
 
