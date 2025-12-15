@@ -116,16 +116,16 @@ module "eks" {
       )
     }
 
-    # Application Node Group - Spot instances with autoscaling
-    main = {
-      name = "${local.name_prefix}-node-group"
+    # Application Node Group
+    application_stable = {
+      name = "${local.name_prefix}-app-stable-node-group"
 
-      min_size     = var.node_group_min_size
-      max_size     = var.node_group_max_size
-      desired_size = var.node_group_desired_size
+      min_size     = 1
+      max_size     = 1
+      desired_size = 1
 
       instance_types = [var.instance_type]
-      capacity_type  = var.capacity_type
+      capacity_type  = "ON_DEMAND"
       ami_type       = local.ami_type
 
       iam_role_use_name_prefix = false
@@ -146,6 +146,7 @@ module "eks" {
 
       labels = {
         node-type    = "application"
+        capacity-type = "on-demand"
         architecture = local.is_graviton ? "arm64" : "amd64"
         environment  = var.environment
         managed-by   = "terraform"
@@ -154,9 +155,59 @@ module "eks" {
       tags = merge(
         local.common_tags,
         {
-          Name                                              = "${local.name_prefix}-eks-node"
+          Name                                              = "${local.name_prefix}-app-stable-node"
           Architecture                                      = local.is_graviton ? "ARM64" : "x86_64"
           NodeType                                          = "application"
+          CapacityType                                      = "on-demand"
+          "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
+          "k8s.io/cluster-autoscaler/enabled"               = "false"
+        }
+      )
+    }
+
+    # Application Node Group
+    application_spot = {
+      name = "${local.name_prefix}-app-spot-node-group"
+
+      min_size     = 2
+      max_size     = 5
+      desired_size = 3
+
+      instance_types = [var.instance_type]
+      capacity_type  = "SPOT"
+      ami_type       = local.ami_type
+
+      iam_role_use_name_prefix = false
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 50
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 125
+            encrypted             = true
+            delete_on_termination = true
+          }
+        }
+      }
+
+      labels = {
+        node-type    = "application"
+        capacity-type = "spot"
+        architecture = local.is_graviton ? "arm64" : "amd64"
+        environment  = var.environment
+        managed-by   = "terraform"
+      }
+
+      tags = merge(
+        local.common_tags,
+        {
+          Name                                              = "${local.name_prefix}-app-spot-node"
+          Architecture                                      = local.is_graviton ? "ARM64" : "x86_64"
+          NodeType                                          = "application"
+          CapacityType                                      = "spot"
           "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
           "k8s.io/cluster-autoscaler/enabled"               = "true"
         }
