@@ -210,19 +210,6 @@ export default function PaymentQR() {
                 {Number(amount).toLocaleString()}đ
               </span>
             </div>
-            <div className="text-base text-gray-500 mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="font-semibold text-blue-800 mb-1">
-                ⚠️ Lưu ý quan trọng:
-              </p>
-              <p className="text-sm">
-                Bạn sẽ được chuyển đến trang thanh toán VNPay Sandbox. Đây là
-                môi trường test, không sử dụng tiền thật.
-              </p>
-              <p className="text-sm mt-2">
-                Sau khi thanh toán thành công, đơn đặt sân sẽ được lưu vào lịch
-                sử và bạn sẽ được chuyển về trang chủ.
-              </p>
-            </div>
           </div>
           <button
             className="bg-[#f0932b] hover:bg-[#f0932b]/80 text-white px-8 py-3 rounded-md w-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"

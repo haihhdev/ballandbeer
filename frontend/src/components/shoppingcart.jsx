@@ -14,12 +14,9 @@ export default function ShoppingCart() {
       if (!userToken) return;
 
       // Lấy tất cả order của user
-      const ordersRes = await fetch(
-        "/api/orders/my-orders",
-        {
-          headers: { Authorization: `Bearer ${userToken}` },
-        }
-      );
+      const ordersRes = await fetch("/api/orders/my-orders", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
       const ordersData = await ordersRes.json();
       const pendingOrder = ordersData.data.find(
         (order) => order.status === "pending"
@@ -93,12 +90,9 @@ export default function ShoppingCart() {
     const userToken = localStorage.getItem("token");
     if (!userToken || !pendingOrderId) return;
     // Lấy lại order pending
-    const ordersRes = await fetch(
-      "/api/orders/my-orders",
-      {
-        headers: { Authorization: `Bearer ${userToken}` },
-      }
-    );
+    const ordersRes = await fetch("/api/orders/my-orders", {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
     const ordersData = await ordersRes.json();
     const pendingOrder = ordersData.data.find(
       (order) => order.status === "pending"
@@ -170,54 +164,112 @@ export default function ShoppingCart() {
   };
 
   return (
-    <div className="p-4 bg-[#fff] mb-[30vh]">
+    <div className="p-2 sm:p-4 md:p-6 bg-[#fff] mb-16 sm:mb-20 md:mb-[30vh]">
       <ToastContainer />
-      <div className="bg-white shadow-md rounded-lg p-4 border border-[#f09627]">
-        <table className="w-full text-left text-[#5c3613]">
-          <thead>
-            <tr className="border-b border-[#f09627]">
-              <th className="py-2">Sản Phẩm</th>
-              <th className="py-2">Đơn Giá</th>
-              <th className="py-2">Số Lượng</th>
-              <th className="py-2">Số Tiền</th>
-              <th className="py-2">Thao Tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cartItems.map((item) => (
-              <tr key={item.id} className="border-b border-[#f09627]">
-                <td className="py-4 flex items-center">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded-md mr-4"
-                  />
-                  <div>
-                    <p className="font-bold">{item.name}</p>
-                  </div>
-                </td>
-                <td className="py-4">{item.price.toLocaleString()}₫</td>
-                <td className="py-4">{item.quantity}</td>
-                <td className="py-4 text-red-500 font-bold">
-                  {(item.price * item.quantity).toLocaleString()}₫
-                </td>
-                <td className="py-4">
-                  <button
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="text-red-500 hover:underline items-center"
-                  >
-                    Xóa
-                  </button>
-                </td>
+      <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6 border border-[#f09627]">
+        {/* Desktop/Tablet Table View - Hidden on mobile */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left text-[#5c3613]">
+            <thead>
+              <tr className="border-b border-[#f09627]">
+                <th className="py-2 text-sm lg:text-base">Sản Phẩm</th>
+                <th className="py-2 text-sm lg:text-base">Đơn Giá</th>
+                <th className="py-2 text-sm lg:text-base">Số Lượng</th>
+                <th className="py-2 text-sm lg:text-base">Số Tiền</th>
+                <th className="py-2 text-sm lg:text-base">Thao Tác</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-4 flex justify-between items-center">
-          <div>
-            <p className="text-gray-500">
+            </thead>
+            <tbody>
+              {cartItems.map((item) => (
+                <tr key={item.id} className="border-b border-[#f09627]">
+                  <td className="py-4 flex items-center">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-12 h-12 lg:w-16 lg:h-16 object-cover rounded-md mr-3 lg:mr-4"
+                    />
+                    <div>
+                      <p className="font-bold text-sm lg:text-base">
+                        {item.name}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="py-4 text-sm lg:text-base">
+                    {item.price.toLocaleString()}₫
+                  </td>
+                  <td className="py-4 text-sm lg:text-base">{item.quantity}</td>
+                  <td className="py-4 text-red-500 font-bold text-sm lg:text-base">
+                    {(item.price * item.quantity).toLocaleString()}₫
+                  </td>
+                  <td className="py-4">
+                    <button
+                      onClick={() => handleRemoveItem(item.id)}
+                      className="text-red-500 hover:underline items-center text-sm lg:text-base"
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View - Visible only on mobile */}
+        <div className="block md:hidden space-y-4">
+          {cartItems.map((item) => (
+            <div
+              key={item.id}
+              className="border border-[#f09627] rounded-lg p-3 bg-white shadow-sm"
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-20 h-20 object-cover rounded-md flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[#5c3613] text-sm mb-2 line-clamp-2">
+                    {item.name}
+                  </p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Đơn giá:</span>
+                      <span className="text-[#5c3613] font-semibold">
+                        {item.price.toLocaleString()}₫
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Số lượng:</span>
+                      <span className="text-[#5c3613] font-semibold">
+                        {item.quantity}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tổng:</span>
+                      <span className="text-red-500 font-bold">
+                        {(item.price * item.quantity).toLocaleString()}₫
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleRemoveItem(item.id)}
+                className="w-full text-red-500 hover:bg-red-50 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              >
+                Xóa sản phẩm
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Summary and Checkout Section */}
+        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="w-full sm:w-auto">
+            <p className="text-gray-600 text-sm sm:text-base">
               Tổng cộng ({cartItems.length} Sản phẩm):{" "}
-              <span className="text-red-500 font-bold">
+              <span className="text-red-500 font-bold text-base sm:text-lg block sm:inline mt-1 sm:mt-0">
                 {cartItems
                   .reduce(
                     (total, item) => total + item.price * item.quantity,
@@ -229,8 +281,8 @@ export default function ShoppingCart() {
             </p>
           </div>
           <button
-            onClick={handleCheckout} // Gọi hàm handleCheckout
-            className="text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105  hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300 px-6 py-2 rounded-md"
+            onClick={handleCheckout}
+            className="w-full sm:w-auto text-[#f8f7f4] bg-[#f09627] hover:text-[#5c3613] hover:bg-[#f1c43e] hover:scale-105 hover:shadow-[0_0_15px_rgba(240,150,39,0.5)] transition-all duration-300 px-6 py-3 sm:py-2 rounded-md text-base sm:text-base font-semibold"
           >
             Mua Hàng
           </button>
