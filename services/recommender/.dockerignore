@@ -29,6 +29,7 @@ ENV/
 product_data.json
 *.json
 !model_metadata.json
+!recommendation_data.json
 
 # Documentation
 *.md

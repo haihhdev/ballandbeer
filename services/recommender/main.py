@@ -3,9 +3,6 @@ from pydantic import BaseModel
 import json
 from fastapi.middleware.cors import CORSMiddleware
 import os
-import boto3
-import tempfile
-import shutil
 import numpy as np
 import keras
 from collections import defaultdict
@@ -33,33 +30,27 @@ user_purchased_products = None
 user_product_counts = None
 popular_products = None
 
-def download_from_s3(bucket_name, s3_key, local_path):
-    """Download a file from S3 to local path"""
-    s3_client = boto3.client('s3')
-    s3_client.download_file(bucket_name, s3_key, local_path)
-
 def load_model_and_data():
     global model, metadata, product_features, unique_users, unique_products, user_to_idx, product_to_idx, user_purchased_products, user_product_counts, popular_products
     try:
-        # Create temporary directory
-        temp_dir = tempfile.mkdtemp()
+        # Define local paths for model and data files
+        model_path = os.getenv('MODEL_PATH', 'recommender_model.keras')
+        metadata_path = os.getenv('METADATA_PATH', 'model_metadata.json')
+        rec_data_path = os.getenv('REC_DATA_PATH', 'recommendation_data.json')
         
-        # Download data from S3
-        bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
-        print(f"Loading model and data from S3 bucket: {bucket_name}")
+        print(f"Loading model and data from local files...")
         
-        print("Downloading recommender_model.keras...")
-        download_from_s3(bucket_name, 'models/recommender_model.keras', os.path.join(temp_dir, 'recommender_model.keras'))
-        
-        print("Downloading model_metadata.json...")
-        download_from_s3(bucket_name, 'models/model_metadata.json', os.path.join(temp_dir, 'model_metadata.json'))
-
         # Load model
-        print("Loading Keras model...")
-        model = keras.models.load_model(os.path.join(temp_dir, 'recommender_model.keras'))
+        print(f"Loading Keras model from {model_path}...")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+        model = keras.models.load_model(model_path)
         
         # Load metadata
-        with open(os.path.join(temp_dir, 'model_metadata.json'), "r") as f:
+        print(f"Loading metadata from {metadata_path}...")
+        if not os.path.exists(metadata_path):
+            raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
+        with open(metadata_path, "r") as f:
             metadata = json.load(f)
             
         unique_users = metadata["unique_users"]
@@ -70,13 +61,18 @@ def load_model_and_data():
         
         # Load user purchase history if available
         try:
-            print("Downloading user purchase history...")
-            download_from_s3(bucket_name, 'data/recommendation_data.json', os.path.join(temp_dir, 'recommendation_data.json'))
-            with open(os.path.join(temp_dir, 'recommendation_data.json'), "r") as f:
-                rec_data = json.load(f)
-                user_purchased_products = rec_data.get("user_products", {})
-                user_product_counts = rec_data.get("user_product_counts", {})
-                popular_products = rec_data.get("popular_products", [])
+            print(f"Loading user purchase history from {rec_data_path}...")
+            if os.path.exists(rec_data_path):
+                with open(rec_data_path, "r") as f:
+                    rec_data = json.load(f)
+                    user_purchased_products = rec_data.get("user_products", {})
+                    user_product_counts = rec_data.get("user_product_counts", {})
+                    popular_products = rec_data.get("popular_products", [])
+            else:
+                print(f"Warning: Purchase history file not found: {rec_data_path}")
+                user_purchased_products = {}
+                user_product_counts = {}
+                popular_products = []
         except Exception as e:
             print(f"Could not load purchase history: {e}")
             user_purchased_products = {}
@@ -84,9 +80,6 @@ def load_model_and_data():
             popular_products = []
         
         print(f"Model and data loaded successfully! Found {len(unique_users)} users and {len(unique_products)} products")
-
-        # Clean up temporary directory
-        shutil.rmtree(temp_dir)
     except Exception as e:
         print(f"Error loading model and data: {str(e)}")
         import traceback
@@ -218,7 +211,7 @@ def health_check():
 def root():
     return {
         "service": "Ball and Beer Recommender",
-        "version": "3.0 - Deep Learning with TensorFlow/Keras",
+        "version": "3.0 - Deep Learning with TensorFlow/Keras (Local Mode)",
         "status": "running",
         "model_info": {
             "users": len(unique_users) if unique_users else 0,

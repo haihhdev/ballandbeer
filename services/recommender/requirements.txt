@@ -11,9 +11,6 @@ keras==3.8.0
 pandas==2.2.3
 numpy==1.26.4
 
-# AWS and Storage
-boto3==1.35.0
-
 # MongoDB
 pymongo==4.13.1
 

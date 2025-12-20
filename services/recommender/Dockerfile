@@ -20,8 +20,9 @@ WORKDIR /app
 # Copy only necessary Python packages from builder
 COPY --from=builder /root/.local /root/.local
 
-# Copy application code
+# Copy application code and model files
 COPY pipeline.py main.py ./
+COPY recommender_model.keras model_metadata.json recommendation_data.json ./
 
 # Update PATH to include user-installed packages
 ENV PATH=/root/.local/bin:$PATH
@@ -29,9 +30,11 @@ ENV PATH=/root/.local/bin:$PATH
 # Set environment variables
 ENV PORT=4005 \
     HOST=0.0.0.0 \
-    AWS_DEFAULT_REGION=ap-southeast-1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    MODEL_PATH=recommender_model.keras \
+    METADATA_PATH=model_metadata.json \
+    REC_DATA_PATH=recommendation_data.json
 
 # Expose port
 EXPOSE 4005
@@ -42,4 +45,4 @@ RUN useradd -m -u 1000 appuser && \
 USER appuser
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "4005"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "4005"]

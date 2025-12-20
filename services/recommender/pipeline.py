@@ -7,7 +7,6 @@ import json
 import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
-import boto3
 import hvac
 import kubernetes
 from kubernetes import client, config
@@ -223,19 +222,8 @@ with open("recommendation_data.json", "w") as f:
     json.dump(recommendation_data, f)
 
 print(f"Saved metadata for {len(unique_users)} users and {len(unique_products)} products")
-
-# ======================
-# STEP 7: UPLOAD TO S3
-# ======================
-def upload_file_to_s3(local_file, bucket, s3_key):
-    s3 = boto3.client('s3')
-    s3.upload_file(local_file, bucket, s3_key)
-    print(f"Uploaded {local_file} to s3://{bucket}/{s3_key}")
-
-bucket_name = os.getenv('S3_BUCKET', 'bnb-rcm-kltn')
-print(f"\nUploading to S3 bucket: {bucket_name}")
-upload_file_to_s3('recommender_model.keras', bucket_name, 'models/recommender_model.keras')
-upload_file_to_s3('model_metadata.json', bucket_name, 'models/model_metadata.json')
-upload_file_to_s3('recommendation_data.json', bucket_name, 'data/recommendation_data.json')
-
 print("\nPipeline completed successfully!")
+print("Model files saved locally:")
+print("  - recommender_model.keras")
+print("  - model_metadata.json")
+print("  - recommendation_data.json")
