@@ -254,16 +254,19 @@ class DataPreprocessor:
                 service_df['response_time_ms'].rolling(window=window_size, min_periods=1).quantile(0.95)
             )
             
-            # Load per replica metrics
-            df.loc[service_mask, 'cpu_per_replica'] = (
-                service_df['cpu_usage_percent'] / (service_df['replica_count'] + 1)
-            )
-            df.loc[service_mask, 'ram_per_replica'] = (
-                service_df['ram_usage_percent'] / (service_df['replica_count'] + 1)
-            )
-            df.loc[service_mask, 'requests_per_replica'] = (
-                service_df['request_count_per_second'] / (service_df['replica_count'] + 1)
-            )
+            # REMOVED: Load per replica metrics - CAUSES DATA LEAKAGE
+            # These features contain target (replica_count) information
+            # Model can easily reverse-engineer: replica_count = cpu_usage / cpu_per_replica
+            # This artificially inflates accuracy to 95%+
+            # df.loc[service_mask, 'cpu_per_replica'] = (
+            #     service_df['cpu_usage_percent'] / (service_df['replica_count'] + 1)
+            # )
+            # df.loc[service_mask, 'ram_per_replica'] = (
+            #     service_df['ram_usage_percent'] / (service_df['replica_count'] + 1)
+            # )
+            # df.loc[service_mask, 'requests_per_replica'] = (
+            #     service_df['request_count_per_second'] / (service_df['replica_count'] + 1)
+            # )
             
             # Pressure indicators (combined metrics)
             df.loc[service_mask, 'system_pressure'] = (
@@ -355,13 +358,13 @@ class DataPreprocessor:
         # Select only the features we want to use
         all_features = config.FEATURE_COLUMNS.copy()
         
-        # Add engineered features
+        # Add engineered features (REMOVED per_replica features due to data leakage)
         engineered_features = [
             'cpu_utilization_ratio', 'ram_utilization_ratio',
             'cpu_change_rate', 'ram_change_rate', 'request_change_rate',
             'cpu_rolling_std', 'ram_rolling_std',
             'request_rolling_max', 'response_time_rolling_p95',
-            'cpu_per_replica', 'ram_per_replica', 'requests_per_replica',
+            # 'cpu_per_replica', 'ram_per_replica', 'requests_per_replica',  # DATA LEAKAGE!
             'system_pressure'
         ]
         

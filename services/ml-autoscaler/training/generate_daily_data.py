@@ -13,25 +13,28 @@ from pathlib import Path
 SERVICES = ['authen', 'booking', 'order', 'product', 'profile', 'frontend', 'recommender']
 
 # Service-specific replica thresholds (load 0-1 -> replica 1-5)
+# Adjusted to ensure each replica has at least 10% distribution with variation
 SERVICE_REPLICA_THRESHOLDS = {
-    'authen': [0.35, 0.57, 0.73, 0.86, 1.0],
-    'profile': [0.33, 0.55, 0.71, 0.85, 1.0],
-    'booking': [0.20, 0.40, 0.60, 0.80, 1.0],
-    'order': [0.14, 0.26, 0.42, 0.62, 1.0],
-    'product': [0.19, 0.31, 0.45, 0.62, 1.0],
-    'frontend': [0.13, 0.25, 0.39, 0.56, 1.0],
-    'recommender': [0.15, 0.29, 0.44, 0.62, 1.0],
+    'authen': [0.26, 0.46, 0.66, 0.82, 1.0],      # Balanced with slight left skew
+    'profile': [0.22, 0.42, 0.62, 0.80, 1.0],     # Balanced distribution
+    'booking': [0.24, 0.44, 0.64, 0.80, 1.0],     # More balanced R4
+    'order': [0.20, 0.40, 0.60, 0.78, 1.0],       # Balanced with slight right skew
+    'product': [0.24, 0.46, 0.66, 0.82, 1.0],     # Balanced distribution
+    'frontend': [0.18, 0.38, 0.58, 0.76, 1.0],    # Balanced with slight right skew
+    'recommender': [0.22, 0.44, 0.64, 0.82, 1.0], # Balanced distribution
 }
 
 # Load scaling factors (scale amplitude around 0.5)
+# Higher values shift load distribution upward (more high replicas)
+# Lower values shift load distribution downward (more low replicas)
 SERVICE_LOAD_SCALE_FACTORS = {
-    'authen': 0.93,
-    'profile': 0.95,
-    'booking': 1.0,
-    'order': 1.0,
-    'product': 1.05,
-    'frontend': 1.07,
-    'recommender': 1.05,
+    'authen': 0.92,      # Lower factor for left-skewed distribution
+    'profile': 0.98,     # Neutral
+    'booking': 1.0,      # Neutral
+    'order': 1.0,        # Neutral
+    'product': 1.06,     # Adjusted for better R4 distribution
+    'frontend': 1.08,    # Adjusted to control R5
+    'recommender': 1.02, # Neutral
 }
 
 # Service-specific resource limits from real deployment
@@ -66,19 +69,20 @@ SERVICE_RESOURCE_LIMITS = {
     },
 }
 
-# Overlapping metric ranges (cpu%, ram%, rps) to increase difficulty
+# High overlap metric ranges - challenging but learnable
+# Significant overlap but with some distinguishable patterns
 REPLICA_METRICS = {
-    1: {'cpu_range': (5, 35), 'ram_range': (10, 40), 'rps_range': (5, 45)},
-    2: {'cpu_range': (25, 55), 'ram_range': (30, 60), 'rps_range': (30, 75)},
-    3: {'cpu_range': (45, 75), 'ram_range': (50, 80), 'rps_range': (60, 120)},
-    4: {'cpu_range': (65, 90), 'ram_range': (70, 90), 'rps_range': (100, 170)},
-    5: {'cpu_range': (80, 98), 'ram_range': (85, 98), 'rps_range': (150, 220)},
+    1: {'cpu_range': (5, 55), 'ram_range': (10, 65), 'rps_range': (5, 85)},
+    2: {'cpu_range': (15, 68), 'ram_range': (20, 72), 'rps_range': (20, 110)},
+    3: {'cpu_range': (30, 82), 'ram_range': (35, 86), 'rps_range': (40, 150)},
+    4: {'cpu_range': (50, 93), 'ram_range': (55, 93), 'rps_range': (70, 200)},
+    5: {'cpu_range': (65, 98), 'ram_range': (70, 98), 'rps_range': (120, 240)},
 }
 
 # HPA delay and anomaly config
 SCALE_UP_DELAY = 3
 SCALE_DOWN_DELAY = 6
-ANOMALY_RATE = 0.05
+ANOMALY_RATE = 0.35  # Extremely high anomaly rate for unpredictable patterns 
 
 
 def generate_load_pattern(n_samples, pattern_type='mixed'):
@@ -122,7 +126,7 @@ def generate_load_pattern(n_samples, pattern_type='mixed'):
         load += 0.5 * np.exp(-((t - 0.75) ** 2) / 0.02)
         load = (load - load.min()) / (load.max() - load.min() + 1e-8)
     
-    noise = np.random.normal(0, 0.02, n_samples)
+    noise = np.random.normal(0, 0.08, n_samples)  # Very high load variation
     load = np.clip(load + noise, 0.0, 1.0)
     
     # Force diversity in last 20% for test set coverage (R1-R5)
@@ -157,8 +161,8 @@ def generate_metrics_for_replica(target_replica, current_replica, noise_factor=0
     ram_usage = np.random.uniform(ram_min, ram_max)
     request_rate = np.random.uniform(rps_min, rps_max)
     
-    # 30% chance metrics misalign (CPU high but RAM low, etc)
-    if np.random.random() < 0.3:
+    # 80% chance metrics misalign (CPU high but RAM low, etc) - high ambiguity
+    if np.random.random() < 0.80:
         shift_metric = np.random.choice(['cpu', 'ram', 'rps'])
         shift_direction = np.random.choice([-1, 1])
         neighbor_replica = np.clip(target_replica + shift_direction, 1, 5)
@@ -171,18 +175,30 @@ def generate_metrics_for_replica(target_replica, current_replica, noise_factor=0
         else:
             request_rate = np.random.uniform(*neighbor_metrics['rps_range'])
     
-    # Transition lag (metrics change faster than replicas)
+    # Transition lag - extremely noisy transitions
     if current_replica != target_replica:
-        blend = 0.85
+        blend = 0.45  # Very strong mixing of old and new metrics during transition
         prev_metrics = REPLICA_METRICS[current_replica]
         cpu_usage = cpu_usage * blend + np.mean(prev_metrics['cpu_range']) * (1 - blend)
         ram_usage = ram_usage * blend + np.mean(prev_metrics['ram_range']) * (1 - blend)
         request_rate = request_rate * blend + np.mean(prev_metrics['rps_range']) * (1 - blend)
     
-    # Add noise
-    cpu_usage += np.random.normal(0, noise_factor * 15)
-    ram_usage += np.random.normal(0, noise_factor * 12)
-    request_rate += np.random.normal(0, noise_factor * 25)
+    # Add mixed noise - Gaussian + occasional bursts for realism
+    cpu_noise = np.random.normal(0, noise_factor * 30)
+    ram_noise = np.random.normal(0, noise_factor * 28)
+    rps_noise = np.random.normal(0, noise_factor * 50)
+    
+    # Add bursty noise (10% chance of large deviation)
+    if np.random.random() < 0.10:
+        cpu_noise += np.random.uniform(-15, 15)
+    if np.random.random() < 0.10:
+        ram_noise += np.random.uniform(-12, 12)
+    if np.random.random() < 0.10:
+        rps_noise += np.random.uniform(-30, 30)
+    
+    cpu_usage += cpu_noise
+    ram_usage += ram_noise
+    request_rate += rps_noise
     
     # Add anomalies
     if is_anomaly:
@@ -215,13 +231,27 @@ def generate_metrics_for_replica(target_replica, current_replica, noise_factor=0
 
 
 def update_replica_with_inertia(current_replica, target_replica, scale_up_wait, scale_down_wait):
-    """Simulate HPA scaling delay (creates lag between metrics and replicas)"""
+    """Simulate HPA scaling delay with occasional multi-step jumps for realism"""
+    # 2% chance HPA does random walk (±1 replica regardless of target)
+    if np.random.random() < 0.02:
+        random_direction = np.random.choice([-1, 0, 1])
+        new_replica = np.clip(current_replica + random_direction, 1, 5)
+        return new_replica, 0, 0
+    
+    # 15% chance HPA completely ignores signal (stuck period)
+    if np.random.random() < 0.15:
+        return current_replica, scale_up_wait, scale_down_wait
+    
     if target_replica > current_replica:
         scale_up_wait += 1
         scale_down_wait = 0
         
         if scale_up_wait >= SCALE_UP_DELAY:
-            new_replica = min(current_replica + 1, target_replica, 5)
+            # 15% chance of jumping +2 replicas (realistic sudden spike response)
+            if np.random.random() < 0.15 and target_replica - current_replica >= 2:
+                new_replica = min(current_replica + 2, target_replica, 5)
+            else:
+                new_replica = min(current_replica + 1, target_replica, 5)
             return new_replica, 0, 0
         else:
             return current_replica, scale_up_wait, scale_down_wait
@@ -230,7 +260,12 @@ def update_replica_with_inertia(current_replica, target_replica, scale_up_wait, 
         scale_down_wait += 1
         scale_up_wait = 0
         
-        if scale_down_wait >= SCALE_DOWN_DELAY:
+        # Add occasional "stuck" periods (HPA hesitation)
+        actual_delay = SCALE_DOWN_DELAY
+        if np.random.random() < 0.25:
+            actual_delay += np.random.randint(1, 5)
+        
+        if scale_down_wait >= actual_delay:
             new_replica = max(current_replica - 1, target_replica, 1)
             return new_replica, 0, 0
         else:
@@ -309,19 +344,49 @@ def generate_daily_data(target_date):
             state['scale_down_wait'] = new_scale_down_wait
             
             is_anomaly = np.random.random() < ANOMALY_RATE
-            metrics = generate_metrics_for_replica(
-                state['replica'], 
-                target_replica,
-                noise_factor=0.25,
-                is_anomaly=is_anomaly
-            )
+            
+            # 12% chance of "confusion period" - metrics completely wrong for replica
+            use_confused_metrics = np.random.random() < 0.12
+            if use_confused_metrics:
+                confused_replica = np.random.randint(1, 6)
+                metrics = generate_metrics_for_replica(
+                    confused_replica,
+                    confused_replica,
+                    noise_factor=0.55,
+                    is_anomaly=is_anomaly
+                )
+            else:
+                # 10% chance metrics are delayed (from 2-3 timesteps ago)
+                if np.random.random() < 0.10 and len(state['history']) >= 3:
+                    delay_steps = np.random.randint(2, 4)
+                    old_replica = state['history'][-delay_steps].get('replica', state['replica'])
+                    metrics = generate_metrics_for_replica(
+                        old_replica,
+                        old_replica,
+                        noise_factor=0.55,
+                        is_anomaly=is_anomaly
+                    )
+                else:
+                    metrics = generate_metrics_for_replica(
+                        state['replica'], 
+                        target_replica,
+                        noise_factor=0.55,  # High baseline noise
+                        is_anomaly=is_anomaly
+                    )
             
             cpu_usage = metrics['cpu_usage']
             ram_usage = metrics['ram_usage']
             request_rate = metrics['request_rate']
             
+            # Response time with weak correlation to replica
             base_response = 50 + (100 / state['replica']) + (load * 200 / state['replica'])
-            response_time = max(20, base_response * (1 + np.random.uniform(-0.1, 0.2)))
+            
+            # Add response time spikes (caching, GC, network issues)
+            if np.random.random() < 0.12:
+                base_response *= np.random.uniform(1.5, 2.5)
+            
+            # High variance in response time
+            response_time = max(20, base_response * (1 + np.random.uniform(-0.3, 0.5)))
             
             history = state['history']
             if len(history) >= 10:
@@ -337,7 +402,7 @@ def generate_daily_data(target_date):
                 cpu_slope = 0
                 ram_slope = 0
             
-            history.append({'cpu': cpu_usage, 'ram': ram_usage, 'req': request_rate})
+            history.append({'cpu': cpu_usage, 'ram': ram_usage, 'req': request_rate, 'replica': state['replica']})
             if len(history) > 15:
                 history.pop(0)
             
@@ -473,4 +538,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

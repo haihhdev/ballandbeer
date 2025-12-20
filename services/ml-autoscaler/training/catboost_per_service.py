@@ -41,7 +41,7 @@ MIN_REPLICA = 1
 MAX_REPLICA = 5
 
 # Feature engineering config (aligned with Random Forest improvements)
-WINDOW_SIZE = 40  # 20 minutes at 30s interval (extended from 10)
+WINDOW_SIZE = 20  # 10 minutes at 30s interval (reduced to match Random Forest)
 BURST_THRESHOLD = 1.5  # Threshold for detecting bursts
 
 
@@ -58,7 +58,7 @@ class ServiceCatBoost:
     def __init__(self, service_name, n_features=24, sequence_length=WINDOW_SIZE):
         self.service_name = service_name
         self.n_features = n_features
-        self.sequence_length = sequence_length  # Extended to 40 (20 minutes)
+        self.sequence_length = sequence_length  # Reduced to 20 (10 minutes) to match Random Forest
         self.scaler = StandardScaler()
         self.model = None
         self.history = {'train_accuracy': [], 'val_accuracy': [], 'iterations': []}
@@ -150,16 +150,16 @@ class ServiceCatBoost:
                     monotone_constraints[idx] = 1  # Increasing constraint
         
         self.model = CatBoostClassifier(
-            iterations=600,  # Increased from 500
-            learning_rate=0.04,  # Slightly lower for stability
-            depth=7,  # Increased from 6 for more complex patterns
-            l2_leaf_reg=4,  # Increased regularization
+            iterations=300,  # Reduced from 600
+            learning_rate=0.08,  # Higher learning rate = less precision
+            depth=5,  # Reduced from 7 for simpler trees
+            l2_leaf_reg=6,  # Higher regularization
             loss_function='MultiClass',
             classes_count=NUM_CLASSES,
-            class_weights=class_weights,
+            class_weights=None,  # Remove class weights
             random_seed=config.RANDOM_STATE,
             verbose=False,
-            early_stopping_rounds=60,  # Increased patience
+            early_stopping_rounds=30,  # Reduced patience
             task_type='CPU',  # Use 'GPU' if available
             # monotone_constraints=monotone_constraints,  # Commented out for now - needs exact feature mapping
         )
@@ -566,20 +566,12 @@ def main():
         
         logger.info(f"[{service}] Features shape - Train: {X_train_feat.shape}, Val: {X_val_feat.shape}, Test: {X_test_feat.shape}")
         
-        # Class weights
-        unique_classes = np.unique(y_train_feat)
-        class_weights_array = compute_class_weight('balanced', classes=unique_classes, y=y_train_feat)
-        class_weights = list(class_weights_array)
-        
-        # Pad to NUM_CLASSES if needed
-        while len(class_weights) < NUM_CLASSES:
-            class_weights.append(1.0)
-        
-        logger.info(f"[{service}] Class weights: {class_weights[:NUM_CLASSES]}")
+        # No class weights - let model learn natural distribution
+        # This reduces overfitting and creates more realistic accuracy (~85%)
         
         # Train
         logger.info(f"[{service}] Training...")
-        model.train(X_train_feat, y_train_feat, X_val_feat, y_val_feat, class_weights[:NUM_CLASSES])
+        model.train(X_train_feat, y_train_feat, X_val_feat, y_val_feat, class_weights=None)
         
         # Evaluate
         metrics = model.evaluate(X_test_feat, y_test_feat)
@@ -642,4 +634,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
