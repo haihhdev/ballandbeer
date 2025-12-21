@@ -62,8 +62,8 @@ module "eks" {
   # EKS Managed Node Groups
   eks_managed_node_groups = {
     # Infrastructure Node Group - On-Demand, excluded from autoscaler
-    infra = {
-      name = "${local.name_prefix}-infra-ng"
+    infrastructure = {
+      name = "${local.name_prefix}-infra-node-group"
 
       min_size     = 2
       max_size     = 2
@@ -116,9 +116,9 @@ module "eks" {
       )
     }
 
-    # Application Node Group
-    app = {
-      name = "${local.name_prefix}-app-ng"
+    # Application Node Group - Spot instances with autoscaling
+    main = {
+      name = "${local.name_prefix}-node-group"
 
       min_size     = var.node_group_min_size
       max_size     = var.node_group_max_size
@@ -145,20 +145,18 @@ module "eks" {
       }
 
       labels = {
-        node-type     = "application"
-        capacity-type = lower(var.capacity_type)
-        architecture  = local.is_graviton ? "arm64" : "amd64"
-        environment   = var.environment
-        managed-by    = "terraform"
+        node-type    = "application"
+        architecture = local.is_graviton ? "arm64" : "amd64"
+        environment  = var.environment
+        managed-by   = "terraform"
       }
 
       tags = merge(
         local.common_tags,
         {
-          Name                                              = "${local.name_prefix}-app-node"
+          Name                                              = "${local.name_prefix}-eks-node"
           Architecture                                      = local.is_graviton ? "ARM64" : "x86_64"
           NodeType                                          = "application"
-          CapacityType                                      = var.capacity_type
           "k8s.io/cluster-autoscaler/${local.cluster_name}" = "owned"
           "k8s.io/cluster-autoscaler/enabled"               = "true"
         }
