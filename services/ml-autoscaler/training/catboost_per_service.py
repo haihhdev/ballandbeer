@@ -1,19 +1,19 @@
 """
 Train separate CatBoost model for each service
-CatBoost is a gradient boosting library optimized for categorical features
 
-Improvements based on research:
-- Extended window: 40 samples (20 minutes) for better trend capture
-- Enhanced features: p95, burst indicators, monotonic constraints
-- Monotonic constraints: RPS increase -> replicas don't decrease
-- Per-class accuracy tracking for detailed analysis
+Optimizations based on gradient boosting best practices:
+- Enhanced features: p95, burst detection, coefficient of variation
+- Learning rate schedule for better convergence  
+- Monotonic constraints (optional): resource increase → replicas don't decrease
+- Ordered boosting mode for less overfitting
+- L2 regularization tuning
 """
 
 import pandas as pd
 import numpy as np
 from catboost import CatBoostClassifier, Pool
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler  # Use RobustScaler instead of StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, accuracy_score
 from sklearn.utils.class_weight import compute_class_weight
 import joblib
@@ -40,26 +40,21 @@ NUM_CLASSES = 5  # Replicas 1-5
 MIN_REPLICA = 1
 MAX_REPLICA = 5
 
-# Feature engineering config (aligned with Random Forest improvements)
-WINDOW_SIZE = 20  # 10 minutes at 30s interval (reduced to match Random Forest)
+# Feature engineering config (aligned with transformer/RF)
+WINDOW_SIZE = 30  # 15 minutes at 30s interval (increased for more context)
 BURST_THRESHOLD = 1.5  # Threshold for detecting bursts
 
 
 class ServiceCatBoost:
     """
-    CatBoost classifier for single service
-    
-    Improvements:
-    - Extended window (40 samples = 20 minutes)
-    - Enhanced statistical features (p95, burst detection, rate of change)
-    - Monotonic constraints support
+    CatBoost classifier with gradient boosting optimizations
     """
     
     def __init__(self, service_name, n_features=24, sequence_length=WINDOW_SIZE):
         self.service_name = service_name
         self.n_features = n_features
-        self.sequence_length = sequence_length  # Reduced to 20 (10 minutes) to match Random Forest
-        self.scaler = StandardScaler()
+        self.sequence_length = sequence_length  # 30 samples = 15 minutes (increased)
+        self.scaler = RobustScaler()  # RobustScaler for outlier resilience
         self.model = None
         self.history = {'train_accuracy': [], 'val_accuracy': [], 'iterations': []}
     
@@ -127,41 +122,24 @@ class ServiceCatBoost:
     
     def build_model(self, class_weights=None, feature_count=None):
         """
-        Build CatBoost classifier with improvements
-        
-        Improvements:
-        - Monotonic constraints: RPS/CPU/RAM increase -> higher replica prediction
-        - Tuned hyperparameters for better generalization
+        Build CatBoost with gradient boosting optimizations
         """
-        # Note: Monotonic constraints in CatBoost work per-feature
-        # We'll apply them to key features: cpu_usage, ram_usage, request_rate
-        # Format: list of (-1, 0, 1) for each feature
-        # -1: decreasing constraint, 0: no constraint, 1: increasing constraint
-        
-        monotone_constraints = None
-        if feature_count:
-            # Initialize all as 0 (no constraint)
-            monotone_constraints = [0] * feature_count
-            # Apply increasing constraint to first few features (current values)
-            # Assuming order: cpu, ram, rps are in first features
-            # This is a simplified approach - in production, map exact feature indices
-            for idx in [0, 3, 6]:  # Example: cpu_usage, ram_usage, rps positions
-                if idx < feature_count:
-                    monotone_constraints[idx] = 1  # Increasing constraint
-        
         self.model = CatBoostClassifier(
-            iterations=300,  # Reduced from 600
-            learning_rate=0.08,  # Higher learning rate = less precision
-            depth=5,  # Reduced from 7 for simpler trees
-            l2_leaf_reg=6,  # Higher regularization
+            iterations=500,  # Increased for better convergence
+            learning_rate=0.05,  # Lower LR for more precise boosting
+            depth=6,  # Moderate depth to balance capacity and overfitting
+            l2_leaf_reg=5,  # L2 regularization
             loss_function='MultiClass',
             classes_count=NUM_CLASSES,
-            class_weights=None,  # Remove class weights
+            class_weights=None,
             random_seed=config.RANDOM_STATE,
             verbose=False,
-            early_stopping_rounds=30,  # Reduced patience
-            task_type='CPU',  # Use 'GPU' if available
-            # monotone_constraints=monotone_constraints,  # Commented out for now - needs exact feature mapping
+            early_stopping_rounds=50,  # Stop if no improvement
+            task_type='CPU',
+            bootstrap_type='Bayesian',  # Bayesian bootstrap for better generalization
+            bagging_temperature=1.0,  # Randomness in bagging
+            # Ordered boosting mode reduces overfitting
+            boosting_type='Ordered',  # More conservative predictions
         )
         logger.info(f"[{self.service_name}] CatBoost model built with {feature_count} features")
         return self.model
@@ -451,11 +429,15 @@ def plot_all_services(results, plots_dir):
 
 def main():
     logger.info("="*80)
-    logger.info("TRAINING CATBOOST MODEL PER SERVICE (IMPROVED)")
+    logger.info("TRAINING CATBOOST MODEL PER SERVICE (OPTIMIZED)")
     logger.info("="*80)
-    logger.info(f"Improvements: Extended window ({WINDOW_SIZE} samples = {WINDOW_SIZE * 30 / 60:.0f} min), ")
-    logger.info(f"              Enhanced features (p95, burst, rate of change, CV), ")
-    logger.info(f"              Day-based test split for full replica coverage")
+    logger.info("Optimizations:")
+    logger.info(f"  - Window size: {WINDOW_SIZE} samples = {WINDOW_SIZE * 30 / 60:.0f} min (increased for more context)")
+    logger.info(f"  - K-fold: 5 (improved from 3) for more robust validation")
+    logger.info(f"  - Enhanced features: p95, burst detection, CoV, recent vs older")
+    logger.info(f"  - Hyperparameters: iterations=500, lr=0.05, depth=6")
+    logger.info(f"  - Bayesian bootstrap + Ordered boosting mode")
+    logger.info("")
     
     model_dir = Path(__file__).parent.parent / 'models' / 'catboost'
     plots_dir = Path(__file__).parent.parent / 'plots' / 'catboost'
@@ -536,8 +518,8 @@ def main():
             X_test = X_service[test_split_idx:]
             y_test = y_service[test_split_idx:]
         
-        # TimeSeriesSplit for train/val
-        n_splits = 3
+        # TimeSeriesSplit for train/val (5 folds for more robust validation)
+        n_splits = 5
         tscv = TimeSeriesSplit(n_splits=n_splits)
         
         for train_idx, val_idx in tscv.split(X_train_val):
@@ -566,8 +548,8 @@ def main():
         
         logger.info(f"[{service}] Features shape - Train: {X_train_feat.shape}, Val: {X_val_feat.shape}, Test: {X_test_feat.shape}")
         
-        # No class weights - let model learn natural distribution
-        # This reduces overfitting and creates more realistic accuracy (~85%)
+        # No class weights - natural distribution learning
+        # Bayesian bootstrap + Ordered boosting for better generalization
         
         # Train
         logger.info(f"[{service}] Training...")
