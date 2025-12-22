@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-benchmark-run
+  namespace: default
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: k6-benchmark
+        job-type: benchmark
+    spec:
+      restartPolicy: Never
+      priorityClassName: k6-priority
+      containers:
+      - name: k6
+        image: grafana/k6:latest
+        command:
+          - k6
+          - run
+          - /scripts/benchmark-traffic.js
+          - --out
+          - json=/tmp/k6-benchmark-results.json
+          - --summary-export=/tmp/k6-benchmark-summary.json
+        env:
+        - name: BASE_URL
+          value: "http://a100535bd5c8048f2bbcd6a86833a224-81b0425bc01821d9.elb.ap-southeast-1.amazonaws.com"
+        - name: K6_NO_CONNECTION_REUSE
+          value: "false"
+        - name: K6_NO_VU_CONNECTION_REUSE
+          value: "false"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "1000m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: k6-script
+          mountPath: /scripts
+          readOnly: true
+        - name: k6-results
+          mountPath: /tmp
+      volumes:
+      - name: k6-script
+        configMap:
+          name: k6-benchmark-script
+      - name: k6-results
+        emptyDir: {}
